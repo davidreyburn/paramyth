@@ -14,8 +14,7 @@ import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, swingPhase, f
 import { blocked, solidBodies, tileOf, HALF } from '../../sim/space.js';
 import { roomTiles, TILE, COLS } from '../../core/gen.js';
 import { FOE } from '../../core/foes.js';
-import { damageOf } from '../../core/items.js';
-import { bestWeapon, hitBox, inHitBox } from '../../sim/interact.js';
+import { weaponOf, hitBox, inHitBox } from '../../sim/interact.js';
 
 // The swing's timing and its phase function live in L3 beside the delta field
 // they describe; re-exported here so a reader of this file still sees them.
@@ -38,13 +37,12 @@ export function combat(s, frame) {
     // all is indistinguishable from a button that is broken, and camp is the
     // first place a player presses this one.
     if (friendly(s)) out.push({ k: 'say', text: 'Not in camp \u2014 the Company frowns on drawn steel' });
-    else if (bestWeapon(s)) out.push({ k: 'swing', dir: s.facing });
-    else out.push({ k: 'say', text: 'Nothing to swing with \u2014 your hands are empty' });
+    else out.push({ k: 'swing', dir: s.facing });   // empty-handed is fists, not nothing
   }
 
   if (phase === 'active') {
     const box = hitBox(s);
-    const dmg = damageOf(bestWeapon(s)?.kind);
+    const dmg = weaponOf(s).damage;
     for (const f of s.foes) {
       if (s.swing.hit.includes(f.id)) continue;   // one hit per foe per swing
       if (!inHitBox(box, f.x, f.y)) continue;

@@ -12,20 +12,26 @@ import { roomTiles, absDepth, COLS, ROWS, T } from './gen.js';
 // The speed column is the whole design, so it is worth stating plainly here
 // rather than leaving it in a balance spreadsheet nobody opens.
 //
-//   player, light       192   outruns a dog
-//   player, laden       154   caught
-//   player, overloaded  106   eaten
+//   player, light       288   outruns a dog
+//   player, laden       216   caught
+//   player, overloaded  158   eaten
 //
-// A dog at 170 is therefore not a damage problem, it is a CARGO problem. Greed
+// A dog at 255 is therefore not a damage problem, it is a CARGO problem. Greed
 // is what makes it lethal and the drop-load button is the answer, which is the
 // exact moment plans/slice-01.md is waiting to observe.
+//
+// This number is DEPENDENT on the player's base speed and must move with it.
+// It sat at 170 against a base of 192; the base went to 288 and laden began
+// outrunning it, which quietly deleted the entire point of the enemy. The three
+// speed gates in tools/test-combat.mjs are what bind the two together, and they
+// only work because they import the real constants instead of copying them.
 export const FOE = {
   dog: {
     label: 'rot-touched dog',
     glyph: 'D',
     hp: 6,
     damage: 2,
-    speed: 170,
+    speed: 255,
     foot: 5,          // collision half-extent in pixels, as items use
     wake: 5,          // tiles: how near you must be before it notices
     bite: 45,         // ticks between bites, so contact is not a shredder

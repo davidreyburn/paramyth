@@ -8,14 +8,14 @@
 // Two: that a dog is a cargo problem rather than a damage problem.
 
 import { createState, hashState, spawnIn, UNITS, MAX_HP, saying, SAY_TICKS, friendly } from '../sim/state.js';
-import { step, applyAction, enterRoom } from '../sim/step.js';
+import { step, applyAction, enterRoom, SPEED, LOAD } from '../sim/step.js';
 import combat, { WINDUP, ACTIVE, SWING_TICKS, HURT_INVULN, hitBox, swingPhase } from '../systems/combat/index.js';
 const SYSTEMS = [combat];
 import { foesOf, FOE } from '../core/foes.js';
 import { floorPlan, floorCount, roomTiles, absDepth, COLS, ROWS, TILE, T } from '../core/gen.js';
 import { VERB, setVerb } from '../sim/frame.js';
-import { carriedBulk, tier, bestWeapon, mostFragile, BULK_BUDGET } from '../sim/interact.js';
-import { KIND, isSolidItem } from '../core/items.js';
+import { carriedBulk, tier, bestWeapon, weaponOf, mostFragile, BULK_BUDGET } from '../sim/interact.js';
+import { KIND, UNARMED, isSolidItem } from '../core/items.js';
 import { solidTile } from '../core/grid.js';
 
 let failures = 0;
@@ -159,12 +159,29 @@ function delve(floor, room) {
   fresh.tick += SAY_TICKS;
   ok('and the line expires', !saying(fresh), `after ${SAY_TICKS} ticks`);
 
-  // Empty-handed below ground is the other refusal worth voicing.
+  // Empty-handed is FISTS, not nothing: a small square right in front of you.
+  // Being disarmed is a bad position, not a dead stop.
   const bare = delve(den.floor, den.room);
   bare.carried = [];
   step(bare, setVerb(0, VERB.ATTACK, true), [combat]);
-  ok('swinging with nothing says so too', !bare.swing && !!saying(bare),
-     bare.say ? bare.say.text : 'silence');
+  ok('empty hands still swing', !!bare.swing && !bare.say);
+  ok('and they are fists', weaponOf(bare).label === UNARMED.label, weaponOf(bare).label);
+
+  // The unarmed box is small, square, and in front — measurably smaller than a
+  // blade's arc in both dimensions, or "unarmed" is just a weaker sword.
+  const armedBox = (() => { const t = delve(den.floor, den.room); t.facing = 1;
+    t.swing = { at: t.tick, dir: 1, hit: [] }; return hitBox(t); })();
+  const fistBox = (() => { const t = delve(den.floor, den.room); t.carried = []; t.facing = 1;
+    t.swing = { at: t.tick, dir: 1, hit: [] }; return hitBox(t); })();
+  const dim = (b) => [(b.x1 - b.x0) / UNITS, (b.y1 - b.y0) / UNITS];
+  const [aw, ah] = dim(armedBox), [fw, fh] = dim(fistBox);
+  ok('fists reach less far than a blade', fw < aw, `${fw} deep vs ${aw}`);
+  ok('and sweep less wide', fh < ah, `${fh} across vs ${ah}`);
+  ok('and the fist box is square', Math.abs(fw - fh) <= 1, `${fw} x ${fh}`);
+  ok('a fist is in front of the player, not on them',
+     fistBox.x0 > bare.x, `box starts ${(fistBox.x0 - bare.x) / UNITS}px ahead`);
+  ok('fists hit for less than steel', UNARMED.damage < KIND.sword.damage,
+     `${UNARMED.damage} vs ${KIND.sword.damage}`);
 
   // A screen still swallows it: the world is still behind a menu.
   const menu = createState(SEED);
@@ -251,10 +268,12 @@ function delve(floor, room) {
 
 // --- a dog is a cargo problem -----------------------------------------------
 {
-  const SPEED = 192;
+  // SPEED and LOAD are imported, not copied. A private copy of a constant here
+  // passed cleanly while the engine ran at a different number entirely — the
+  // spec's "unbound constants" failure mode, caught in its own combat gate.
   const at = (bulk) => {
     const t = tier(bulk);
-    const [n, d] = { light: [1,1], laden: [4,5], overloaded: [11,20] }[t];
+    const [n, d] = LOAD[t];
     return { t, v: ((SPEED * n) / d) | 0 };
   };
   const light = at(4), laden = at(12), over = at(19);

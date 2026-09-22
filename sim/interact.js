@@ -7,8 +7,8 @@ import { contentsOf, insideOf, roomTiles, ERAS, eraFor, absDepth,
 import { chainOf, marksOf, readMarks, worthMultiplier, describe,
          leadOf, placeLabel, possessionsOf, occupantOf } from '../core/provenance.js';
 import { campStations, STATION } from '../core/camp.js';
-import { KIND, isContainer, isPortable, isWeapon, damageOf, reachOf, fragilityOf,
-         bulkOf, valueOf, verbFor } from '../core/items.js';
+import { KIND, UNARMED, isContainer, isPortable, isWeapon, damageOf, reachOf, wideOf,
+         fragilityOf, bulkOf, valueOf, verbFor } from '../core/items.js';
 import { UNITS } from './state.js';
 
 export const BULK_BUDGET = 20;
@@ -117,16 +117,27 @@ export function mostFragile(s) {
   return at;
 }
 
-// The swing's hitbox: one weapon-reach deep in front of you, a tile and a half
-// across, derived from `facing` alone so it is strictly forward. It lives here
-// rather than in systems/combat/ so that the renderer can draw the arc without
-// importing a system — which is what lets the system be deleted outright.
+// What you are actually swinging. Always a real answer: the best blade in the
+// pack, or your fists. Nothing downstream has to ask whether you are armed.
+export function weaponOf(s) {
+  const ref = bestWeapon(s);
+  if (!ref) return UNARMED;
+  return { label: ref.kind, damage: damageOf(ref.kind), reach: reachOf(ref.kind),
+           wide: wideOf(ref.kind), ref };
+}
+
+// The swing's hitbox: a weapon-reach deep in front of you and its own width
+// across, derived from `facing` alone so it is strictly forward. Fists make a
+// small square right in front of you; a sword makes a wide arc a tile out. It
+// lives here rather than in systems/combat/ so the renderer can draw the shape
+// without importing a system — which is what lets the system be deleted.
 const FACE = [[0, -1], [1, 0], [0, 1], [-1, 0]];        // s.facing: N E S W
 
 export function hitBox(s) {
   const [fx, fy] = FACE[s.swing ? s.swing.dir : s.facing];
-  const reach = (reachOf(bestWeapon(s)?.kind) || TILE) * UNITS;
-  const wide = (TILE * 3 / 4) * UNITS;
+  const w = weaponOf(s);
+  const reach = (w.reach || TILE) * UNITS;
+  const wide = (w.wide || TILE * 3 / 4) * UNITS;
   const half = 5 * UNITS;
   const cx = s.x + fx * (half + reach / 2);
   const cy = s.y + fy * (half + reach / 2);

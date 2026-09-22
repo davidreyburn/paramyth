@@ -4,6 +4,34 @@
 
 ---
 
+## 2026-09-22 — A gate that kept its own copy of the number it was checking
+
+**What.** Base player speed went from 192 to 288. The combat gate that exists
+specifically to assert *light outruns a dog, laden does not* reported
+`192 > 170` and passed.
+
+**Why.** It had declared `const SPEED = 192` and its own literal copy of the
+encumbrance ratios. It was checking arithmetic against itself, not the engine.
+Meanwhile the real engine ran laden at 216 against a dog at 170 — laden now
+simply outran the thing, which is the exact claim the gate was written to
+protect.
+
+**Evidence.** Binding the gate to the imported `SPEED` and `LOAD` flipped it
+straight to `FAIL laden does not  216 < 170`. The dog moved to 255 to preserve
+the ratio, and the three speed gates now pass on the real numbers.
+
+**Outcome.** `specs/spec-layer-contract.md` names this failure mode — *"any two
+constants that must agree MUST be bound by an assertion that fails when they
+diverge"* — and here it was, inside the assertion. The lesson is narrower than
+the spec's: a gate must **import** the constant it checks. A copy is not a
+binding, it is a second source of truth wearing a gate's clothes.
+
+**Also worth recording:** the dog's speed is a *dependent* number. It is now
+commented as such at its definition, because the next person to raise player
+speed will otherwise recreate this exactly.
+
+---
+
 ## 2026-09-22 — The encumbrance table had never been implemented
 
 **What.** `tier()` has returned light / laden / overloaded since 0.2.0 and the

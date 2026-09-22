@@ -9,6 +9,26 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- **Base speed raised 50%** — 192 to 288, with the diagonal recomputed rather
+  than eyeballed (204 = round(288 × 0.7071)). **Laden is now −25%** rather than
+  −20%; overloaded stays at −45%.
+- **The dog moves with it: 170 to 255.** Its speed is a *dependent* number and
+  the design dies without it. At the old 170 against the new base, laden ran at
+  216 and simply outran the dog, which deletes the entire point of the enemy —
+  `design/combat-and-tools.md`'s claim that threat is denominated in cargo.
+  The ratio is preserved: 288 light escapes, 216 laden is caught, 158 overloaded
+  is eaten.
+
+### Fixed
+
+- **A combat gate kept its own copy of `SPEED` and the load ratios**, so it
+  reported `192 > 170` and passed cleanly while the engine ran at 288. It now
+  imports the real constants. This is the spec's *unbound constants* failure
+  mode, found in the gate written to prevent it — a gate that copies the number
+  it is checking is testing itself.
+
 ### Added
 
 - **The world can say a line.** `s.say` is a transient, tick-stamped message in
@@ -22,8 +42,14 @@ entire.** See `plans/roadmap.md`.
   is the first place a player presses this one.
 - `friendly(s)` marks where steel stays sheathed — camp today, Grimhaven and
   Ashmark when they exist.
+- **Unarmed attacks.** Empty hands are fists, not a refusal: a 10×10 square
+  directly in front of you for 1 damage, against a blade's 22×30 arc for 3.
+  Being disarmed is a bad position rather than a dead stop, and the swing code
+  never special-cases an empty pack — `weaponOf()` always answers, with the best
+  blade in the pack or with `UNARMED`.
 - Gates: J reaches the frame as ATTACK, the camp refusal is raised, drawn, and
-  expires, and a screen still swallows the verb entirely.
+  expires, a screen still swallows the verb entirely, and the fist box is
+  measurably shorter, narrower and squarer than a blade's.
 
 ## [0.5.0] — 2026-09-22
 

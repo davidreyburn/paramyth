@@ -23,7 +23,7 @@ import { STATION } from '../core/camp.js';
 // while the code itself lives in space.js, where a foe can reach it too.
 export { solidBodies, solidTiles };
 
-const SPEED = 192, SPEED_DIAG = 136;
+export const SPEED = 288, SPEED_DIAG = 204;   // diag = round(SPEED * 0.7071)
 const SPRINT_NUM = 5, SPRINT_DEN = 3;
 const RW = COLS * TILE * UNITS, RH = ROWS * TILE * UNITS;
 
@@ -31,7 +31,7 @@ const RW = COLS * TILE * UNITS, RH = ROWS * TILE * UNITS;
 // implemented: `tier()` existed and changed nothing. It matters now, because it
 // is the only reason a dog at speed 170 is frightening — light you outrun it,
 // laden you do not. Integer ratios, so no float enters the movement path.
-const LOAD = { light: [1, 1], laden: [4, 5], overloaded: [11, 20] };
+export const LOAD = { light: [1, 1], laden: [3, 4], overloaded: [11, 20] };
 
 // A hit rolls fragility/FRAGILE_DEN against the most fragile thing you carry.
 // The denominator is the dial: at 8 an urn broke on roughly two hits in five,
