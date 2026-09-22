@@ -9,6 +9,14 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Added
+
+- `plans/backlog.md` — thirteen unscheduled ideas, with DJ's verdict recorded
+  against each. It schedules nothing; the roadmap remains the only document that
+  does. Ten of the thirteen are perception or record features rather than
+  content features, which is the layer contract paying out: each one reads
+  downward, writes a few bytes, and deletes cleanly.
+
 ### Fixed
 
 - **Stairs drew as a solid block pasted over the floor.** They were already

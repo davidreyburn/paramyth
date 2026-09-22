@@ -3,6 +3,9 @@
 What stands between here and a shippable game, in rough order of dependency.
 This is the only document that schedules work.
 
+Unscheduled ideas live in `plans/backlog.md` and are deliberately kept out of
+this one. Nothing arrives here until it has a dependency and an argument.
+
 ## What 1.0.0 means
 
 **A shippable game — at minimum the whole of Act I.** Not a proven mechanic, not
