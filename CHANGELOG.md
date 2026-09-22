@@ -11,6 +11,19 @@ entire.** See `plans/roadmap.md`.
 
 ### Changed
 
+- **The lamp is an egg, not a disc.** It is pinched behind you and swells toward
+  whatever you are facing — three to one, front to back, measured at 92px ahead
+  against 38px behind on the rendered frame. A disc read as an *aura*, something
+  the character emits; an egg reads as something held in a hand, with the body
+  shading the rest. It is also the cheapest directional tension available: what
+  is behind you is darker than what is in front, so backing away from something
+  you can see means stepping into something you cannot.
+- The back of the egg is deliberately **not** zero (34% of full radius). A
+  delver who cannot see the floor they are retreating onto backs into a wall, and
+  the interesting decision is meant to be the load in their hands.
+- Costs 0.04 ms a frame of a 16.67 ms budget — one `sqrt` per light-buffer pixel,
+  and that buffer is quarter scale in both axes, so a sixteenth of the screen.
+
 - **Base speed raised 50%** — 192 to 288, with the diagonal recomputed rather
   than eyeballed (204 = round(288 × 0.7071)). **Laden is now −25%** rather than
   −20%; overloaded stays at −45%.

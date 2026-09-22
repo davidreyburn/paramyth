@@ -129,6 +129,24 @@ try {
       if (Math.max(q[0],q[1],q[2]) > 6) lit++;
     }
     ok('the lit region has a hard outer limit', lit > 40 && lit < 128, `${lit}/130 px lit outward`);
+
+    // The egg, measured on the glass rather than in the arithmetic. This state
+    // was stepped RIGHT+DOWN, so it faces EAST: +x is forward, -x is behind.
+    const reach = (sx) => {
+      let n = 0;
+      for (let d = 1; d < 130; d++) {
+        const X = px0 + sx*d;
+        if (X < 0 || X >= W) break;
+        const q = ctx.getImageData(X, py0, 1, 1).data;
+        if (Math.max(q[0],q[1],q[2]) > 6) n++; else break;
+      }
+      return n;
+    };
+    const ahead = reach(1), behind = reach(-1);
+    ok('the lamp faces where the player does', s.facing === 1, `facing ${s.facing}`);
+    ok('it reaches further ahead than behind', ahead > behind * 1.5,
+       `${ahead}px ahead vs ${behind}px behind`);
+    ok('but it does not leave you blind at your back', behind > 6, `${behind}px behind`);
   }
 
   // Flicker must come from the tick, not a clock, or replay stops reproducing

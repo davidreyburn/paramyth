@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { drawsFor } from '../render/tileset.js';
 import { roomTiles, floorPlan, COLS, ROWS } from '../core/gen.js';
 import { T } from '../core/gen.js';
-import { LIGHT_BANDS, LIGHT_BEYOND, TONES, P, FLICKER } from '../core/palette.js';
+import { LIGHT_BANDS, LIGHT_BEYOND, TONES, P, FLICKER, LAMP_BACK, lampShape } from '../core/palette.js';
 import { ERAS } from '../core/gen.js';
 
 let failures = 0;
@@ -92,6 +92,25 @@ ok('light bands are monotonic: radius out, darker, less warm', mono, `${LIGHT_BA
 ok('the void law holds: beyond the lamp is fully unlit', LIGHT_BEYOND === 1,
    'a room with no source in it is not dim, it is unlit');
 ok('outermost band reaches the lamp radius exactly', LIGHT_BANDS.at(-1).r === 1);
+
+// The lamp is an egg, not a disc: pinched behind the player, swelling toward
+// what they face. These bind the shape so it cannot quietly become a circle
+// again, and cannot become a spotlight that blinds you to your own back.
+ok('the lamp reaches its full radius dead ahead', lampShape(1) === 1, `${lampShape(1)}`);
+ok('and least of all directly behind', lampShape(-1) === LAMP_BACK, `${lampShape(-1)}`);
+ok('it never reaches further than the declared radius',
+   [1, 0.5, 0, -0.5, -1].every((c) => lampShape(c) <= 1));
+ok('you can still see the floor you are backing onto', lampShape(-1) > 0.2,
+   `${(100*lampShape(-1)).toFixed(0)}% of full radius behind you`);
+ok('and forward is worth turning for', lampShape(1) / lampShape(-1) > 2,
+   `${(lampShape(1)/lampShape(-1)).toFixed(1)}:1 front to back`);
+{
+  let mono = true;
+  for (let c = -1; c < 1; c += 0.05) if (lampShape(c + 0.05) < lampShape(c)) mono = false;
+  ok('the egg swells smoothly from back to front, with no lip', mono);
+  ok('abeam sits between the two', lampShape(0) > lampShape(-1) && lampShape(0) < lampShape(1),
+     `${lampShape(0).toFixed(2)} abeam`);
+}
 ok('palette keeps true black available', P.void === '#000000');
 
 // Band count and spacing are design decisions, so they are asserted rather than

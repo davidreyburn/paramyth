@@ -91,10 +91,21 @@ Principle 3 becomes a rendering law:
 
 - The light buffer renders at **¼ resolution (160×80)** and upscales with nearest
   neighbour, so light has the same pixel grid as everything else.
-- Falloff is **6 discrete bands with hard edges**, drawn as annuli. No gradient
-  anywhere in the pipeline.
+- Falloff is **discrete bands with hard edges**, drawn as annuli. No gradient
+  anywhere in the pipeline. (Three bands in the build, not six — see the gate
+  *few bands: 3 or fewer*, which argues a flame reads as few steps, not many.)
 - Light is always at a source: a carried lamp, a torch, a rune, spore-bloom. No
   ambient term, ever. A room with no source in it is `void`.
+- **A carried lamp is an EGG, not a disc** (DJ, 2026-09-22). It is pinched behind
+  the bearer and swells toward whatever they face — three to one, front to back.
+  A disc read as an *aura*, something the character emits; an egg reads as
+  something held in a hand, pointed, with the body shading the rest. The
+  asymmetry is also the cheapest directional tension in the game: what is behind
+  you is darker than what is in front, so turning around costs you something and
+  backing away from a thing you can see means stepping into what you cannot.
+- The back of the egg is **never zero**. A bearer who cannot see the floor they
+  are retreating onto backs into a wall, and the interesting decision is meant to
+  be the load in their hands, not the camera.
 
 ## Flicker as an effect state
 

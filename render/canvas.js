@@ -2,7 +2,8 @@
 
 import { roomTiles, COLS, ROWS, TILE, T } from '../core/gen.js';
 import { UNITS, px } from '../sim/state.js';
-import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER } from '../core/palette.js';
+import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER,
+         LAMP_BACK, lampShape } from '../core/palette.js';
 import { h } from '../core/addr.js';
 import { tonedSheet, drawsFor, shadeTone, variantFor } from './tileset.js';
 import { visible, prompt, containerItems, carriedBulk, tier,
@@ -57,6 +58,8 @@ export function createRenderer(canvas, pack = null) {
   const warmImg = wx.createImageData(LW, LH), darkImg = dx.createImageData(LW, LH);
   const BR2 = LIGHT_BANDS.map((b) => b.r * b.r);
 
+  const LAMP_FACE = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // N E S W
+
   function drawLight(s) {
     // Flicker keyed to the tick, never to a clock: replay must reproduce the
     // exact frame, and a wall-clock flame would have broken that silently.
@@ -67,12 +70,19 @@ export function createRenderer(canvas, pack = null) {
     const R = Math.max(1, (px(s.lamp) / LIGHT_DOWNSCALE) * pulse), R2 = R * R;
     const wd = warmImg.data, dd = darkImg.data;
     const n = LIGHT_BANDS.length, last = n - 1;
+    // Screen space: y grows downward, so north is -y. Matches s.facing N E S W.
+    const [fx, fy] = LAMP_FACE[s.facing] || LAMP_FACE[2];
 
     for (let y = 0; y < LH; y++) {
       const ddy = y + 0.5 - cy, dy2 = ddy * ddy;
       for (let x = 0; x < LW; x++) {
         const ddx = x + 0.5 - cx;
-        const t2 = (ddx * ddx + dy2) / R2;
+        const d2 = ddx * ddx + dy2;
+        // The egg. One sqrt per light-buffer pixel, and the buffer is quarter
+        // scale in both axes, so this is 1/16th of the pixels on the screen.
+        const dist = Math.sqrt(d2);
+        const sh = dist > 1e-6 ? lampShape((ddx * fx + ddy * fy) / dist) : 1;
+        const t2 = d2 / (R2 * sh * sh);
         const i = (y * LW + x) << 2;
 
         // Per-pixel jitter on the outer boundary only, so the lamp's limit

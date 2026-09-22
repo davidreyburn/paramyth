@@ -58,4 +58,22 @@ export const LIGHT_BEYOND = 1.0;
 export const FLICKER = { hz: 1.5, pulse: 0.018, edge: 0.03 };
 export const LIGHT_DOWNSCALE = 4;
 
+// The lamp is an EGG, not a disc: pinched behind the player and swelling toward
+// whatever they are facing. A carried lantern throws its light where it is
+// pointed and the body holding it shades the rest, so a disc was always the
+// wrong shape — it read as an aura rather than as something in your hand.
+//
+// LAMP_BACK is the fraction of full radius that survives directly behind you.
+// It is deliberately NOT zero: a delver who cannot see the floor they are
+// backing onto is a delver who backs into a wall while running from a dog, and
+// the drop-load button is supposed to be the interesting decision, not the
+// camera. Three to one, front to back.
+export const LAMP_BACK = 0.34;
+
+// cosT is the cosine of the angle between a pixel and the facing direction: 1
+// straight ahead, 0 abeam, -1 directly behind. Returns the fraction of the full
+// lamp radius that reaches that way, so the outermost band still touches the
+// declared radius dead ahead and a gate can still assert that it does.
+export const lampShape = (cosT) => LAMP_BACK + (1 - LAMP_BACK) * (1 + cosT) / 2;
+
 export const HUD = { bg: '#0a0908', rule: '#3a332c', text: P.bone, dim: '#6b6357' };
