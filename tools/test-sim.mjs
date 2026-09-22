@@ -54,6 +54,56 @@ ok('empty input is a no-op for position', e.x === createState(SEED).x);
 ok('save size is bounded by play, not by world',
    N * 4 < 250 * 1024, `${N} frames = ${(N * 4 / 1024).toFixed(0)} KiB`);
 
+// --- the lamp turns, and turns deterministically -----------------------------
+// It is eased in the DELTA rather than in the renderer: a render-side ease would
+// make two draws of one state differ, and would come apart entirely at the
+// 120 Hz render option where draws outnumber ticks.
+{
+  const { lampStep, lampVec, LAMP_AIM, LAMP_TURN, LAMP_BRADS } = await import('../sim/state.js');
+
+  ok('the lamp starts pointing where the player does',
+     createState(1).lampDir === LAMP_AIM[createState(1).facing], `${createState(1).lampDir}`);
+
+  // It sweeps rather than snapping, and it arrives.
+  let d = LAMP_AIM[2], steps = 0;                       // south, turning to east
+  const seen = [d];
+  while (d !== LAMP_AIM[1] && steps < 100) { d = lampStep(d, 1); seen.push(d); steps++; }
+  ok('a right-angle turn takes several ticks, not one', steps > 4 && steps < 16, `${steps} ticks`);
+  ok('and it gets there exactly', d === LAMP_AIM[1], `${d} vs ${LAMP_AIM[1]}`);
+  ok('and then stays put', lampStep(d, 1) === d);
+  ok('every step is a whole number of brads', seen.every(Number.isInteger));
+  ok('no step is larger than the turn rate',
+     seen.every((v, i) => i === 0 || Math.abs(((v - seen[i-1] + 1536) % 1024) - 512) <= LAMP_TURN));
+
+  // The short way round: west to north is a quarter turn, not three quarters.
+  let w = LAMP_AIM[3], n = 0;
+  while (w !== LAMP_AIM[0] && n < 100) { w = lampStep(w, 0); n++; }
+  ok('it turns the short way round', n <= LAMP_BRADS / 4 / LAMP_TURN, `${n} ticks west to north`);
+
+  // And it stays in range however long you spin.
+  let spin = 0, bad = 0;
+  for (let i = 0; i < 400; i++) {
+    spin = lampStep(spin, i % 4);
+    if (spin < 0 || spin >= LAMP_BRADS || !Number.isInteger(spin)) bad++;
+  }
+  ok('spinning forever never leaves the circle', bad === 0, `${bad} bad`);
+
+  // The vector is a unit vector, so the egg keeps its declared radius.
+  let off = 0;
+  for (let a = 0; a < LAMP_BRADS; a += 7) {
+    const [x, y] = lampVec(a);
+    if (Math.abs(Math.hypot(x, y) - 1) > 1e-9) off++;
+  }
+  ok('the lamp vector is always unit length', off === 0);
+
+  // Replay: the lamp angle is delta, so a rebuilt run must match it exactly.
+  const a2 = createState(99), b2 = createState(99), lg = [];
+  for (let i = 0; i < 300; i++) { const f = (i * 2654435761) & 0x3ff; lg.push(f); step(a2, f); }
+  for (const f of lg) step(b2, f);
+  ok('the lamp angle survives replay', a2.lampDir === b2.lampDir && hashState(a2) === hashState(b2),
+     `lampDir ${a2.lampDir}`);
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all headless gates passed');
 console.log('  2 gates need a browser: start the server and open /tools/pagecheck.html\n');
 process.exit(failures ? 1 : 0);

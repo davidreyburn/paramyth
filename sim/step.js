@@ -3,7 +3,7 @@
 // same result, forever, on every device.
 
 import { VERB, hasVerb } from './frame.js';
-import { UNITS, spawnIn, MAX_HP, SWING_TICKS, swingPhase } from './state.js';
+import { UNITS, spawnIn, MAX_HP, SWING_TICKS, swingPhase, lampStep } from './state.js';
 import { roomTiles, floorPlan, floorCount, CAMP, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
 import { isContainer, isPortable, isWeapon, bulkOf } from '../core/items.js';
 import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
@@ -294,6 +294,9 @@ export function step(s, frame, systems = []) {
     if (dy < 0) s.facing = 0; else if (dx > 0) s.facing = 1;
     else if (dy > 0) s.facing = 2; else if (dx < 0) s.facing = 3;
   }
+  // The body turns in one tick; the lamp in your hand takes eight to swing
+  // round after it. That lag is the whole effect.
+  s.lampDir = lampStep(s.lampDir, s.facing);
 
   const nx = s.x + dx * speed;
   if (dx && !blocked(grid, solids, nx, s.y)) s.x = nx;

@@ -103,6 +103,11 @@ Principle 3 becomes a rendering law:
   asymmetry is also the cheapest directional tension in the game: what is behind
   you is darker than what is in front, so turning around costs you something and
   backing away from a thing you can see means stepping into what you cannot.
+- **The egg turns with you, and takes its time about it** — a right angle in
+  eight ticks, always the short way round. A lantern is carried, so the light
+  lags the body; snapping between four directions read as a turret. The angle is
+  integer and lives in the delta, because easing it in the renderer would make
+  two draws of one state disagree.
 - The back of the egg is **never zero**. A bearer who cannot see the floor they
   are retreating onto backs into a wall, and the interesting decision is meant to
   be the load in their hands, not the camera.

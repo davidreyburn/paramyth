@@ -10,6 +10,36 @@ export const px = (u) => u / UNITS;
 // "a bar of a dozen or so points" — design/combat-and-tools.md
 export const MAX_HP = 12;
 
+// The lamp swings round with you rather than snapping between four directions.
+// The angle is INTEGER brads — 1024 to a full turn — because it is delta, and
+// the simulation path stays in exact arithmetic. The renderer turns it into a
+// vector; nothing in the simulation ever needs a cosine.
+//
+// This belongs in the delta and not in the renderer. Easing it per draw call
+// would make two draws of the same state differ, which the "rendering is
+// deterministic for a fixed state" gate exists to forbid — and it would come
+// apart entirely at the 120 Hz render option, where draws outnumber ticks.
+export const LAMP_BRADS = 1024;
+export const LAMP_AIM = [768, 0, 256, 512];   // facing N E S W, screen y-down
+export const LAMP_TURN = 32;                  // brads per tick: a right angle in 8
+
+// Render-side only: the one place a float is allowed near the lamp.
+export const lampVec = (dir) => {
+  const a = (dir / LAMP_BRADS) * Math.PI * 2;
+  return [Math.cos(a), Math.sin(a)];
+};
+
+// One tick of turn, the short way round, so spinning from west to north sweeps
+// a quarter turn rather than three quarters.
+export function lampStep(cur, facing) {
+  const half = LAMP_BRADS / 2;
+  const target = LAMP_AIM[facing] ?? cur;
+  const diff = (((target - cur) % LAMP_BRADS) + LAMP_BRADS + half) % LAMP_BRADS - half;
+  if (diff === 0) return cur;
+  const step = diff > 0 ? Math.min(diff, LAMP_TURN) : Math.max(diff, -LAMP_TURN);
+  return (cur + step + LAMP_BRADS) % LAMP_BRADS;
+}
+
 // A blow in flight. These live here, in L3, because `s.swing` is delta and its
 // phase is a pure function of the delta — not of any system. Putting them in
 // systems/combat/ would have forced step.js to read upward to slow a swinging
@@ -61,6 +91,7 @@ export function createState(seed) {
     x: p.x, y: p.y,
     facing: 2, moving: false,
     lamp: 112 * UNITS,
+    lampDir: LAMP_AIM[2],   // the lamp starts pointing where you do: south
     lastFrame: 0,
     moves: 0,          // room transitions, so the HUD can show progress
     scrap: 0,          // the only currency
@@ -97,6 +128,7 @@ export function hashState(s) {
   const mix = (v) => { v = v >>> 0; for (let i = 0; i < 4; i++) { h ^= (v >>> (i*8)) & 0xff; h = Math.imul(h, 0x01000193); } };
   mix(s.seed); mix(s.tick); mix(s.x); mix(s.y); mix(s.facing);
   mix(s.moving ? 1 : 0); mix(s.site); mix(s.floor); mix(s.room); mix(s.moves);
+  mix(s.lampDir);
   const roll = (arr) => { mix(arr.length); for (const v of arr) for (let i = 0; i < v.length; i++) mix(v.charCodeAt(i)); };
   const rollRefs = (arr) => { mix(arr.length); for (const r of arr) { for (let i = 0; i < r.kind.length; i++) mix(r.kind.charCodeAt(i)); for (let i = 0; i < r.key.length; i++) mix(r.key.charCodeAt(i)); } };
   rollRefs(s.carried); rollRefs(s.stash);

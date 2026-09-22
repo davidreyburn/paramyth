@@ -11,6 +11,13 @@ entire.** See `plans/roadmap.md`.
 
 ### Changed
 
+- **The lamp swings round rather than snapping.** Turning takes eight ticks for
+  a right angle, always the short way, so the light lags the body the way a
+  lantern in a hand actually does. The angle is an **integer** — 1024 brads to a
+  turn — and it lives in the delta, not the renderer: easing it per draw would
+  make two draws of one state differ, which the *rendering is deterministic for
+  a fixed state* gate forbids, and it would come apart entirely at the 120 Hz
+  render option where draws outnumber ticks.
 - **The lamp is an egg, not a disc.** It is pinched behind you and swells toward
   whatever you are facing — three to one, front to back, measured at 92px ahead
   against 38px behind on the rendered frame. A disc read as an *aura*, something
@@ -21,6 +28,10 @@ entire.** See `plans/roadmap.md`.
 - The back of the egg is deliberately **not** zero (34% of full radius). A
   delver who cannot see the floor they are retreating onto backs into a wall, and
   the interesting decision is meant to be the load in their hands.
+- Lamp gates: the turn is whole-numbered, never exceeds its rate, always takes
+  the short way, never leaves the circle however long you spin, and survives
+  replay. Plus the vector stays unit length, so the egg keeps its declared
+  radius at every angle.
 - Costs 0.04 ms a frame of a 16.67 ms budget — one `sqrt` per light-buffer pixel,
   and that buffer is quarter scale in both axes, so a sixteenth of the screen.
 

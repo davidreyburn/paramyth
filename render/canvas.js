@@ -12,7 +12,7 @@ import { visible, prompt, containerItems, carriedBulk, tier,
          BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
 import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
-import { MAX_HP, swingPhase, saying } from '../sim/state.js';
+import { MAX_HP, swingPhase, saying, lampVec } from '../sim/state.js';
 import { isContainer, labelOf, bulkOf, KIND } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
@@ -58,8 +58,6 @@ export function createRenderer(canvas, pack = null) {
   const warmImg = wx.createImageData(LW, LH), darkImg = dx.createImageData(LW, LH);
   const BR2 = LIGHT_BANDS.map((b) => b.r * b.r);
 
-  const LAMP_FACE = [[0, -1], [1, 0], [0, 1], [-1, 0]];   // N E S W
-
   function drawLight(s) {
     // Flicker keyed to the tick, never to a clock: replay must reproduce the
     // exact frame, and a wall-clock flame would have broken that silently.
@@ -70,8 +68,9 @@ export function createRenderer(canvas, pack = null) {
     const R = Math.max(1, (px(s.lamp) / LIGHT_DOWNSCALE) * pulse), R2 = R * R;
     const wd = warmImg.data, dd = darkImg.data;
     const n = LIGHT_BANDS.length, last = n - 1;
-    // Screen space: y grows downward, so north is -y. Matches s.facing N E S W.
-    const [fx, fy] = LAMP_FACE[s.facing] || LAMP_FACE[2];
+    // Where the lamp is pointing THIS tick — eased in the delta, not here, so
+    // two draws of one state are identical and replay reproduces the frame.
+    const [fx, fy] = lampVec(s.lampDir);
 
     for (let y = 0; y < LH; y++) {
       const ddy = y + 0.5 - cy, dy2 = ddy * ddy;
