@@ -84,5 +84,7 @@ Semver. Pre-1.0, so the public surface is not yet stable: **MINOR** for new
 systems or world-shape changes, **PATCH** for fixes and tuning. The version lives
 in `core/version.js`, `package.json` must match it, and a gate checks.
 
-**1.0.0 means** the slice in `plans/slice-01.md` has been answered at the table:
-that triage under cost is fun, with the economy and extraction closing the loop.
+**1.0.0 means a shippable game** — at minimum the whole of Act I: the Field, the
+mausoleums, the upper Barrow Deep, and the Company Camp, Grimhaven and Ashmark
+above them, with the loop closed end to end and no placeholder art left in it.
+`plans/roadmap.md` lists what stands between here and there. It is a long way.

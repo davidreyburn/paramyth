@@ -4,7 +4,8 @@ Format: [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 Pre-1.0, so the surface is unstable: MINOR covers new systems and world-shape
-changes, PATCH covers fixes and tuning.
+changes, PATCH covers fixes and tuning. **1.0.0 is a shippable game — Act I
+entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
