@@ -43,6 +43,7 @@ export function createState(seed) {
     carried: [],       // item refs, in the order taken
     known: [],         // keys whose record has been read
     taken: [],         // keys of contents removed from the world
+    dropped: [],       // what you put back down, and where it lies
     opened: [],        // keys of containers opened
     screen: '',        // '' | 'pack' | 'container'
     screenKey: '',     // which container, when screen is 'container'
@@ -59,6 +60,14 @@ export function hashState(s) {
   const roll = (arr) => { mix(arr.length); for (const v of arr) for (let i = 0; i < v.length; i++) mix(v.charCodeAt(i)); };
   const rollRefs = (arr) => { mix(arr.length); for (const r of arr) { for (let i = 0; i < r.kind.length; i++) mix(r.kind.charCodeAt(i)); for (let i = 0; i < r.key.length; i++) mix(r.key.charCodeAt(i)); } };
   rollRefs(s.carried); rollRefs(s.stash);
+  // A dropped thing is a ref plus a position, and the position is part of the
+  // state: replay has to put it back on the same tile.
+  mix(s.dropped.length);
+  for (const d of s.dropped) {
+    for (let i = 0; i < d.kind.length; i++) mix(d.kind.charCodeAt(i));
+    for (let i = 0; i < d.key.length; i++) mix(d.key.charCodeAt(i));
+    mix(d.site); mix(d.floor); mix(d.room); mix(d.tile);
+  }
   roll(s.taken); roll(s.opened); roll(s.known);
   mix(s.scrap);
   for (const k of Object.keys(s.stats).sort()) mix(s.stats[k]);

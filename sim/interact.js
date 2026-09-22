@@ -4,7 +4,8 @@
 
 import { contentsOf, insideOf, roomTiles, ERAS, eraFor, absDepth,
          COLS, ROWS, TILE, T } from '../core/gen.js';
-import { chainOf, marksOf, readMarks, worthMultiplier, describe } from '../core/provenance.js';
+import { chainOf, marksOf, readMarks, worthMultiplier, describe,
+         leadOf, placeLabel, possessionsOf, occupantOf } from '../core/provenance.js';
 import { campStations, STATION } from '../core/camp.js';
 import { KIND, isContainer, isPortable, bulkOf, valueOf, verbFor } from '../core/items.js';
 import { UNITS } from './state.js';
@@ -49,6 +50,49 @@ export function itemValue(s, ref) {
 
 export const readOut = (s, key) => describe(chainFor(s, key), s.stats);
 
+// An appraised record is read TO you, so it is read in full. That is what the
+// fee buys, and it is why a low-Keen character can still follow a thread.
+const READ_ALL = { keen: 9, lore: 9 };
+
+// The payoff: a legible mark names a person, and that person lies somewhere
+// real. Null when this character cannot read far enough to get a name — which
+// is most of the time, early, and is the point.
+export function leadFor(s, key) {
+  return leadOf(chainFor(s, key), s.known.includes(key) ? READ_ALL : s.stats);
+}
+
+export { placeLabel };
+
+// Everything of that person's still lying where it was left. Taken things drop
+// out, so a trove you have already emptied stops advertising itself.
+export function troveFor(s, actorId) {
+  const taken = new Set(s.taken);
+  return possessionsOf(s.seed, actorId).filter((it) => !taken.has(it.key));
+}
+
+// Every lead you are actually carrying. This is the reason to look in your own
+// pack before deciding which way to walk, and it is derived — nothing about a
+// lead is stored, so the delta never learns what you have worked out.
+export function leads(s) {
+  const out = [], seen = new Set();
+  for (const ref of [...s.carried, ...s.stash]) {
+    const l = leadFor(s, ref.key);
+    if (!l || !l.place) continue;
+    const tag = `${l.actor.id}|${l.place}`;
+    if (seen.has(tag)) continue;
+    seen.add(tag);
+    out.push({ ...l, from: ref });
+  }
+  return out;
+}
+
+export const placeHere = (s) => `${s.site}:${s.floor}:${s.room}`;
+export const atPlace = (s, place) => place === placeHere(s);
+
+// Whose room this is. Standing in a grave you were sent to is worth saying so.
+export const occupantHere = (s) =>
+  s.floor < 0 ? null : occupantOf(s.seed, s.site, s.floor, s.room, ERAS.indexOf(eraFor(absDepth(s.floor))));
+
 export function tier(bulk) {
   if (bulk <= 8) return 'light';
   if (bulk <= 16) return 'laden';
@@ -65,7 +109,33 @@ export function visible(s) {
     const k = keyOf(s, c.slot);
     if (!taken.has(k)) out.push({ ...c, key: k, open: opened.has(k) });
   }
+  // And what you put down. A dropped thing keeps its own address, so its whole
+  // history follows it across the world — which is what `inherit` will need
+  // when a corpse starts writing provenance of its own.
+  for (const d of s.dropped)
+    if (d.site === s.site && d.floor === s.floor && d.room === s.room)
+      out.push({ slot: -1, tile: d.tile, kind: d.kind, key: d.key, dropped: true });
   return out;
+}
+
+// Where a thing you let go of lands: the tile under you, or the nearest free
+// floor to it, searched in rings so the result is the same every replay.
+export function dropTile(s) {
+  const { grid } = roomTiles(s.seed, s.site, s.floor, s.room);
+  const used = new Set(visible(s).map((c) => c.tile));
+  const tx = Math.floor(s.x / (TILE * UNITS)), ty = Math.floor(s.y / (TILE * UNITS));
+  const free = (x, y) => {
+    if (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1) return false;
+    const i = y * COLS + x;
+    return grid[i] === T.FLOOR && !used.has(i);
+  };
+  for (let r = 0; r < Math.max(COLS, ROWS); r++)
+    for (let dy = -r; dy <= r; dy++)
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        if (free(tx + dx, ty + dy)) return (ty + dy) * COLS + (tx + dx);
+      }
+  return -1;
 }
 
 // What is still inside a container. Contents stay in it until taken — spilling

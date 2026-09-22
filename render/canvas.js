@@ -6,13 +6,17 @@ import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER } fr
 import { h } from '../core/addr.js';
 import { tonedSheet, drawsFor, shadeTone, variantFor } from './tileset.js';
 import { visible, prompt, containerItems, carriedBulk, tier,
-         itemValue, assessed, readOut, marksFor, APPRAISAL_FEE,
+         itemValue, assessed, readOut, marksFor, leadFor, placeLabel, atPlace, APPRAISAL_FEE,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, STASH_ROWS,
          BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
 import { campStations } from '../core/camp.js';
 import { isContainer, labelOf, bulkOf, KIND } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
+// The HUD strip, and how much of it a line of 8px text needs. HUD_LINES is
+// derived, never guessed, and drawHud asserts against it.
+const HUD_TOP = 4, HUD_LINE = 9;
+export const HUD_LINES = Math.floor((H - VIEW_H - HUD_TOP) / HUD_LINE);
 const TAU = Math.PI * 2;
 
 const NAME = Object.fromEntries(Object.entries(T).map(([k, v]) => [v, k]));
@@ -223,7 +227,10 @@ export function createRenderer(canvas, pack = null) {
     const isStash = s.screen === 'stash';
     const isAppraiser = s.screen === 'appraiser';
     const two = s.screen === 'container' || isStash;
-    const cont = s.screen === 'container' ? containerItems(s, s.screenKey).map((c) => c.kind)
+    // References, not bare kinds: the panel needs the kind to draw and the key
+    // to read a history off, and dropping the key here is what kept a
+    // container's contents from ever showing their own provenance.
+    const cont = s.screen === 'container' ? containerItems(s, s.screenKey)
                : isStash ? s.stash : [];
     const lCols = isStash ? STASH_COLS : CONT_COLS;
     const lRows = isStash ? STASH_ROWS : CONT_ROWS;
@@ -251,8 +258,9 @@ export function createRenderer(canvas, pack = null) {
     ctx.fillStyle = '#6b6357';
     const hint = isStash     ? 'A move   \u00b7   Y move all   \u00b7   Esc / B close'
                : isAppraiser  ? `A appraise (${APPRAISAL_FEE} scrap)   \u00b7   Esc / B close`
-               : two          ? 'A take   \u00b7   Y take all   \u00b7   Esc / B close'
-                              : 'Start / I / Esc close   \u00b7   hold G to drop everything';
+               : two          ? (s.side === 0 ? 'A take   \u00b7   Y take all   \u00b7   Esc / B close'
+                                              : 'A put down   \u00b7   Y put all down   \u00b7   Esc / B close')
+                              : 'A put down   \u00b7   Y put all down   \u00b7   G drop everything   \u00b7   Esc close';
     ctx.fillText(hint, W / 2, y0 + PACK_ROWS * CELL + PAD * 2 + TITLE + 10);
 
     // What the cursor is on: its name, its weight, its price, and as much of
@@ -266,6 +274,16 @@ export function createRenderer(canvas, pack = null) {
                    W / 2, y0 - 26);
       ctx.fillStyle = know ? '#9aa87e' : '#7d7060';
       ctx.fillText(readOut(s, under.key), W / 2, y0 - 15);
+
+      // The lead. A mark you can read names a person, that person lies
+      // somewhere, and the somewhere is a room you can walk to.
+      const lead = leadFor(s, under.key);
+      if (lead) {
+        const there = atPlace(s, lead.place);
+        ctx.fillStyle = there ? P.lantern : '#b09a63';
+        ctx.fillText(`\u2192 ${lead.actor.name} ${lead.actor.house} \u00b7 ${lead.act} \u00b7 ${there ? 'HERE' : placeLabel(lead.place)}`,
+                     W / 2, y0 - 4);
+      }
     }
     ctx.textAlign = 'start';
   }
@@ -311,13 +329,19 @@ export function createRenderer(canvas, pack = null) {
   }
 
   function drawHud(lines) {
+    // The strip is 40px and a line is 9. Five lines fitted in the array and
+    // four fitted on the screen, so the fifth drew below the canvas and was
+    // invisible — the bottom-edge gate never saw it because it was not clipped,
+    // it was gone. Bound the two constants together so that cannot recur.
+    if (lines.length > HUD_LINES)
+      throw new Error(`${lines.length} HUD lines, ${HUD_LINES} fit in ${H - VIEW_H}px`);
     ctx.fillStyle = HUD.bg; ctx.fillRect(0, VIEW_H, W, H - VIEW_H);
     ctx.fillStyle = HUD.rule; ctx.fillRect(0, VIEW_H, W, 1);
     ctx.font = '8px ui-monospace, monospace';
     ctx.textBaseline = 'top';
     lines.forEach((l, i) => {
       ctx.fillStyle = l.color || HUD.dim;
-      ctx.fillText(l.text, 6, VIEW_H + 4 + i * 9);
+      ctx.fillText(l.text, 6, VIEW_H + HUD_TOP + i * HUD_LINE);
     });
   }
 

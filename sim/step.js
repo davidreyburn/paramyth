@@ -7,7 +7,7 @@ import { UNITS, spawnIn } from './state.js';
 import { roomTiles, floorPlan, floorCount, isSolid, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
 import { isContainer, isPortable, isSolidItem, footOf, bulkOf } from '../core/items.js';
 import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
-         haulValue, assessed, APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
+         haulValue, assessed, dropTile, APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './interact.js';
 import { STATION } from '../core/camp.js';
 
@@ -88,6 +88,40 @@ function enterFloor(s, floor) {
   s.moves++;
 }
 
+// Putting a thing down. It lands on a real tile and it keeps its own address,
+// so its history follows it and picking it up again is picking up THAT object,
+// not another of the same kind. Refuses when there is nowhere for it to go,
+// which is the honest answer in a room packed to the walls.
+//
+// This is the half of container transfer that was missing, and it is the same
+// list the corpse run will need — built once, per design/world-shape.md.
+export function putDown(s, i) {
+  const ref = s.carried[i];
+  if (!ref) return false;
+  const tile = dropTile(s);
+  if (tile < 0) return false;
+  s.dropped.push({ kind: ref.kind, key: ref.key, site: s.site, floor: s.floor, room: s.room, tile });
+  s.carried.splice(i, 1);
+  return true;
+}
+
+// Taking a thing back up. A dropped thing is already in `taken` — the world
+// stopped offering it long ago — so recovering it is a matter of the dropped
+// list alone.
+function pickUp(s, c) {
+  if (carriedBulk(s) + bulkOf(c.kind) > BULK_BUDGET) return false;
+  if (c.dropped) {
+    const i = s.dropped.findIndex((d) => d.key === c.key && d.tile === c.tile
+      && d.site === s.site && d.floor === s.floor && d.room === s.room);
+    if (i < 0) return false;
+    s.dropped.splice(i, 1);
+  } else {
+    s.taken.push(c.key);
+  }
+  s.carried.push({ kind: c.kind, key: c.key });
+  return true;
+}
+
 // While a screen is open the world is still; the only verbs are the grid's.
 // Movement stays blocked so a transfer can never be half-made in transit.
 function screenStep(s, frame) {
@@ -156,17 +190,21 @@ function screenStep(s, frame) {
       else take(cont[s.cur]);
       const left = isStash ? s.stash.length : containerItems(s, s.screenKey).length;
       s.cur = Math.min(s.cur, Math.max(0, left - 1));
-    } else if (s.side === 1 && isStash && s.carried[s.cur]) {
-      toStash(s.cur);
+    } else if (s.side === 1 && s.carried[s.cur]) {
+      // The stash keeps what you hand it; anywhere else, handing a thing back
+      // means putting it on the floor.
+      if (isStash) toStash(s.cur); else putDown(s, s.cur);
       s.cur = Math.min(s.cur, Math.max(0, s.carried.length - 1));
     }
   }
-  if (press(VERB.TOOL) && twoSided) {
+  if (press(VERB.TOOL)) {
     if (isStash) {
       if (s.side === 0) { while (s.stash.length && toPack(s.stash[0])) s.stash.shift(); }
       else { while (s.carried.length && toStash(0)); }
-    } else {
+    } else if (s.side === 0 && twoSided) {
       for (const it of cont) if (!take(it)) break;
+    } else {
+      while (s.carried.length && putDown(s, 0));
     }
     s.cur = 0;
   }
@@ -230,17 +268,16 @@ export function step(s, frame) {
         if (!s.opened.includes(c.key)) s.opened.push(c.key);
         s.screen = 'container'; s.screenKey = c.key; s.cur = 0; s.side = 0;
       } else if (c && isPortable(c.kind)) {
-        if (carriedBulk(s) + bulkOf(c.kind) <= BULK_BUDGET) {
-          s.carried.push(c.kind);
-          s.taken.push(c.key);
-        }
+        pickUp(s, c);
       }
     }
   }
 
-  // Drop the load and run. The best button in the game.
+  // Drop the load and run. The best button in the game — and now it is a
+  // decision rather than a penalty: the haul lands at your feet and is still
+  // there when whatever you ran from is dealt with.
   if (hasVerb(frame, VERB.DROP) && !hasVerb(s.lastFrame, VERB.DROP) && s.carried.length) {
-    s.carried.length = 0;
+    while (s.carried.length && putDown(s, 0));
   }
 
   // The pack, on its own button — Start on a pad, I on a keyboard. It toggles.

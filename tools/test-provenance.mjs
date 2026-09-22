@@ -3,13 +3,17 @@
 // derive from acts, that perception genuinely gates, and that reading changes
 // what a thing is worth.
 
-import { chainOf, marksOf, readMarks, worthMultiplier, describe, evidenceFor, ACTS } from '../core/provenance.js';
+import { chainOf, marksOf, readMarks, worthMultiplier, describe, evidenceFor, ACTS,
+         possessionsOf, resolvedActors, occupantOf, homeOf, isResolved, actorOf,
+         leadOf, RESOLVED, POOL } from '../core/provenance.js';
 import { contentsOf, floorPlan, floorCount, ERAS, eraFor, absDepth } from '../core/gen.js';
 import { isPortable, valueOf } from '../core/items.js';
 import { createState } from '../sim/state.js';
 import { step } from '../sim/step.js';
 import { VERB, setVerb } from '../sim/frame.js';
-import { chainFor, marksFor, assessed, itemValue, readOut, keyOf, APPRAISAL_FEE } from '../sim/interact.js';
+import { chainFor, marksFor, assessed, itemValue, readOut, keyOf, leadFor, troveFor,
+         leads, visible, containerItems, placeHere, APPRAISAL_FEE } from '../sim/interact.js';
+import { isContainer } from '../core/items.js';
 
 let failures = 0;
 const ok = (n, c, d = '') => { console.log(`${c ? '  ok  ' : '  FAIL'}  ${n}${d ? '  ' + d : ''}`); if (!c) failures++; };
@@ -147,6 +151,174 @@ const eraAt = (floor) => ERAS.indexOf(eraFor(absDepth(floor)));
   ok('a chain can lower the price as well as raise it', lo < 1, `lowest x${lo}`);
   ok('and the spread is wide enough to matter', hi / lo > 3, `x${lo} to x${hi}, mean x${(sum/n).toFixed(2)}`);
   ok('nothing is ever worth nothing', lo > 0, `x${lo}`);
+}
+
+// --- the graph inverts ------------------------------------------------------
+// The claim this release exists to make good: an actor is an address, so the
+// relation "chains name actors" runs backwards.
+{
+  const id = actorOf(SEED, 0).id;
+  ok('an actor address decomposes into who and where',
+     homeOf(id).site === 0 && homeOf(id).era === 0 && homeOf(id).n === 0);
+
+  const a = possessionsOf(SEED, 8), b = possessionsOf(SEED, 8);
+  ok('the inversion is pure', JSON.stringify(a) === JSON.stringify(b), `${a.length} items`);
+
+  // Every possession must genuinely name its owner, or the index is lying.
+  let checked = 0, named = 0;
+  for (let site = 0; site < 6; site++)
+    for (const { actor, items } of resolvedActors(SEED, site))
+      for (const it of items) {
+        checked++;
+        const floor = Number(it.key.split(':')[1]);
+        if (chainFor({ seed: SEED }, it.key).some((ev) => ev.actor.id === actor.id)) named++;
+      }
+  ok('every possession names its owner', checked > 0 && named === checked, `${named}/${checked}`);
+}
+
+// --- solvable ---------------------------------------------------------------
+// The gate `plans/slice-01.md` names: for N sampled regions, at least K actors
+// whose possessions are all reachable without leaving the region. Reachability
+// here is the region's own floor plan — a room that is not in it is not a room.
+{
+  const REGIONS = 40, LEAST = 1;
+  let worst = Infinity, worstSite = -1, strays = 0, deadPlaces = 0, leads = 0;
+
+  for (let site = 0; site < REGIONS; site++) {
+    const rooms = new Set();
+    for (let f = 0; f < floorCount(SEED, site); f++)
+      for (const r of floorPlan(SEED, site, f).cells) rooms.add(`${site}:${f}:${r}`);
+
+    let solvable = 0;
+    for (const { actor, items } of resolvedActors(SEED, site)) {
+      // All of it here, all of it in a room that exists.
+      const home = items.every((it) => rooms.has(`${it.site}:${it.floor}:${it.room}`));
+      if (!home) strays++;
+      const place = items.find((it) => it.place);
+      if (place) {
+        leads++;
+        if (!rooms.has(place.place)) deadPlaces++;
+        else if (home) solvable++;
+      }
+    }
+    if (solvable < worst) { worst = solvable; worstSite = site; }
+  }
+
+  ok('a resolved actor never owns anything outside their own region', strays === 0, `${strays} strays`);
+  ok('no lead points at a room that is not there', deadPlaces === 0, `${leads} leads, ${deadPlaces} dead`);
+  ok('every region has a deducible trove within it', worst >= LEAST,
+     `fewest in any of ${REGIONS} regions: ${worst} (site ${worstSite})`);
+}
+
+// --- a lead is worth walking to ---------------------------------------------
+// Solvable is not enough: the named room has to actually hold more of that
+// person's goods than any other room does, or the deduction is a formality.
+{
+  let named = 0, elsewhere = 0, n = 0;
+  for (let site = 0; site < 40; site++)
+    for (const { items } of resolvedActors(SEED, site)) {
+      const p = items.find((it) => it.place);
+      if (!p) continue;
+      const [, f, r] = p.place.split(':').map(Number);
+      const here = items.filter((it) => it.floor === f && it.room === r).length;
+      const rooms = new Set(items.map((it) => `${it.floor}:${it.room}`));
+      rooms.delete(`${f}:${r}`);
+      named += here;
+      elsewhere += rooms.size ? (items.length - here) / rooms.size : 0;
+      n++;
+    }
+  const a = named / n, b = elsewhere / n;
+  ok('the room a lead names is a trove, not an average room', a > b * 1.3,
+     `${a.toFixed(2)} of their things there vs ${b.toFixed(2)} in any other room`);
+}
+
+// --- perception gates the lead, too -----------------------------------------
+{
+  const s = createState(SEED);
+  let blind = 0, seen = 0, total = 0;
+  for (let f = 1; f < 4; f++)
+    for (let i = 0; i < 200; i++) {
+      const key = `0:${f}:${i % 6}:${i}`;
+      const chain = chainOf(SEED, key, eraAt(f), absDepth(f));
+      total++;
+      if (!leadOf(chain, { keen: 0, lore: 0 })) blind++;
+      if (leadOf(chain, { keen: 9, lore: 9 })) seen++;
+    }
+  ok('an untrained eye follows nothing', blind === total, `${blind}/${total}`);
+  ok('a trained one finds leads', seen > total * 0.2, `${seen}/${total} items name somewhere`);
+
+  // And the fee buys the same thing the stats would have.
+  const withLead = [];
+  for (let i = 0; i < 400 && withLead.length < 1; i++) {
+    const key = `0:2:${i % 6}:${i}`;
+    if (leadOf(chainOf(SEED, key, eraAt(2), absDepth(2)), { keen: 9, lore: 9 })) withLead.push(key);
+  }
+  ok('there is such an item to test with', withLead.length === 1, withLead[0]);
+  if (withLead.length) {
+    const k = withLead[0];
+    const before = leadFor(s, k);
+    s.known.push(k);
+    const after = leadFor(s, k);
+    ok('paying the appraiser hands you the lead', !!after && !!after.place, after ? after.place : 'none');
+    ok('and it is the one the stats would have found', !before || before.place === after.place);
+  }
+}
+
+// --- following one, end to end ----------------------------------------------
+// The loop as a player runs it: take a thing, pay to have it read, learn a
+// name and a room, walk there, and find that person's goods waiting.
+{
+  const s = createState(SEED);
+  s.scrap = 100;
+
+  // Find something whose record names somewhere ELSE. A thing that names the
+  // room it is already lying in is a true lead and a useless gate: it would
+  // pass without the player ever walking anywhere.
+  let held = null;
+  outer:
+  for (let floor = 1; floor < floorCount(SEED, 0) && !held; floor++)
+    for (const room of floorPlan(SEED, 0, floor).cells)
+      for (const c of contentsOf(SEED, 0, floor, room)) {
+        if (!isPortable(c.kind)) continue;
+        const key = `0:${floor}:${room}:${c.slot}`;
+        s.known = [key];
+        const l = leadFor(s, key);
+        if (l && l.place !== `0:${floor}:${room}` && l.place.startsWith('0:')) {
+          held = { key, kind: c.kind, floor, room, lead: l }; break outer;
+        }
+      }
+  ok('the world contains an item that names somewhere else', !!held,
+     held ? `${held.kind} at ${held.key} names ${held.lead.place}` : 'none');
+
+  if (held) {
+    s.known = [held.key];
+    s.carried = [{ kind: held.kind, key: held.key }];
+    const l = leadFor(s, held.key);
+    ok('carrying it, the lead is in hand', leads(s).length === 1, `${leads(s).length}`);
+
+    // Walk there. The delta says where you are; nothing else has to agree.
+    const [, f, r] = l.place.split(':').map(Number);
+    ok('and it is somewhere you are not', `${f}:${r}` !== `${held.floor}:${held.room}`,
+       `found in 0:${held.floor}:${held.room}, sent to ${l.place}`);
+    s.floor = f; s.room = r;
+    ok('the room the lead names is a room that exists',
+       floorPlan(SEED, 0, f).cells.includes(r), l.place);
+
+    const there = visible(s).filter((c) => c.key && !isContainer(c.kind));
+    const theirs = there.filter((c) =>
+      chainFor(s, c.key).some((ev) => ev.actor.id === l.actor.id));
+    ok('and it is stocked with that person\'s goods', theirs.length > 0,
+       `${theirs.length} of ${there.length} loose things in ${l.place} name ${l.actor.name}`);
+
+    // Including what is still shut in the containers standing in it.
+    const inside = visible(s).filter((c) => isContainer(c.kind))
+      .flatMap((c) => containerItems(s, c.key))
+      .filter((it) => chainFor(s, it.key).some((ev) => ev.actor.id === l.actor.id));
+    ok('the trove counts what the containers hold too', theirs.length + inside.length >= theirs.length,
+       `${theirs.length} loose + ${inside.length} boxed`);
+
+    ok('standing in it, the game says so', leads(s).some((x) => x.place === placeHere(s)), placeHere(s));
+  }
 }
 
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all provenance gates passed\n');

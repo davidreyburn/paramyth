@@ -4,6 +4,98 @@
 
 ---
 
+## 2026-09-22 — The inversion: an actor had to become an address
+
+**What.** In 0.3.0 an event's actor was `actorOf(seed, h(seed, ...salt, i) % 100000, era)`
+— a hash of the object that happened to name them. In 0.4.0 an actor id is
+`site · era · n`, packed into one integer and decomposable both ways.
+
+**Why.** `possessionsOf(actorId)` is the whole design, and it is not implementable
+on top of a forward hash at any price: given a person, there is no way back to
+the objects naming them short of computing every chain in the world. The id had
+to carry its own origin. Once it did, the inversion became a bounded scan of one
+site — a few floors of a few rooms — cached in memory and never written down.
+
+**Evidence.** 486 possessions checked across 6 sites; every one names its owner.
+`possessionsOf` is pure across calls. Cold site scan 6.8 ms, and nothing on the
+frame path calls it.
+
+**Outcome.** The mechanic the design rests on works. The cost was a pool of 8
+actors per era per site — names now *recur*, which turns out to be the point:
+you cannot notice a name repeating if every object names a stranger.
+
+---
+
+## 2026-09-22 — A lead that points at an average room is not a lead
+
+**What.** First working version derived an event's `place` from an independent
+hash of the actor. Every gate passed. Walking there found nothing in particular.
+
+**Why it was wrong.** Solvable is not the same as worth solving. The design
+promises "that place exists, at that address, with the rest of that person's
+grave goods still in it" — and a hash-chosen room satisfies the first two
+clauses and not the third. The fix inverted the causality: rooms have
+**occupants**, half the hands that touched a thing are its room's occupant, and
+`placeFor` *finds* the room a person occupies rather than inventing a plausible
+one.
+
+**Evidence.** The named room holds 2.64 of an actor's things against 1.64 in any
+other room they appear in, and is their densest room 58% of the time. End to
+end: an item found in room 0:1:4 sent a player to 0:0:0, where 3 of 3 loose
+things and 6 boxed things named the same woman.
+
+**Outcome.** Gated as *the room a lead names is a trove, not an average room* —
+a ratio, not a presence check. The first version would have passed a presence
+check, which is exactly why one would not have been enough.
+
+---
+
+## 2026-09-22 — Guaranteed solvability, as arithmetic
+
+**What.** Two constraints. One room per floor — the plan's first cell — draws
+its occupant from a **resolved** range of the pool; and no chain anywhere else
+in the world may name a resolved actor of another site.
+
+**Why.** `design/provenance.md` flagged the risk early: if cross-references only
+*sometimes* resolve within reach, the deduction loop feels broken rather than
+deep. A probabilistic bias cannot guarantee anything, and the first attempt —
+biasing acts toward place-naming verbs — left site 3 with zero followable leads
+while looking fine everywhere else.
+
+**Evidence.** Over 40 regions: 0 resolved actors owning anything outside their
+own region, 0 leads pointing at a room that is not there, and a minimum of 2
+deducible troves per region. Era 0 had to gain `hid` — a scrapper's cache —
+because the surface act vocabulary named nowhere at all.
+
+**Outcome.** The `solvable` gate from `plans/slice-01.md` exists and holds. The
+long threads survive: a quarter of hands are foreign, 5% of leads name another
+site, and those stay dead ends until the Field has more than one mouth.
+
+---
+
+## 2026-09-22 — Two bugs the gates were shaped not to see
+
+**What.** Picking a loose item off the floor did `s.carried.push(c.kind)` — a
+bare string into a list of `{kind, key}` references. And the HUD passed five
+lines into a strip that holds four.
+
+**Why they survived.** The pickup bug was unreachable through the path the tests
+exercised: every gate took things out of *containers*, where the transfer code
+was correct. The bare kind had no key, so its chain, its price and its history
+were all lost and `hashState` threw — on a path no test walked. The HUD bug was
+subtler: the fifth line was not clipped, it was drawn entirely below the canvas,
+and the gate measuring ink in the bottom three rows correctly found none.
+
+**Evidence.** Both now gated — the item gates pick loose things off the floor,
+and `drawHud` throws when handed more lines than `HUD_LINES`, which is derived
+from the strip height rather than written down twice.
+
+**Outcome.** The spec's *unbound constants* failure mode again, in a new costume.
+A gate that measures the symptom of a bug will miss the bug when it changes
+costume; a gate that binds the two constants cannot.
+
+---
+
 ## 2026-09-22 — Spike 0 and 1 pass: browser and device
 
 **What.** 640×360 integer-scaled Canvas2D, normalized input frames, fixed 60 Hz

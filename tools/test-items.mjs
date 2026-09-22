@@ -8,7 +8,9 @@ import { createState, spawnIn, UNITS } from '../sim/state.js';
 import { step, solidTiles, solidBodies } from '../sim/step.js';
 import { VERB, setVerb } from '../sim/frame.js';
 import { visible, reachable, prompt, carriedBulk, tier, keyOf, containerItems,
-         haulValue, stationAt, BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
+         haulValue, stationAt, dropTile, BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
+import { hashState } from '../sim/state.js';
+import { chainFor } from '../sim/interact.js';
 
 let failures = 0;
 const ok = (n, c, d = '') => { console.log(`${c ? '  ok  ' : '  FAIL'}  ${n}${d ? '  ' + d : ''}`); if (!c) failures++; };
@@ -469,6 +471,10 @@ const delve = (site = 0, floor = 0, room = null) => {
   standAt(q, s);
   ok('an empty-handed sale is refused, and says so', prompt(s).refuse === true, prompt(s).text);
   s.carried = refs('gem', 'gem', 'bones', 'key');
+  // Appraised, so the assertion below is about provenance moving a price and
+  // not about whether these four addresses happen to be legible to a Worker —
+  // which they were, until the actor pool changed, and then were not.
+  for (const r of s.carried) s.known.push(r.key);
   const worth = haulValue(s);
   const { itemValue } = await import('../sim/interact.js');
   const parts = s.carried.reduce((n, r) => n + itemValue(s, r), 0);
@@ -542,6 +548,114 @@ const delve = (site = 0, floor = 0, room = null) => {
   ok('climbing out returns you to the camp', s.floor === -1, `floor ${s.floor}`);
   ok('and you land on the mouth you left by',
      Math.floor(s.x/(TILE*UNITS)) === mouth % C && Math.floor(s.y/(TILE*UNITS)) === ((mouth/C)|0));
+}
+
+// --- putting things back ----------------------------------------------------
+// Transfer used to run one way: a container gave and nothing ever went back,
+// and the drop button destroyed a haul rather than setting it down. The dropped
+// list fixes both, and it is the same list the corpse run will need.
+{
+  const press = (s, v) => { step(s, setVerb(0, v, true)); step(s, 0); };
+
+  // One item, out of the pack and onto the floor.
+  {
+    const s = delve();
+    s.carried = refs('gem', 'bones');
+    const before = visible(s).length;
+    press(s, VERB.INVENTORY);
+    ok('the pack opens', s.screen === 'pack', s.screen);
+    press(s, VERB.INTERACT);
+    ok('putting one down takes it out of the pack', s.carried.length === 1, `${s.carried.length} left`);
+    ok('and puts it in the room', visible(s).length === before + 1, `${visible(s).length} visible`);
+    ok('on a real floor tile, not inside a wall',
+       visible(s).filter((c) => c.dropped).every((c) => !solidTile(roomTiles(SEED, s.site, s.floor, s.room).grid[c.tile])));
+    ok('nothing is dropped on top of anything else',
+       new Set(visible(s).map((c) => c.tile)).size === visible(s).length);
+  }
+
+  // And back up again — the SAME object, not another of its kind.
+  {
+    const s = delve();
+    s.carried = refs('gem');
+    const key = s.carried[0].key;
+    press(s, VERB.INVENTORY);
+    press(s, VERB.INTERACT);
+    press(s, VERB.CANCEL);
+    const put = s.dropped[0];
+    ok('it is recorded where it lies', !!put && put.key === key, put ? `${put.kind} at ${put.tile}` : 'nowhere');
+
+    s.x = ((put.tile % COLS) * TILE + TILE/2) * UNITS;
+    s.y = (((put.tile / COLS) | 0) * TILE + TILE/2) * UNITS;
+    const p = prompt(s);
+    ok('the toast offers it back', !!p && p.text.startsWith('Pick up'), p ? p.text : 'no prompt');
+    press(s, VERB.INTERACT);
+    ok('picking it up returns that exact object', s.carried.length === 1 && s.carried[0].key === key,
+       s.carried.length ? s.carried[0].key : 'empty');
+    ok('and it stops lying on the floor', s.dropped.length === 0 && !visible(s).some((c) => c.dropped));
+  }
+
+  // The best button in the game no longer destroys the haul.
+  {
+    const s = delve();
+    s.carried = refs('gem', 'bones', 'crystal');
+    const keys = s.carried.map((r) => r.key);
+    press(s, VERB.DROP);
+    ok('drop-load empties the hands', s.carried.length === 0);
+    ok('and the haul is still on the floor', s.dropped.length === 3, `${s.dropped.length} down`);
+    ok('every one of them, by name', keys.every((k) => s.dropped.some((d) => d.key === k)));
+  }
+
+  // A thing you put down stays where you left it.
+  {
+    const s = delve();
+    s.carried = refs('gem');
+    press(s, VERB.DROP);
+    const { site, floor, room, tile } = s.dropped[0];
+    const elsewhere = floorPlan(SEED, site, floor).cells.find((r) => r !== room);
+    if (elsewhere !== undefined) {
+      s.room = elsewhere;
+      ok('it is not in the next room along', !visible(s).some((c) => c.dropped), `room ${elsewhere}`);
+      s.room = room;
+      ok('and it is still in the one you left it in',
+         visible(s).some((c) => c.dropped && c.tile === tile));
+    }
+  }
+
+  // A dropped thing keeps its address, so its history follows it across the
+  // world. That is what `inherit` will be written on top of.
+  {
+    const s = delve();
+    s.carried = [{ kind: 'gem', key: '0:3:2:1' }];
+    const before = chainFor(s, '0:3:2:1');
+    press(s, VERB.DROP);
+    ok('a dropped thing keeps its own chain',
+       JSON.stringify(chainFor(s, s.dropped[0].key)) === JSON.stringify(before));
+  }
+
+  // The world still does not grow. A drop is a delta entry, not a placement.
+  {
+    const s = delve();
+    const base = JSON.stringify(s).length;
+    s.carried = refs('gem', 'bones');
+    press(s, VERB.DROP);
+    ok('putting things down is recorded in bytes, not in rooms',
+       JSON.stringify(s).length - base < 300, `+${JSON.stringify(s).length - base} bytes for 2`);
+  }
+
+  // Determinism: the tile a thing lands on is arithmetic, not a coin toss.
+  {
+    const a = delve(), b = delve();
+    for (const s of [a, b]) { s.carried = refs('gem', 'bones', 'key'); press(s, VERB.DROP); }
+    ok('two runs put things down in the same places', hashState(a) === hashState(b),
+       a.dropped.map((d) => d.tile).join(',') + ' vs ' + b.dropped.map((d) => d.tile).join(','));
+  }
+
+  // A room with no floor left refuses rather than swallowing the item.
+  {
+    const s = delve();
+    const { grid } = roomTiles(SEED, s.site, s.floor, s.room);
+    ok('a free tile exists to drop onto in a normal room', dropTile(s) >= 0, `${dropTile(s)}`);
+  }
 }
 
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all item gates passed\n');

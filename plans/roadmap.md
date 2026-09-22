@@ -15,37 +15,42 @@ Act I is defined in `design/world-shape.md` and gated by the campaign's own
 spoiler discipline: sets follow acts, so the Frontier Halls, the Fundament and
 Vorathum's Domain are later releases, not missing pieces.
 
-## Where it stands — 0.1.0
+## Where it stands — 0.4.0
 
-A generated mausoleum you can walk, light and rob. The kernel is deterministic
-and replayable, the world is a pure function of its address, items exist and
-weigh something, and the art layer is swappable. That is the floor, not the
-house.
+A generated mausoleum you can walk, light and rob, a camp to sell into, and an
+object's history that tells you where to go next. The kernel is deterministic
+and replayable, the world is a pure function of its address, and the actor graph
+inverts — which is the mechanic the whole design rests on and the one that was
+least certain to work. Threat, the world above and below, and everything under
+*Content and craft* remain untouched. That is a floor with one room built on it.
 
 ## The distance
 
 Each of these is a MINOR release or several. Order is by dependency, not
 priority, and it will change.
 
-### The loop has to close
-Nothing you carry is worth anything yet, and there is nowhere to take it.
-Extraction back to camp, a quartermaster who buys by weight, an appraiser who
-costs coin and time, and scrap with somewhere to go. **This is the step that
-makes `plans/slice-01.md` answerable** — and answering it is one question, not a
-release.
+### ~~The loop has to close~~ — done in 0.2.0
+Extraction back to camp, a quartermaster who buys by weight, a finite stash, and
+an appraiser who costs coin and time. `plans/slice-01.md` is now **answerable**:
+everything its question needs is built except the threat that makes the bulk
+budget bite. Answering it is one play session, not a release.
 
-### ~~Provenance has to become visible~~ — partly done in 0.3.0
-Chains, marks, stat-gated perception, a worth multiplier and the appraiser all
-landed. **Two thirds of the design did not.** There are no *amendments*, so
-record always equals truth and forgery has nowhere to live. And the actor graph
-does not invert: `possessionsOf` is unbuilt, so a maker's mark cannot lead you
-to the rest of a dead person's goods.
+### ~~Provenance has to become visible~~ — done in 0.3.0 and 0.4.0
+Chains, marks, stat-gated perception, a worth multiplier and the appraiser
+landed in 0.3.0. The inversion landed in 0.4.0: actors are decomposable
+addresses, rooms have occupants, `possessionsOf` exists, and a legible mark
+leads to a room that is real and stocked. The guaranteed-solvability constraint
+is built into the generator rather than hoped for, and the `solvable` gate holds.
 
-**That inversion is the thing the game is actually about** — deduce a place from
-an object, walk there, and find it stocked because the same function generated
-both. It needs the guaranteed-solvability constraint from
-`design/provenance.md` so the deduction resolves within reach rather than
-sometimes.
+**What is left of the design is the middle tier.** There are still no
+*amendments*, so record always equals truth and forgery has nowhere to live.
+Attestation, assertion, effacement and `inherit` are the next release of this
+system, and `inherit` is the one that wants the corpse run to exist first — your
+own name written into a chain by play.
+
+Also still open: a **foreign** reference names a site that computes but that
+nothing yet walks to. Those dead ends close when the Field has more than one
+mouth, not before.
 
 ### Threat
 Eight enemies, eight dual-use tools, damage that costs cargo rather than only
@@ -82,7 +87,8 @@ Performance and battery measured on hardware, not asserted.
   architecture block holds columns and alcoves, both become real types.
 - **Rubble blocks its whole tile** while its art covers about 64% of it —
   terrain needs a footprint the way items now have one.
-- **Container transfer is one-way.** Putting things back needs the `dropped`
-  list the corpse mechanic will need anyway; build it once.
+- ~~**Container transfer is one-way.**~~ Closed in 0.4.0. The `dropped` list
+  exists, both screens put things back, and drop-load sets a haul down instead
+  of destroying it. The corpse run inherits it.
 - **The reference art must go.** Everything in `inbox/1-bit tileset/` is
   unlicensed placeholder and cannot ship.

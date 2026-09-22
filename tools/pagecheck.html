@@ -68,6 +68,18 @@ try {
   for (let i=0;i<hud.length;i+=4) if (Math.max(hud[i],hud[i+1],hud[i+2]) > 60) bottomInk++;
   ok('4 HUD lines fit without clipping at the bottom edge', bottomInk === 0, `${bottomInk} ink px in last 3 rows`);
 
+  // A fifth line used to fit in the ARRAY and not on the SCREEN: it drew below
+  // the canvas, so the clipping gate above never saw it. Now the renderer
+  // refuses, which is the only way a constant like this stays honest.
+  {
+    const { HUD_LINES } = await import('../render/canvas.js');
+    ok('the HUD line budget is derived from the strip', HUD_LINES === 4, `${HUD_LINES}`);
+    let threw = false;
+    try { r.draw(s, Array.from({ length: HUD_LINES + 1 }, (_, i) => ({ text: `L${i}` }))); }
+    catch (e) { threw = true; }
+    ok('one line too many is refused, not silently dropped', threw);
+  }
+
   // Two-colour remap: the toned sheet must contain the stratum's colours and
   // none of the pack's own, or region flavour is a no-op that looks fine.
   if (pack.ok) {
@@ -244,6 +256,51 @@ try {
     ok('Escape is not also a dodge', !hasVerb(tap('Escape'), VERB.DODGE));
     ok('E still reaches the frame as INTERACT', hasVerb(tap('KeyE'), VERB.INTERACT));
     ok('the frame is clear once keys are released', inp.sample() === 0, String(inp.sample()));
+  }
+
+  // Things you put down have to be visible where you put them, or the dropped
+  // list is bookkeeping the player never sees.
+  {
+    const { visible } = await import('../sim/interact.js');
+    const { VERB, setVerb } = await import('../sim/frame.js');
+    const s4 = delve();
+    r.draw(s4, [{text:'before'}]);
+    const before = ctx.getImageData(0, 0, W, VIEW_H).data.join(',');
+
+    s4.carried = [{ kind: 'gem', key: '0:0:0:90' }, { kind: 'crystal', key: '0:0:0:91' }];
+    step(s4, setVerb(0, VERB.DROP, true));
+    ok('the haul went to the floor', s4.dropped.length === 2 && s4.carried.length === 0,
+       `${s4.dropped.length} down`);
+    ok('and the room now shows them', visible(s4).filter((c) => c.dropped).length === 2);
+
+    r.draw(s4, [{text:'after'}]);
+    const after = ctx.getImageData(0, 0, W, VIEW_H).data.join(',');
+    ok('the room looks different with things lying in it', before !== after);
+  }
+
+  // The lead: the whole point of 0.4.0 has to reach the glass.
+  {
+    const { leadFor, keyOf } = await import('../sim/interact.js');
+    const s5 = delve();
+    s5.floor = 2; s5.room = FP(0x1594, s5.site, 2).cells[0];
+    let key = null;
+    for (let i = 0; i < 300 && !key; i++) {
+      const k = `0:2:${i % 6}:${i}`;
+      s5.known = [k];
+      if (leadFor(s5, k)) key = k;
+    }
+    ok('an appraised item names somewhere', !!key, key || 'none in 300');
+    if (key) {
+      s5.known = [key];
+      s5.carried = [{ kind: 'gem', key }];
+      s5.screen = 'pack'; s5.side = 1; s5.cur = 0;
+      r.draw(s5, [{text:'lead'}]);
+      // The panel starts at y=96; the three readout lines sit above it.
+      const band = ctx.getImageData(0, 88, W, 10).data;
+      let ink = 0;
+      for (let i = 0; i < band.length; i += 4) if (Math.max(band[i], band[i+1], band[i+2]) > 90) ink++;
+      ok('the lead line is drawn above the pack', ink > 40, `${ink} text px`);
+    }
   }
 
   const a=createState(7), b=createState(7), log=[];

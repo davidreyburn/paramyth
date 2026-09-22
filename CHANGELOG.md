@@ -9,6 +9,71 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+## [0.4.0] — 2026-09-22
+
+The actor graph inverts. An object tells you where to go, and the place is
+stocked when you get there.
+
+### Added
+
+- **Actors are addresses.** An actor id decomposes into site, era and index, so
+  the relation *chains name actors* runs backwards. In 0.3.0 an actor was a hash
+  of whatever object happened to name them, which could not be inverted at all.
+- **Rooms have occupants** — one per era, so a crypt can hold an imperial lord
+  and, above him, the scavenger who died robbing it. Half the hands that touched
+  a thing are the hands it was buried with, which is what makes a room a grave
+  rather than a shelf.
+- **`possessionsOf`**, at last. Everything in a person's own site that names
+  them, computed by a bounded scan and cached in memory — never in the save.
+- **Places.** `interred`, `hid` and `buried-with` name a real room address,
+  found by asking where that person lies rather than by hashing a plausible
+  one. A lead cannot point at a room that is not there.
+- **Leads.** A legible mark names a person, that person lies somewhere, and the
+  somewhere is on the HUD next to where you are standing. Perception gates it:
+  an untrained eye follows nothing, and the appraiser's fee now buys a
+  direction as well as a price.
+- **Guaranteed solvability.** One room per floor draws its occupant from the
+  resolved range, and no chain anywhere else may name a resolved actor. So every
+  region contains at least one person whose entire story is inside it — the
+  constraint from `design/provenance.md`, as arithmetic instead of as a hope.
+  The `solvable` gate from `plans/slice-01.md` now exists and holds over 40
+  regions.
+- **The dropped list.** Things you put down land on a real tile and stay there,
+  keeping their own address — so their history follows them, and picking one up
+  again is picking up *that* object. This is the `dropped` list the corpse run
+  will need, built once.
+- **Two-way transfer everywhere.** The pack screen and the container screen both
+  put things down, one at a time or all at once.
+
+### Changed
+
+- **Drop-load no longer destroys the haul.** It lands at your feet and is still
+  there when whatever you ran from is dealt with — a decision rather than a
+  penalty.
+- Container contents show their own provenance. The panel was handed bare kinds
+  and had no address to read a history off.
+- Era 0 gained `hid`, so the surface can name a place at all. Its leads are
+  meagre next to what lies under them, which is right.
+- The HUD is four lines and says so. A fifth fitted in the array and not on the
+  screen: it drew below the canvas, where the bottom-edge gate could not see it
+  because it was not clipped, it was gone. The two constants are now bound by an
+  assertion.
+
+### Fixed
+
+- **Picking a loose item off the floor pushed a bare kind into the pack** where
+  everything else is a reference. Its key was `undefined`, so its chain, its
+  price and its history were all lost, and hashing the state threw. Only items
+  taken out of containers were whole.
+
+### Known
+
+- Still no **amendments**: record equals truth, and forgery has nowhere to live.
+- A **foreign** name leads to a site that generates but that nothing yet walks
+  to. Those are the long threads, and they stay dead ends until the Field has
+  more than one mouth.
+- Bearing still does nothing. The player still has no record of their own.
+
 ## [0.3.0] — 2026-09-22
 
 Provenance becomes visible. What a thing is worth depends on whose it was.

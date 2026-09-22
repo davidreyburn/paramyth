@@ -7,7 +7,7 @@ import { createInput } from './input.js';
 import { createRenderer } from '../render/canvas.js';
 import { loadPack } from '../render/tileset.js';
 import { roomTiles, floorPlan, floorCount } from '../core/gen.js';
-import { carriedBulk, tier, BULK_BUDGET, haulValue } from '../sim/interact.js';
+import { carriedBulk, tier, BULK_BUDGET, haulValue, leads, placeHere, placeLabel } from '../sim/interact.js';
 import { VERSION } from '../core/version.js';
 
 const SEED = 0x1594;
@@ -67,18 +67,37 @@ function loop(now) {
   if (acc > TICK_MS * MAX_STEPS_PER_FRAME) acc = 0;
 
   const bytes = (log.length * 4 / 1024).toFixed(1);
+
+  // What you are carrying has told you about somewhere. The address of where
+  // you stand is printed beside it, because a lead you cannot compare to your
+  // own position is a riddle rather than a direction.
+  const held = leads(state);
+  const here = placeHere(state);
+  const at = held.find((l) => l.place === here);
+  const leadLine = !held.length
+    ? `no leads \u00b7 you are at ${here}`
+    : at
+      ? `HERE \u00b7 ${at.actor.name} ${at.actor.house} was ${at.act} in this room`
+      : `${held[0].actor.name} ${held[0].actor.house} \u00b7 ${held[0].act} \u00b7 ${placeLabel(held[0].place)}`
+        + (held.length > 1 ? `   (+${held.length - 1} more)` : '')
+        + `   \u00b7 you are at ${here}`;
   const w = roomTiles(state.seed, state.site, state.floor, state.room);
   const nFloors = floorCount(state.seed, state.site);
   const plan = floorPlan(state.seed, state.site, state.floor);
+  // Four lines, because four is what the strip holds — the renderer asserts it.
+  // The art/pad diagnostics moved into the title line to make room for leads,
+  // which are the thing a player actually needs to read while walking.
   renderer.draw(state, [
-    { text: `PARAMYTH ${VERSION}   seed ${SEED.toString(16)}   ${fps}fps   x${renderer.scale}   tick ${state.tick}`, color: '#9d9284' },
-    { text: state.floor < 0
-        ? `COMPANY CAMP \u00b7 site ${state.site}   moved ${state.moves}`
-        : `site ${state.site}  floor ${state.floor + 1}/${nFloors}  room ${state.room}  (${plan.cells.length} on this floor)   moved ${state.moves}`,
+    { text: `PARAMYTH ${VERSION}  seed ${SEED.toString(16)}  ${fps}fps x${renderer.scale}  tick ${state.tick}  art ${pack ? (pack.ok ? pack.id : 'MISSING ' + pack.missing.join(',')) : 'flat'}  pad ${input.pad}  ${bytes} KiB  ${replayResult.text}`,
+      color: replayResult.color },
+    { text: (state.floor < 0
+        ? `COMPANY CAMP \u00b7 site ${state.site}`
+        : `site ${state.site}  floor ${state.floor + 1}/${nFloors}  room ${state.room}  (${plan.cells.length} on this floor)  ${w.era.name.toUpperCase()} \u00b7 ${w.archetype}`)
+        + `   moved ${state.moves}   held ${heldNames(frame)}`,
       color: '#8a7f70' },
-    { text: `${w.era.name.toUpperCase()} \u00b7 ${w.archetype}     held ${heldNames(frame)}`, color: '#7d7060' },
-    { text: `scrap ${state.scrap}   bulk ${carriedBulk(state)}/${BULK_BUDGET} ${tier(carriedBulk(state)).toUpperCase()}   worth ${haulValue(state)}   stash ${state.stash.length}`, color: tier(carriedBulk(state)) === 'overloaded' ? '#c2836b' : '#9d9284' },
-    { text: `art ${pack ? (pack.ok ? pack.id : 'MISSING ' + pack.missing.join(',')) : 'flat'}   pad ${input.pad}   log ${log.length}f / ${bytes} KiB   ${replayResult.text}`, color: replayResult.color },
+    { text: `scrap ${state.scrap}   bulk ${carriedBulk(state)}/${BULK_BUDGET} ${tier(carriedBulk(state)).toUpperCase()}   worth ${haulValue(state)}   stash ${state.stash.length}   down ${state.dropped.length}`,
+      color: tier(carriedBulk(state)) === 'overloaded' ? '#c2836b' : '#9d9284' },
+    { text: leadLine, color: at ? '#d9b86a' : held.length ? '#b09a63' : '#6b6357' },
   ]);
 }
 
