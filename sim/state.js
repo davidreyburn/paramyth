@@ -36,8 +36,12 @@ export function createState(seed) {
     lastFrame: 0,
     moves: 0,          // room transitions, so the HUD can show progress
     scrap: 0,          // the only currency
-    stash: [],         // what is left in camp
-    carried: [],       // item kinds, in the order taken
+    // Stats. Keen is the eye, Lore is the education; a Worker starts able to
+    // see that a thing is marked but not to read what the marks say.
+    stats: { might: 1, finesse: 1, vigor: 1, lore: 0, keen: 1, bearing: 1 },
+    stash: [],         // item refs left in camp
+    carried: [],       // item refs, in the order taken
+    known: [],         // keys whose record has been read
     taken: [],         // keys of contents removed from the world
     opened: [],        // keys of containers opened
     screen: '',        // '' | 'pack' | 'container'
@@ -53,8 +57,11 @@ export function hashState(s) {
   mix(s.seed); mix(s.tick); mix(s.x); mix(s.y); mix(s.facing);
   mix(s.moving ? 1 : 0); mix(s.site); mix(s.floor); mix(s.room); mix(s.moves);
   const roll = (arr) => { mix(arr.length); for (const v of arr) for (let i = 0; i < v.length; i++) mix(v.charCodeAt(i)); };
-  roll(s.carried); roll(s.taken); roll(s.opened); roll(s.stash);
+  const rollRefs = (arr) => { mix(arr.length); for (const r of arr) { for (let i = 0; i < r.kind.length; i++) mix(r.kind.charCodeAt(i)); for (let i = 0; i < r.key.length; i++) mix(r.key.charCodeAt(i)); } };
+  rollRefs(s.carried); rollRefs(s.stash);
+  roll(s.taken); roll(s.opened); roll(s.known);
   mix(s.scrap);
+  for (const k of Object.keys(s.stats).sort()) mix(s.stats[k]);
   mix(s.cur); mix(s.side); roll([s.screen, s.screenKey]);
   return h >>> 0;
 }

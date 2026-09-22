@@ -10,7 +10,19 @@ window.addEventListener('error', e => { out.push(`  FAIL  uncaught: ${e.message}
 const render = () => { document.getElementById('out').textContent = out.join('\n') + `\n\n  ${fails? fails+' FAILED':'all page gates passed'}\n`; };
 
 try {
-  const { createState, hashState } = await import('../sim/state.js');
+  const { createState, hashState, spawnIn } = await import('../sim/state.js');
+  const { floorPlan: FP } = await import('../core/gen.js');
+
+  // The game starts in the CAMP, which holds no salvage. Anything testing loot
+  // has to be underground first — same fixture the headless item gates use.
+  const delve = () => {
+    const d = createState(0x1594);
+    d.floor = 0;
+    d.room = FP(0x1594, d.site, 0).cells[0];
+    const p = spawnIn(0x1594, d.site, 0, d.room);
+    d.x = p.x; d.y = p.y;
+    return d;
+  };
   const { step } = await import('../sim/step.js');
   const { createRenderer, W, H, VIEW_H } = await import('../render/canvas.js');
   const { VERB, setVerb } = await import('../sim/frame.js');
@@ -29,7 +41,7 @@ try {
   ok('integer scale >= 1', r.scale>=1 && Number.isInteger(r.scale), `x${r.scale}`);
   ok('css size is an exact integer multiple', canvas.style.width === (W*r.scale)+'px', canvas.style.width);
 
-  const s = createState(0x1594);
+  const s = delve();
   let f = 0; f = setVerb(f, VERB.RIGHT, true); f = setVerb(f, VERB.DOWN, true);
   for (let i=0;i<120;i++) step(s, f);
   ok('sim advanced', s.tick===120 && s.x>320*256, `tick=${s.tick}`);
@@ -126,7 +138,7 @@ try {
   {
     const { visible, prompt } = await import('../sim/interact.js');
     const { COLS, TILE } = await import('../core/gen.js');
-    const s2 = createState(0x1594);
+    const s2 = delve();
     const cs = visible(s2);
     ok('the starting room has contents to reach', cs.length > 0, `${cs.length} placed`);
     if (cs.length) {
@@ -162,7 +174,7 @@ try {
     const { COLS, TILE } = await import('../core/gen.js');
     const { isContainer } = await import('../core/items.js');
 
-    const s3 = createState(0x1594);
+    const s3 = delve();
     const c = visible(s3).find((x) => isContainer(x.kind));
     ok('a container to open', !!c, c ? c.kind : 'none');
     if (c) {
@@ -171,7 +183,12 @@ try {
       step(s3, setVerb(0, VERB.INTERACT, true));
       ok('the screen opened', s3.screen === 'container');
 
-      s3.carried = ['gem','bones','key','crystal','trinket'];
+      const { floorPlan } = await import('../core/gen.js');
+      const { keyOf } = await import('../sim/interact.js');
+      s3.carried = ['gem','bones','key','crystal','trinket']
+        .map((kind, i) => ({ kind, key: keyOf(s3, 90 + i) }));
+      s3.stats = { ...s3.stats, keen: 2, lore: 1 };
+      s3.side = 1; s3.cur = 0;
       r.draw(s3, [{text:'screen'}]);
 
       // Measure the panel band, not the whole view: the panels are deliberately

@@ -2,7 +2,9 @@
 // Shared by apply and by the renderer, so the prompt and the action can never
 // disagree about what you are standing next to.
 
-import { contentsOf, insideOf, roomTiles, COLS, ROWS, TILE, T } from '../core/gen.js';
+import { contentsOf, insideOf, roomTiles, ERAS, eraFor, absDepth,
+         COLS, ROWS, TILE, T } from '../core/gen.js';
+import { chainOf, marksOf, readMarks, worthMultiplier, describe } from '../core/provenance.js';
 import { campStations, STATION } from '../core/camp.js';
 import { KIND, isContainer, isPortable, bulkOf, valueOf, verbFor } from '../core/items.js';
 import { UNITS } from './state.js';
@@ -18,7 +20,34 @@ export const keyOf = (s, slot, idx) =>
   idx === undefined ? `${s.site}:${s.floor}:${s.room}:${slot}`
                     : `${s.site}:${s.floor}:${s.room}:${slot}.${idx}`;
 
-export const carriedBulk = (s) => s.carried.reduce((n, k) => n + bulkOf(k), 0);
+export const carriedBulk = (s) => s.carried.reduce((n, r) => n + bulkOf(r.kind), 0);
+
+// --- provenance, as the game sees it ---------------------------------------
+// The key IS the address, so a chain is computable from a reference alone.
+
+export function chainFor(s, key) {
+  const floor = Number(String(key).split(':')[1]);
+  const depth = absDepth(floor);
+  return chainOf(s.seed, key, ERAS.indexOf(eraFor(depth)), depth);
+}
+
+export const marksFor = (s, key) => readMarks(marksOf(chainFor(s, key)), s.stats);
+
+// You can put a price on a thing when its record has been read for you, or when
+// you can read every mark on it yourself. That is what Keen and Lore buy.
+export function assessed(s, key) {
+  if (s.known.includes(key)) return true;
+  const m = marksFor(s, key);
+  return m.length > 0 && m.every((x) => x.legible);
+}
+
+// Base worth until the history is legible; the chain multiplies it after.
+export function itemValue(s, ref) {
+  const base = valueOf(ref.kind);
+  return assessed(s, ref.key) ? Math.round(base * worthMultiplier(chainFor(s, ref.key))) : base;
+}
+
+export const readOut = (s, key) => describe(chainFor(s, key), s.stats);
 
 export function tier(bulk) {
   if (bulk <= 8) return 'light';
@@ -77,7 +106,8 @@ export function stairUnder(s) {
   return t === T.STAIR_D ? 'down' : t === T.STAIR_U ? 'up' : null;
 }
 
-export const haulValue = (s) => s.carried.reduce((n, k) => n + valueOf(k), 0);
+export const haulValue = (s) => s.carried.reduce((n, r) => n + itemValue(s, r), 0);
+export const APPRAISAL_FEE = 6;
 
 // A station you are standing at. Camp only, and reachable from a tile away so
 // you do not have to stand exactly on the counter.
@@ -106,7 +136,11 @@ export function prompt(s) {
         : { text: 'Nothing to sell', refuse: true, station };
     }
     if (station.kind === STATION.STASH) return { text: 'Open stash', station };
-    if (station.kind === STATION.APPRAISER) return { text: 'The appraiser is not in', refuse: true, station };
+    if (station.kind === STATION.APPRAISER) {
+      return s.carried.length
+        ? { text: 'Consult the appraiser', station }
+        : { text: 'Nothing to appraise', refuse: true, station };
+    }
   }
 
   const st = stairUnder(s);

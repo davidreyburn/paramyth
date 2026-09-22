@@ -8,6 +8,7 @@ cd "$(dirname "$0")"
 echo "── kernel"    && node tools/test-sim.mjs
 echo "── generator" && node tools/test-gen.mjs
 echo "── items"     && node tools/test-items.mjs
+echo "── provenance"&& node tools/test-provenance.mjs
 echo "── assets"    && node tools/test-pack.mjs
 
 if [ "$1" != "--fast" ]; then

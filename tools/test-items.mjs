@@ -14,6 +14,11 @@ let failures = 0;
 const ok = (n, c, d = '') => { console.log(`${c ? '  ok  ' : '  FAIL'}  ${n}${d ? '  ' + d : ''}`); if (!c) failures++; };
 const SEED = 0x1594;
 
+// Carried things are REFERENCES now — a kind plus the address its history is
+// computed from. Distinct keys, so two fixtures never share a chain.
+const ref = (kind, n = 0) => ({ kind, key: `0:0:0:${n}` });
+const refs = (...kinds) => kinds.map((k, i) => ref(k, i));
+
 // The game now starts in the CAMP, which holds no salvage. Anything testing
 // loot, containers or collision needs to be underground first.
 const delve = (site = 0, floor = 0, room = null) => {
@@ -108,7 +113,7 @@ const delve = (site = 0, floor = 0, room = null) => {
      `light<=8 laden<=16 overloaded<=${BULK_BUDGET}`);
 
   const s = delve();
-  s.carried = Array(BULK_BUDGET).fill('key');       // bulk 1 each: exactly full
+  s.carried = Array.from({ length: BULK_BUDGET }, (_, i) => ref('key', i));   // bulk 1 each
   ok('bulk sums from what is carried', carriedBulk(s) === BULK_BUDGET, `${carriedBulk(s)}`);
 
   // Walk the world for a real portable rather than hoping the start room has
@@ -125,7 +130,7 @@ const delve = (site = 0, floor = 0, room = null) => {
   if (found) {
     const s2 = delve();
     s2.site = found.site; s2.floor = found.floor; s2.room = found.room;
-    s2.carried = Array(BULK_BUDGET).fill('key');
+    s2.carried = Array.from({ length: BULK_BUDGET }, (_, i) => ref('key', i));
     s2.x = ((found.c.tile % COLS) * TILE + TILE/2) * UNITS;
     s2.y = (((found.c.tile / COLS) | 0) * TILE + TILE/2) * UNITS;
     const p = prompt(s2);
@@ -142,7 +147,7 @@ const delve = (site = 0, floor = 0, room = null) => {
   }
 
   const d = delve();
-  d.carried = ['gem','bones','crystal'];
+  d.carried = refs('gem','bones','crystal');
   step(d, setVerb(0, VERB.DROP, true));
   ok('drop-load empties the hands', d.carried.length === 0);
 }
@@ -463,9 +468,13 @@ const delve = (site = 0, floor = 0, room = null) => {
   // Selling
   standAt(q, s);
   ok('an empty-handed sale is refused, and says so', prompt(s).refuse === true, prompt(s).text);
-  s.carried = ['gem', 'gem', 'bones', 'key'];
+  s.carried = refs('gem', 'gem', 'bones', 'key');
   const worth = haulValue(s);
-  ok('the haul is worth the sum of its parts', worth === 12+12+2+3, String(worth));
+  const { itemValue } = await import('../sim/interact.js');
+  const parts = s.carried.reduce((n, r) => n + itemValue(s, r), 0);
+  ok('the haul is worth the sum of its parts', worth === parts, `${worth} = ${s.carried.map((r) => itemValue(s, r)).join(' + ')}`);
+  ok('provenance has already moved the price off base',
+     worth !== 12+12+2+3, `base would be 29, it is ${worth}`);
   ok('the toast names the price', prompt(s).text.includes(String(worth)), prompt(s).text);
   step(s, setVerb(0, VERB.INTERACT, true));
   ok('selling converts the haul to scrap', s.scrap === worth && s.carried.length === 0,
@@ -484,7 +493,7 @@ const delve = (site = 0, floor = 0, room = null) => {
   step(t, setVerb(0, VERB.INTERACT, true));
   ok('the stash screen opens', t.screen === 'stash', t.screen || 'none');
 
-  t.carried = ['gem', 'key'];
+  t.carried = refs('gem', 'key');
   t.side = 1; t.cur = 0;
   step(t, 0); step(t, setVerb(0, VERB.INTERACT, true));
   ok('pack -> stash works', t.stash.length === 1 && t.carried.length === 1,
@@ -501,8 +510,8 @@ const delve = (site = 0, floor = 0, room = null) => {
 
   const full = createState(SEED);
   full.screen = 'stash'; full.side = 1; full.cur = 0;
-  full.stash = Array(STASH_SLOTS).fill('key');
-  full.carried = ['gem'];
+  full.stash = Array.from({ length: STASH_SLOTS }, (_, i) => ref('key', i));
+  full.carried = refs('gem');
   step(full, 0); step(full, setVerb(0, VERB.INTERACT, true));
   ok('a full stash refuses', full.carried.length === 1 && full.stash.length === STASH_SLOTS);
 }

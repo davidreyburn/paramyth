@@ -6,6 +6,7 @@ import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER } fr
 import { h } from '../core/addr.js';
 import { tonedSheet, drawsFor, shadeTone, variantFor } from './tileset.js';
 import { visible, prompt, containerItems, carriedBulk, tier,
+         itemValue, assessed, readOut, marksFor, APPRAISAL_FEE,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, STASH_ROWS,
          BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
 import { campStations } from '../core/camp.js';
@@ -175,7 +176,8 @@ export function createRenderer(canvas, pack = null) {
   // screen is a cursor, one button to take, one to take everything.
   const CELL = 24, ICON = 20, PLATE = 22, TITLE = 12, PAD = 8;
 
-  function drawCell(x, y, kind, idx, tone, selected) {
+  function drawCell(x, y, ref, idx, tone, selected) {
+    const kind = ref && (ref.kind || ref);
     ctx.fillStyle = selected ? '#2e2921' : '#191714';
     ctx.fillRect(x, y, PLATE, PLATE);
     ctx.strokeStyle = selected ? P.lantern : '#332d26';
@@ -219,6 +221,7 @@ export function createRenderer(canvas, pack = null) {
     ctx.fillRect(0, 0, W, VIEW_H);
 
     const isStash = s.screen === 'stash';
+    const isAppraiser = s.screen === 'appraiser';
     const two = s.screen === 'container' || isStash;
     const cont = s.screen === 'container' ? containerItems(s, s.screenKey).map((c) => c.kind)
                : isStash ? s.stash : [];
@@ -239,22 +242,30 @@ export function createRenderer(canvas, pack = null) {
     const px = two ? x0 + contW + 12 : x0;
     const bulk = carriedBulk(s);
     drawPanel(px, y0, PACK_COLS, PACK_ROWS,
-      `PACK \u00b7 ${bulk}/${BULK_BUDGET} ${tier(bulk).toUpperCase()}`,
+      isAppraiser ? `APPRAISER \u00b7 you have ${s.scrap} scrap`
+                  : `PACK \u00b7 ${bulk}/${BULK_BUDGET} ${tier(bulk).toUpperCase()}`,
       s.carried, tone, s.side === 1 ? s.cur : -1);
 
     ctx.font = '8px ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     ctx.fillStyle = '#6b6357';
-    const hint = isStash ? 'A move   \u00b7   Y move all   \u00b7   Esc / B close'
-               : two      ? 'A take   \u00b7   Y take all   \u00b7   Esc / B close'
-                          : 'Start / I / Esc close   \u00b7   hold G to drop everything';
+    const hint = isStash     ? 'A move   \u00b7   Y move all   \u00b7   Esc / B close'
+               : isAppraiser  ? `A appraise (${APPRAISAL_FEE} scrap)   \u00b7   Esc / B close`
+               : two          ? 'A take   \u00b7   Y take all   \u00b7   Esc / B close'
+                              : 'Start / I / Esc close   \u00b7   hold G to drop everything';
     ctx.fillText(hint, W / 2, y0 + PACK_ROWS * CELL + PAD * 2 + TITLE + 10);
 
-    // What the cursor is on, named.
+    // What the cursor is on: its name, its weight, its price, and as much of
+    // its history as this character can actually read.
     const under = s.side === 0 ? cont[s.cur] : s.carried[s.cur];
-    if (under) {
+    if (under && under.kind) {
+      const val = itemValue(s, under);
+      const know = assessed(s, under.key);
       ctx.fillStyle = P.parchment;
-      ctx.fillText(`${labelOf(under)}  \u00b7  bulk ${bulkOf(under)}`, W / 2, y0 - 16);
+      ctx.fillText(`${labelOf(under.kind)}  \u00b7  bulk ${bulkOf(under.kind)}  \u00b7  ${val} scrap${know ? '' : ' (base)'}`,
+                   W / 2, y0 - 26);
+      ctx.fillStyle = know ? '#9aa87e' : '#7d7060';
+      ctx.fillText(readOut(s, under.key), W / 2, y0 - 15);
     }
     ctx.textAlign = 'start';
   }

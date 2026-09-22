@@ -34,10 +34,18 @@ costs coin and time, and scrap with somewhere to go. **This is the step that
 makes `plans/slice-01.md` answerable** — and answering it is one question, not a
 release.
 
-### Provenance has to become visible
-The chains exist and nothing reads them. Marks on objects, stat-gated
-perception, the actor graph, and the deduction that turns a maker's mark into a
-place worth walking to. This is the thing the game is actually about.
+### ~~Provenance has to become visible~~ — partly done in 0.3.0
+Chains, marks, stat-gated perception, a worth multiplier and the appraiser all
+landed. **Two thirds of the design did not.** There are no *amendments*, so
+record always equals truth and forgery has nowhere to live. And the actor graph
+does not invert: `possessionsOf` is unbuilt, so a maker's mark cannot lead you
+to the rest of a dead person's goods.
+
+**That inversion is the thing the game is actually about** — deduce a place from
+an object, walk there, and find it stocked because the same function generated
+both. It needs the guaranteed-solvability constraint from
+`design/provenance.md` so the deduction resolves within reach rather than
+sometimes.
 
 ### Threat
 Eight enemies, eight dual-use tools, damage that costs cargo rather than only

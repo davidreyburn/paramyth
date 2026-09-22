@@ -7,7 +7,7 @@ import { UNITS, spawnIn } from './state.js';
 import { roomTiles, floorPlan, floorCount, isSolid, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
 import { isContainer, isPortable, isSolidItem, footOf, bulkOf } from '../core/items.js';
 import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
-         haulValue, BULK_BUDGET, STASH_SLOTS,
+         haulValue, assessed, APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './interact.js';
 import { STATION } from '../core/camp.js';
 
@@ -93,8 +93,9 @@ function enterFloor(s, floor) {
 function screenStep(s, frame) {
   const press = (v) => hasVerb(frame, v) && !hasVerb(s.lastFrame, v);
   const isStash = s.screen === 'stash';
+  const isAppraiser = s.screen === 'appraiser';
   const cont = s.screen === 'container' ? containerItems(s, s.screenKey)
-             : isStash ? s.stash.map((kind, i) => ({ kind, idx: i }))
+             : isStash ? s.stash
              : [];
   const twoSided = s.screen === 'container' || isStash;
   if (!twoSided) s.side = 1;
@@ -122,23 +123,36 @@ function screenStep(s, frame) {
 
   const take = (it) => {
     if (carriedBulk(s) + bulkOf(it.kind) > BULK_BUDGET) return false;
-    s.carried.push(it.kind); s.taken.push(it.key);
+    s.carried.push({ kind: it.kind, key: it.key });
+    s.taken.push(it.key);
     return true;
   };
 
   // The stash moves BOTH ways; a container only gives.
-  const toPack = (kind) => {
-    if (carriedBulk(s) + bulkOf(kind) > BULK_BUDGET) return false;
-    s.carried.push(kind); return true;
+  const toPack = (ref) => {
+    if (carriedBulk(s) + bulkOf(ref.kind) > BULK_BUDGET) return false;
+    s.carried.push(ref); return true;
   };
   const toStash = (i) => {
     if (s.stash.length >= STASH_SLOTS) return false;
     s.stash.push(s.carried[i]); s.carried.splice(i, 1); return true;
   };
 
+  // The appraiser reads one item's record for a fee.
+  if (isAppraiser) {
+    if (press(VERB.INTERACT)) {
+      const ref = s.carried[s.cur];
+      if (ref && !assessed(s, ref.key) && s.scrap >= APPRAISAL_FEE) {
+        s.scrap -= APPRAISAL_FEE;
+        s.known.push(ref.key);
+      }
+    }
+    return;
+  }
+
   if (press(VERB.INTERACT)) {
     if (s.side === 0 && cont[s.cur]) {
-      if (isStash) { if (toPack(cont[s.cur].kind)) s.stash.splice(s.cur, 1); }
+      if (isStash) { if (toPack(cont[s.cur])) s.stash.splice(s.cur, 1); }
       else take(cont[s.cur]);
       const left = isStash ? s.stash.length : containerItems(s, s.screenKey).length;
       s.cur = Math.min(s.cur, Math.max(0, left - 1));
@@ -207,7 +221,7 @@ export function step(s, frame) {
     } else if (station && station.kind === STATION.STASH) {
       s.screen = 'stash'; s.screenKey = ''; s.cur = 0; s.side = 0;
     } else if (station && station.kind === STATION.APPRAISER) {
-      /* not built yet */
+      if (s.carried.length) { s.screen = 'appraiser'; s.screenKey = ''; s.cur = 0; s.side = 1; }
     } else if (st === 'down' && s.floor + 1 < floorCount(s.seed, s.site)) enterFloor(s, s.floor + 1);
     else if (st === 'up' && s.floor > -1) enterFloor(s, s.floor - 1);
     else {

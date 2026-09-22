@@ -626,3 +626,37 @@ stale, not the generator. And a dozen item gates failed because **the starting
 room is now the camp, which holds no salvage** — they had all quietly assumed you
 begin underground. They descend first now, via one helper, which is also a more
 honest fixture.
+
+---
+
+## 2026-09-22 — 0.3.0: provenance visible, and a multiplier that can only go up
+
+**What.** Chains, actors, marks, perception, worth, and an appraiser.
+
+**The architectural move.** Items became **references** — a kind plus the address
+its history is computed from. A bare kind has no past, so `carried` and `stash`
+could not hold one. The key the delta already used for `taken` turned out to be
+the address, so identity cost nothing new.
+
+**The gate that found the real design bug.** *"A chain can lower the price as
+well as raise it"* failed at `lowest x1`. Every multiplier floored at 1, because
+`made` always contributed +0.15 and the negatives were too small to overcome it.
+
+That is not a tuning miss, it is a **design failure**: if reading a thing can
+only ever be good news, the appraiser is a tax rather than a decision. You would
+pay the fee every time, and the choice would be whether you could afford it, not
+whether it was worth it. Defacement and clumsy repair now cut value hard enough
+that about 2% of chains lose money — so opening a record is a risk, and a
+scoured panel is a discovery rather than a footnote.
+
+**Two rounds of stale fixtures, the same cause.** Item gates failed because they
+assumed you start underground; then the *browser* gates failed the same way, an
+hour later, because I had fixed only the headless ones. A fixture that encodes
+where the game begins breaks every time the game begins somewhere else — and
+fixing one suite does not fix the other.
+
+**What did NOT land, stated plainly.** Only the first of the design's three
+tiers exists. `record = truth ⊕ amendments` has no amendments, so forgery,
+attestation and effacement have nowhere to live. And the actor graph does not
+invert — `possessionsOf` is unbuilt, so a maker's mark cannot lead you to a
+trove. That inversion is the thing the game is actually about, and it is next.

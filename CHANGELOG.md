@@ -9,6 +9,40 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+## [0.3.0] — 2026-09-22
+
+Provenance becomes visible. What a thing is worth depends on whose it was.
+
+### Added
+
+- **Chains.** Every item's history is a pure function of its address — acts,
+  eras and the people who handled it — computed, never stored. Depth is age: a
+  surface buckle has three events, a relic from the imperial strata has nine,
+  and the oldest is always its making.
+- **Actors**, named by era. Recent things name salvagers; deeper things name
+  houses and offices; below that the names stop working.
+- **Marks.** Each act leaves physical evidence or none — a maker's mark, grip
+  polish, notching, grave-dirt, a scoured panel. Three acts leave no trace at
+  all, which is what makes a forgery possible later.
+- **Perception.** Keen is the eye, Lore the education, and neither substitutes
+  for the other. A Worker starts able to see *that* a thing is marked and not to
+  read what the marks say.
+- **Worth.** A chain multiplies base value, and can cut it: defacement and
+  clumsy repair make a thing worth less than the material. About 2% of chains
+  lose money, so paying to read one can be bad news.
+- **The appraiser**, in camp. Six scrap reads one item's record. Worth it for a
+  relic, a loss on a trinket — which is the decision.
+- **Items have identity.** What you carry is a reference — a kind plus the
+  address its history comes from — not a bare kind.
+
+### Known
+
+- Only the first of the design's three tiers exists. There are no **amendments**,
+  so record always equals truth: no forgery, attestation or effacement yet.
+- The **actor graph does not invert**. `possessionsOf` is unbuilt, so a maker's
+  mark cannot yet lead you to a trove.
+- Bearing does nothing. The player has no record of their own.
+
 ## [0.2.0] — 2026-09-22
 
 The loop closes. You can carry salvage out and be paid for it.
