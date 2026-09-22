@@ -7,7 +7,7 @@ import { createInput } from './input.js';
 import { createRenderer } from '../render/canvas.js';
 import { loadPack } from '../render/tileset.js';
 import { roomTiles, floorPlan, floorCount } from '../core/gen.js';
-import { carriedBulk, tier, BULK_BUDGET } from '../sim/interact.js';
+import { carriedBulk, tier, BULK_BUDGET, haulValue } from '../sim/interact.js';
 import { VERSION } from '../core/version.js';
 
 const SEED = 0x1594;
@@ -72,9 +72,12 @@ function loop(now) {
   const plan = floorPlan(state.seed, state.site, state.floor);
   renderer.draw(state, [
     { text: `PARAMYTH ${VERSION}   seed ${SEED.toString(16)}   ${fps}fps   x${renderer.scale}   tick ${state.tick}`, color: '#9d9284' },
-    { text: `site ${state.site}  floor ${state.floor + 1}/${nFloors}  room ${state.room}  (${plan.cells.length} on this floor)   moved ${state.moves}`, color: '#8a7f70' },
+    { text: state.floor < 0
+        ? `COMPANY CAMP \u00b7 site ${state.site}   moved ${state.moves}`
+        : `site ${state.site}  floor ${state.floor + 1}/${nFloors}  room ${state.room}  (${plan.cells.length} on this floor)   moved ${state.moves}`,
+      color: '#8a7f70' },
     { text: `${w.era.name.toUpperCase()} \u00b7 ${w.archetype}     held ${heldNames(frame)}`, color: '#7d7060' },
-    { text: `bulk ${carriedBulk(state)}/${BULK_BUDGET} ${tier(carriedBulk(state)).toUpperCase()}   carrying ${state.carried.length ? state.carried.join(', ') : 'nothing'}`, color: tier(carriedBulk(state)) === 'overloaded' ? '#c2836b' : '#9d9284' },
+    { text: `scrap ${state.scrap}   bulk ${carriedBulk(state)}/${BULK_BUDGET} ${tier(carriedBulk(state)).toUpperCase()}   worth ${haulValue(state)}   stash ${state.stash.length}`, color: tier(carriedBulk(state)) === 'overloaded' ? '#c2836b' : '#9d9284' },
     { text: `art ${pack ? (pack.ok ? pack.id : 'MISSING ' + pack.missing.join(',')) : 'flat'}   pad ${input.pad}   log ${log.length}f / ${bytes} KiB   ${replayResult.text}`, color: replayResult.color },
   ]);
 }

@@ -9,6 +9,31 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+## [0.2.0] — 2026-09-22
+
+The loop closes. You can carry salvage out and be paid for it.
+
+### Added
+
+- **The Company Camp** — the first *authored* place, one level above every
+  mausoleum, reached by climbing out. Hand-laid rather than generated, which
+  builds the anchors-and-tissue split `design/world-shape.md` specified.
+- **Base value.** Every portable kind is worth scrap. Value per bulk is the
+  decision the loop is made of: a gem is worth twelve times a rib by weight.
+- **The quartermaster.** Sell a haul by weight; the toast names the price before
+  you commit to it.
+- **The stash**, with **two-way transfer** — pack to stash and back, one at a
+  time or all at once. Finite at 24 slots, so camp triage is a real decision.
+- **A way out.** Floor 0 always has an up-stair now; descending and climbing out
+  both land you on the stair that answers the one you took.
+- `core/grid.js` — the tile vocabulary, shared so authored places and generated
+  rooms need not import each other.
+
+### Changed
+
+- The game starts in the camp, as the campaign itself does.
+- Station art is placeholder borrowed from decor; there are no NPCs on the sheet.
+
 ## [0.1.0] — 2026-09-22
 
 First playable slice: a generated mausoleum you can walk, light, and rob.

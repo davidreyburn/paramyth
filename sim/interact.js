@@ -3,12 +3,15 @@
 // disagree about what you are standing next to.
 
 import { contentsOf, insideOf, roomTiles, COLS, ROWS, TILE, T } from '../core/gen.js';
-import { KIND, isContainer, isPortable, bulkOf, verbFor } from '../core/items.js';
+import { campStations, STATION } from '../core/camp.js';
+import { KIND, isContainer, isPortable, bulkOf, valueOf, verbFor } from '../core/items.js';
 import { UNITS } from './state.js';
 
 export const BULK_BUDGET = 20;
 export const PACK_COLS = 6, PACK_ROWS = 4;
 export const CONT_COLS = 4, CONT_ROWS = 3;
+export const STASH_COLS = 6, STASH_ROWS = 4;
+export const STASH_SLOTS = STASH_COLS * STASH_ROWS;
 const REACH = 1;                                  // tiles, Chebyshev
 
 export const keyOf = (s, slot, idx) =>
@@ -74,8 +77,38 @@ export function stairUnder(s) {
   return t === T.STAIR_D ? 'down' : t === T.STAIR_U ? 'up' : null;
 }
 
+export const haulValue = (s) => s.carried.reduce((n, k) => n + valueOf(k), 0);
+
+// A station you are standing at. Camp only, and reachable from a tile away so
+// you do not have to stand exactly on the counter.
+export function stationAt(s) {
+  if (s.floor >= 0) return null;
+  const px = Math.floor(s.x / (TILE * UNITS)), py = Math.floor(s.y / (TILE * UNITS));
+  let best = null, bd = Infinity;
+  for (const st of campStations()) {
+    const cx = st.tile % COLS, cy = (st.tile / COLS) | 0;
+    const d = Math.max(Math.abs(cx - px), Math.abs(cy - py));
+    if (d > 1) continue;
+    const t = Math.abs(cx - px) + Math.abs(cy - py);
+    if (t < bd) { bd = t; best = st; }
+  }
+  return best;
+}
+
 // The toast line. One button, one verb, and the one refusal that matters.
 export function prompt(s) {
+  const station = stationAt(s);
+  if (station) {
+    if (station.kind === STATION.QUARTERMASTER) {
+      const v = haulValue(s);
+      return v > 0
+        ? { text: `Sell salvage \u2014 ${v} scrap`, station }
+        : { text: 'Nothing to sell', refuse: true, station };
+    }
+    if (station.kind === STATION.STASH) return { text: 'Open stash', station };
+    if (station.kind === STATION.APPRAISER) return { text: 'The appraiser is not in', refuse: true, station };
+  }
+
   const st = stairUnder(s);
   if (st) return { text: st === 'down' ? 'Descend' : 'Ascend', stair: st };
   const c = reachable(s);

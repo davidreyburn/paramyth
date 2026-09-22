@@ -3,19 +3,20 @@
 
 import { h, hi, hrange, hpick, hchance, pair } from './addr.js';
 import { pickKind, isContainer, isSolidItem } from './items.js';
+import { campRoom } from './camp.js';
 
-export const TILE = 20, COLS = 32, ROWS = 16;   // 640x320 exactly, at the pack's tile size
+// The grid's shape lives in grid.js so authored places can share it without a
+// circular import. Re-exported here because everything already reads it from gen.
+export { TILE, COLS, ROWS, T, solidTile } from './grid.js';
+import { TILE, COLS, ROWS, T, solidTile } from './grid.js';
+
+// Floors below zero are the surface. -1 is the camp above every mausoleum.
+export const CAMP = -1;
+
 export const GW = 3, GH = 2;                 // room grid per floor
 
-// No PILLAR type: there is no pillar art on either sheet, and pointing it at
-// the nine-slice's interior fill drew a featureless block. A pillar in top-down
-// IS a small mass of masonry, so archetypes place 2x2 WALL instead.
-export const T = { FLOOR:0, WALL:1, RUBBLE:2, SARC:3, NICHE:4, STAIR_D:5, STAIR_U:6 };
-// RUBBLE blocks. A rock is a rock — and it makes the stray-wall demotion below
-// better rather than worse: an isolated wall becomes a boulder, which is
-// exactly the thing the mining tools will be for.
-const SOLID = [false, true, true, true, false, false, false];
-export const solidTile = (t) => SOLID[t];
+// No PILLAR type and RUBBLE is solid — both decided in grid.js, which is the
+// one place the tile vocabulary lives.
 
 // Depth is era, and the depth that matters is ABSOLUTE, not floor-within-site.
 // Keying era to the local floor index capped it at 1 and left four archetype
@@ -72,13 +73,16 @@ export function stairDownCell(seed, site, floor) {
   return hpick(cellsOf(seed, site, floor).cells, seed, site, floor, 0xd0);
 }
 export function stairUpCell(seed, site, floor) {
-  if (floor <= 0) return -1;
+  if (floor < 0) return -1;
+  // Floor 0's up-stair is the way back to the camp, so it always exists.
+  if (floor === 0) return cellsOf(seed, site, 0).cells[0];
   const above = stairDownCell(seed, site, floor - 1);
   const { cells } = cellsOf(seed, site, floor);
   return cells.includes(above) ? above : nearestCell(cells, above);
 }
 
 export function floorPlan(seed, site, floor) {
+  if (floor < 0) return campRoom().plan;
   const { shape, cells } = cellsOf(seed, site, floor);
 
   const links = [];
@@ -218,6 +222,7 @@ function mainSpace(g) {
 const memo = new Map();                       // in-memory only, never saved
 
 export function roomTiles(seed, site, floor, room) {
+  if (floor < 0) return campRoom();          // authored, identical every time
   const key = `${seed}|${site}|${floor}|${room}`;
   const hit = memo.get(key);
   if (hit) return hit;
@@ -373,6 +378,7 @@ function keepsWayOut(grid, protect, blockedSet, extra) {
 }
 
 export function contentsOf(seed, site, floor, room) {
+  if (floor < 0) return [];                  // nobody leaves salvage lying in camp
   const key = `${seed}|${site}|${floor}|${room}`;
   const hit = contentsMemo.get(key);
   if (hit) return hit;

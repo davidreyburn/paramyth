@@ -583,3 +583,46 @@ the gate covers every future edit to the table.
 **Also**: the keyboard gate grew an `I` case, because a binding is only real if a
 genuine key event reaches the frame — the same standard the Escape binding was
 held to.
+
+---
+
+## 2026-09-22 — 0.2.0: the loop closes
+
+**What.** A Company Camp above the mausoleum, base value on items, a
+quartermaster who buys, and a stash that takes things both ways.
+
+**Why it had to come first.** Until now every number in the game was
+unfalsifiable. Bulk pressure is not real if nothing you carry is worth anything,
+so no amount of tuning the budget could have told us whether triage is
+interesting. The loop closing is what makes `plans/slice-01.md` answerable at
+all — and answering it is still a separate thing from having done so.
+
+**The camp is the first authored place.** `design/world-shape.md` has always
+called for hand-placed anchors with generated tissue between them, and nothing
+implemented it. Floors below zero are the surface; `roomTiles` routes `floor < 0`
+to `core/camp.js`, which is a fixed ASCII map that validates its own dimensions
+and asserts every station is reachable from the mouth — the first draft had the
+pit fully walled in, which the assert caught before it ever rendered.
+
+**Two things it forced that were overdue.**
+
+*The grid vocabulary moved to `core/grid.js`.* An authored place needs `COLS`,
+`ROWS` and the tile enum, and `gen.js` needs the camp — a cycle. Extracting the
+shape both depend on took ten minutes and `gen.js` re-exports it, so nothing
+downstream changed.
+
+*Transfer is two-way now.* The stash needed it, and it is the same machinery the
+corpse drop will need. Built once.
+
+**Value before provenance, deliberately.** Items carry a flat base worth, and
+once marks are legible a chain will multiply it. The alternative — waiting for
+provenance so value could be built correctly the first time — would have kept the
+loop open for weeks. It closes on flat value and gets interesting later, rather
+than getting built twice.
+
+**Two gates broke, and both were telling the truth.** "Stairs exist on the right
+floors" fell to 122/182 because floor 0 now has a way up; the gate's model was
+stale, not the generator. And a dozen item gates failed because **the starting
+room is now the camp, which holds no salvage** — they had all quietly assumed you
+begin underground. They descend first now, via one helper, which is also a more
+honest fixture.

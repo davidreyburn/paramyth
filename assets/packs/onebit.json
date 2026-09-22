@@ -309,5 +309,35 @@
         ]
       ]
     }
+  },
+  "_stations": "Camp stations. PLACEHOLDER art borrowed from decor: there are no NPCs or counters on this sheet.",
+  "stations": {
+    "quartermaster": {
+      "cells": [
+        [
+          "decor",
+          1,
+          4
+        ]
+      ]
+    },
+    "stash": {
+      "cells": [
+        [
+          "decor",
+          4,
+          2
+        ]
+      ]
+    },
+    "appraiser": {
+      "cells": [
+        [
+          "decor",
+          2,
+          4
+        ]
+      ]
+    }
   }
 }

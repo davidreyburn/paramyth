@@ -6,7 +6,9 @@ import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER } fr
 import { h } from '../core/addr.js';
 import { tonedSheet, drawsFor, shadeTone, variantFor } from './tileset.js';
 import { visible, prompt, containerItems, carriedBulk, tier,
-         PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, BULK_BUDGET } from '../sim/interact.js';
+         PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, STASH_ROWS,
+         BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
+import { campStations } from '../core/camp.js';
 import { isContainer, labelOf, bulkOf, KIND } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
@@ -216,18 +218,23 @@ export function createRenderer(canvas, pack = null) {
     ctx.fillStyle = 'rgba(0,0,0,0.78)';
     ctx.fillRect(0, 0, W, VIEW_H);
 
-    const two = s.screen === 'container';
-    const cont = two ? containerItems(s, s.screenKey).map((c) => c.kind) : [];
-    const contW = CONT_COLS * CELL + PAD * 2;
+    const isStash = s.screen === 'stash';
+    const two = s.screen === 'container' || isStash;
+    const cont = s.screen === 'container' ? containerItems(s, s.screenKey).map((c) => c.kind)
+               : isStash ? s.stash : [];
+    const lCols = isStash ? STASH_COLS : CONT_COLS;
+    const lRows = isStash ? STASH_ROWS : CONT_ROWS;
+    const contW = lCols * CELL + PAD * 2;
     const packW = PACK_COLS * CELL + PAD * 2;
     const total = two ? contW + 12 + packW : packW;
     const x0 = Math.round((W - total) / 2);
     const y0 = 96;
 
     if (two) {
-      drawPanel(x0, y0, CONT_COLS, CONT_ROWS,
-        cont.length ? `CONTAINER \u00b7 ${cont.length} left` : 'CONTAINER \u00b7 empty',
-        cont, tone, s.side === 0 ? s.cur : -1);
+      const title = isStash
+        ? `STASH \u00b7 ${cont.length}/${STASH_SLOTS}`
+        : (cont.length ? `CONTAINER \u00b7 ${cont.length} left` : 'CONTAINER \u00b7 empty');
+      drawPanel(x0, y0, lCols, lRows, title, cont, tone, s.side === 0 ? s.cur : -1);
     }
     const px = two ? x0 + contW + 12 : x0;
     const bulk = carriedBulk(s);
@@ -238,8 +245,9 @@ export function createRenderer(canvas, pack = null) {
     ctx.font = '8px ui-monospace, monospace';
     ctx.textAlign = 'center'; ctx.textBaseline = 'top';
     ctx.fillStyle = '#6b6357';
-    const hint = two ? 'A take   \u00b7   Y take all   \u00b7   Esc / B close'
-                     : 'Start / I / Esc close   \u00b7   hold G to drop everything';
+    const hint = isStash ? 'A move   \u00b7   Y move all   \u00b7   Esc / B close'
+               : two      ? 'A take   \u00b7   Y take all   \u00b7   Esc / B close'
+                          : 'Start / I / Esc close   \u00b7   hold G to drop everything';
     ctx.fillText(hint, W / 2, y0 + PACK_ROWS * CELL + PAD * 2 + TITLE + 10);
 
     // What the cursor is on, named.
@@ -249,6 +257,19 @@ export function createRenderer(canvas, pack = null) {
       ctx.fillText(`${labelOf(under)}  \u00b7  bulk ${bulkOf(under)}`, W / 2, y0 - 16);
     }
     ctx.textAlign = 'start';
+  }
+
+  function drawStations(s, tone) {
+    if (s.floor >= 0 || !pack || !pack.stations) return;
+    for (const st of campStations()) {
+      const def = pack.stations[st.kind];
+      if (!def) continue;
+      const tx = st.tile % COLS, ty = (st.tile / COLS) | 0;
+      const [sh, gx, gy] = variantFor(def.cells, tx, ty);
+      const sheet = tonedSheet(pack, sh, tone);
+      if (sheet) ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile,
+                               tx*TILE, ty*TILE, TILE, TILE);
+    }
   }
 
   function drawPlayer(s) {
@@ -300,6 +321,7 @@ export function createRenderer(canvas, pack = null) {
       const tone = TONES[world.era.name] || TONES['Recent'];
       ctx.fillStyle = P.void; ctx.fillRect(0, 0, W, H);
       drawRoom(world.grid, world.era);
+      drawStations(state, tone);
       drawItems(state, tone);
       drawPlayer(state);
       drawLight(state);

@@ -4,14 +4,26 @@
 
 import { contentsOf, insideOf, roomTiles, floorPlan, floorCount, COLS, ROWS, TILE, T, solidTile } from '../core/gen.js';
 import { KIND, isContainer, isPortable, isSolidItem, footOf, bulkOf, verbFor } from '../core/items.js';
-import { createState, UNITS } from '../sim/state.js';
+import { createState, spawnIn, UNITS } from '../sim/state.js';
 import { step, solidTiles, solidBodies } from '../sim/step.js';
 import { VERB, setVerb } from '../sim/frame.js';
-import { visible, reachable, prompt, carriedBulk, tier, keyOf, containerItems, BULK_BUDGET } from '../sim/interact.js';
+import { visible, reachable, prompt, carriedBulk, tier, keyOf, containerItems,
+         haulValue, stationAt, BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
 
 let failures = 0;
 const ok = (n, c, d = '') => { console.log(`${c ? '  ok  ' : '  FAIL'}  ${n}${d ? '  ' + d : ''}`); if (!c) failures++; };
 const SEED = 0x1594;
+
+// The game now starts in the CAMP, which holds no salvage. Anything testing
+// loot, containers or collision needs to be underground first.
+const delve = (site = 0, floor = 0, room = null) => {
+  const s = createState(SEED);
+  s.site = site; s.floor = floor;
+  s.room = room !== null ? room : floorPlan(SEED, site, floor).cells[0];
+  const p = spawnIn(SEED, s.site, s.floor, s.room);
+  s.x = p.x; s.y = p.y;
+  return s;
+};
 
 // --- placement -------------------------------------------------------------
 {
@@ -62,7 +74,7 @@ const SEED = 0x1594;
 
 // --- the prompt and the button must agree ----------------------------------
 {
-  const st = createState(SEED);
+  const st = delve();
   const cs = visible(st);
   ok('the starting room has visible contents', cs.length > 0, `${cs.length}`);
 
@@ -70,7 +82,7 @@ const SEED = 0x1594;
   // predicted exactly what happened.
   let checked = 0, agreed = 0;
   for (const c of cs) {
-    const s2 = createState(SEED);
+    const s2 = delve();
     // Adjacent, not on top: a solid item is a place you cannot stand.
     s2.x = (((c.tile % COLS) - 1) * TILE + TILE/2) * UNITS;
     s2.y = (((c.tile / COLS) | 0) * TILE + TILE/2) * UNITS;
@@ -95,7 +107,7 @@ const SEED = 0x1594;
   ok('tiers split the budget', tier(0) === 'light' && tier(12) === 'laden' && tier(19) === 'overloaded',
      `light<=8 laden<=16 overloaded<=${BULK_BUDGET}`);
 
-  const s = createState(SEED);
+  const s = delve();
   s.carried = Array(BULK_BUDGET).fill('key');       // bulk 1 each: exactly full
   ok('bulk sums from what is carried', carriedBulk(s) === BULK_BUDGET, `${carriedBulk(s)}`);
 
@@ -111,7 +123,7 @@ const SEED = 0x1594;
 
   ok('the world contains portable items at all', !!found, found ? `${found.c.kind} at site ${found.site} floor ${found.floor}` : 'none anywhere');
   if (found) {
-    const s2 = createState(SEED);
+    const s2 = delve();
     s2.site = found.site; s2.floor = found.floor; s2.room = found.room;
     s2.carried = Array(BULK_BUDGET).fill('key');
     s2.x = ((found.c.tile % COLS) * TILE + TILE/2) * UNITS;
@@ -122,14 +134,14 @@ const SEED = 0x1594;
     step(s2, setVerb(0, VERB.INTERACT, true));
     ok('a refused pickup takes nothing', s2.carried.length === n, `${s2.carried.length} carried`);
 
-    const s3 = createState(SEED);
+    const s3 = delve();
     s3.site = found.site; s3.floor = found.floor; s3.room = found.room;
     s3.x = s2.x; s3.y = s2.y;
     step(s3, setVerb(0, VERB.INTERACT, true));
     ok('an empty-handed pickup succeeds', s3.carried.length === 1, s3.carried.join(','));
   }
 
-  const d = createState(SEED);
+  const d = delve();
   d.carried = ['gem','bones','crystal'];
   step(d, setVerb(0, VERB.DROP, true));
   ok('drop-load empties the hands', d.carried.length === 0);
@@ -137,7 +149,7 @@ const SEED = 0x1594;
 
 // --- the world does not grow ------------------------------------------------
 {
-  const s = createState(SEED);
+  const s = delve();
   const base = JSON.stringify(s).length;
   for (const c of visible(s)) { s.taken.push(c.key); }
   ok('taking is recorded, generation is not',
@@ -146,7 +158,7 @@ const SEED = 0x1594;
 
 // --- containers and the transfer screen ------------------------------------
 {
-  const s = createState(SEED);
+  const s = delve();
   const c = visible(s).find((x) => isContainer(x.kind));
   ok('the start room has a container', !!c, c ? c.kind : 'none');
 
@@ -175,7 +187,7 @@ const SEED = 0x1594;
   // Every documented way out must work, from both screens.
   for (const [name, verb] of [['CANCEL (Esc)', VERB.CANCEL], ['DODGE (B)', VERB.DODGE], ['MAP (Tab)', VERB.MAP]]) {
     for (const which of ['container', 'pack']) {
-      const t = createState(SEED);
+      const t = delve();
       t.screen = which; t.screenKey = which === 'container' ? c.key : '';
       step(t, 0);
       step(t, setVerb(0, verb, true));
@@ -187,7 +199,7 @@ const SEED = 0x1594;
   ok('escape leaves the world alone', s.screen === '' && s.carried.length > 0);
 
   // Movement must be inert while a screen is open.
-  const m = createState(SEED);
+  const m = delve();
   m.screen = 'pack';
   const x0 = m.x;
   for (let i = 0; i < 20; i++) step(m, setVerb(0, VERB.RIGHT, true));
@@ -204,7 +216,7 @@ const SEED = 0x1594;
 
   let trips = 0, landed = 0, returned = 0;
   for (let site = 0; site < 25; site++) {
-    const s = createState(SEED);
+    const s = delve();
     s.site = site;
     const plan = floorPlan(SEED, site, 0);
     if (plan.stairDown < 0) continue;
@@ -248,7 +260,7 @@ const SEED = 0x1594;
   ok('portables are not solid', loose.length === 0, loose.join(', '));
 
   // Walking into one must actually stop you.
-  const s = createState(SEED);
+  const s = delve();
   const solid = visible(s).find((c) => isSolidItem(c.kind));
   ok('the start room has something solid', !!solid, solid ? solid.kind : 'none');
   if (solid) {
@@ -274,7 +286,7 @@ const SEED = 0x1594;
 
 // --- the pack has its own button --------------------------------------------
 {
-  const s = createState(SEED);
+  const s = delve();
   step(s, setVerb(0, VERB.INVENTORY, true));
   ok('INVENTORY opens the pack', s.screen === 'pack' && s.side === 1, s.screen || 'nothing');
 
@@ -283,12 +295,12 @@ const SEED = 0x1594;
   ok('the same button closes it again', s.screen === '', s.screen || 'closed');
 
   // Y is free for tools now; it must not open anything.
-  const t = createState(SEED);
+  const t = delve();
   step(t, setVerb(0, VERB.TOOL, true));
   ok('TOOL no longer opens the pack', t.screen === '', t.screen || 'closed');
 
   // Opening the pack must not move the player or take anything.
-  const u = createState(SEED);
+  const u = delve();
   const x0 = u.x, n0 = u.carried.length;
   step(u, setVerb(0, VERB.INVENTORY, true));
   ok('opening the pack changes nothing else', u.x === x0 && u.carried.length === n0);
@@ -317,7 +329,7 @@ const SEED = 0x1594;
       }
   ok('there is a rock with open floor beside it', !!found, found ? `site ${found.site} (${found.tx},${found.ty})` : 'none');
   if (found) {
-    const s = createState(SEED);
+    const s = delve();
     s.site = found.site; s.floor = found.f; s.room = found.room;
     s.x = ((found.tx - 2) * TILE + TILE/2) * UNITS;
     s.y = (found.ty * TILE + TILE/2) * UNITS;
@@ -348,7 +360,7 @@ const SEED = 0x1594;
   };
 
   const runAt = (hit) => {
-    const s = createState(SEED);
+    const s = delve();
     s.site = hit.site; s.floor = hit.f; s.room = hit.room;
     s.x = (hit.from * TILE + TILE/2) * UNITS;
     s.y = (hit.ty * TILE + TILE/2) * UNITS;
@@ -381,7 +393,7 @@ const SEED = 0x1594;
     for (let f = 0; f < FC(SEED, site); f++) {
       const plan = FP(SEED, site, f);
       for (const room of plan.cells) {
-        const st = createState(SEED); st.site = site; st.floor = f; st.room = room;
+        const st = delve(); st.site = site; st.floor = f; st.room = room;
         const g = roomTiles(SEED, site, f, room).grid;
         const solids = solidTiles(st);
         rooms++;
@@ -428,6 +440,99 @@ const SEED = 0x1594;
   const pct = (behind / loot) * 100;
   ok('loot behind obstructions is a minority, by design', pct < 25,
      `${behind}/${loot} (${pct.toFixed(1)}%) out of reach for now`);
+}
+
+// --- the camp, and the loop closing ----------------------------------------
+{
+  const { campStations, STATION } = await import('../core/camp.js');
+  const { COLS: C, TILE: TL, T: TT, roomTiles: RT, floorPlan: FP } = await import('../core/gen.js');
+
+  const s = createState(SEED);
+  ok('you start in the camp', s.floor === -1, `floor ${s.floor}`);
+  ok('the camp holds no salvage', visible(s).length === 0, `${visible(s).length}`);
+  ok('you start with nothing', s.scrap === 0 && !s.carried.length && !s.stash.length);
+
+  const standAt = (st, state) => {
+    state.x = ((st.tile % C) * TL + TL/2) * UNITS;
+    state.y = (((st.tile / C) | 0) * TL + TL/2) * UNITS;
+  };
+  const q = campStations().find((x) => x.kind === STATION.QUARTERMASTER);
+  const sh = campStations().find((x) => x.kind === STATION.STASH);
+  ok('the camp has a quartermaster and a stash', !!q && !!sh);
+
+  // Selling
+  standAt(q, s);
+  ok('an empty-handed sale is refused, and says so', prompt(s).refuse === true, prompt(s).text);
+  s.carried = ['gem', 'gem', 'bones', 'key'];
+  const worth = haulValue(s);
+  ok('the haul is worth the sum of its parts', worth === 12+12+2+3, String(worth));
+  ok('the toast names the price', prompt(s).text.includes(String(worth)), prompt(s).text);
+  step(s, setVerb(0, VERB.INTERACT, true));
+  ok('selling converts the haul to scrap', s.scrap === worth && s.carried.length === 0,
+     `${s.scrap} scrap, carrying ${s.carried.length}`);
+
+  // Value per bulk is the decision the loop is made of.
+  const { valueOf, bulkOf: bo } = await import('../core/items.js');
+  ok('a gem beats bones per unit of bulk',
+     valueOf('gem')/bo('gem') > valueOf('bones')/bo('bones'),
+     `gem ${valueOf('gem')/bo('gem')}/bulk vs bones ${valueOf('bones')/bo('bones')}/bulk`);
+
+  // Stash, both directions
+  const t = createState(SEED);
+  standAt(sh, t);
+  ok('the stash prompts', prompt(t).text === 'Open stash', prompt(t).text);
+  step(t, setVerb(0, VERB.INTERACT, true));
+  ok('the stash screen opens', t.screen === 'stash', t.screen || 'none');
+
+  t.carried = ['gem', 'key'];
+  t.side = 1; t.cur = 0;
+  step(t, 0); step(t, setVerb(0, VERB.INTERACT, true));
+  ok('pack -> stash works', t.stash.length === 1 && t.carried.length === 1,
+     `stash ${t.stash.length}, pack ${t.carried.length}`);
+
+  t.side = 0; t.cur = 0;
+  step(t, 0); step(t, setVerb(0, VERB.INTERACT, true));
+  ok('stash -> pack works, so transfer is two-way', t.stash.length === 0 && t.carried.length === 2,
+     `stash ${t.stash.length}, pack ${t.carried.length}`);
+
+  t.side = 1;
+  step(t, 0); step(t, setVerb(0, VERB.TOOL, true));
+  ok('move-all empties the pack into the stash', t.carried.length === 0 && t.stash.length === 2);
+
+  const full = createState(SEED);
+  full.screen = 'stash'; full.side = 1; full.cur = 0;
+  full.stash = Array(STASH_SLOTS).fill('key');
+  full.carried = ['gem'];
+  step(full, 0); step(full, setVerb(0, VERB.INTERACT, true));
+  ok('a full stash refuses', full.carried.length === 1 && full.stash.length === STASH_SLOTS);
+}
+
+// --- camp and mausoleum connect both ways -----------------------------------
+{
+  const { T: TT, roomTiles: RT, floorPlan: FP, COLS: C } = await import('../core/gen.js');
+  const { campRoom } = await import('../core/camp.js');
+
+  const s = createState(SEED);
+  const g = campRoom().grid;
+  let mouth = -1;
+  for (let i = 0; i < g.length; i++) if (g[i] === TT.STAIR_D) { mouth = i; break; }
+  ok('the camp has a mouth down', mouth >= 0);
+
+  s.x = ((mouth % C) * TILE + TILE/2) * UNITS;
+  s.y = (((mouth / C) | 0) * TILE + TILE/2) * UNITS;
+  ok('standing on the mouth prompts a descent', prompt(s).text === 'Descend', prompt(s).text);
+
+  step(s, setVerb(0, VERB.INTERACT, true));
+  ok('descending reaches floor 0', s.floor === 0, `floor ${s.floor}`);
+  const g0 = RT(SEED, s.site, 0, s.room).grid;
+  const under = g0[Math.floor(s.y/(TILE*UNITS))*C + Math.floor(s.x/(TILE*UNITS))];
+  ok('you land on the way back up', under === TT.STAIR_U);
+
+  step(s, 0);
+  step(s, setVerb(0, VERB.INTERACT, true));
+  ok('climbing out returns you to the camp', s.floor === -1, `floor ${s.floor}`);
+  ok('and you land on the mouth you left by',
+     Math.floor(s.x/(TILE*UNITS)) === mouth % C && Math.floor(s.y/(TILE*UNITS)) === ((mouth/C)|0));
 }
 
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all item gates passed\n');

@@ -146,7 +146,8 @@ const SEED = 0x1594;
     for (let f = 0; f < n; f++) {
       const p = floorPlan(SEED, s, f);
       total++;
-      const wantDown = f < n - 1, wantUp = f > 0;
+      // Every mausoleum floor now has a way UP — floor 0's leads to the camp.
+      const wantDown = f < n - 1, wantUp = f >= 0;
       if ((p.stairDown >= 0) === wantDown && (p.stairUp >= 0) === wantUp
           && (!wantDown || p.cells.includes(p.stairDown))
           && (!wantUp || p.cells.includes(p.stairUp))) good++;
@@ -172,6 +173,17 @@ const SEED = 0x1594;
   }
 
   ok('stairs exist on the right floors, in real rooms', good === total, `${good}/${total}`);
+
+  // The way out of the mausoleum. Without it floor 0 is a one-way trip.
+  let exits = 0, sites = 0;
+  for (let si = 0; si < 60; si++) {
+    sites++;
+    const p0 = floorPlan(SEED, si, 0);
+    if (p0.stairUp < 0 || !p0.cells.includes(p0.stairUp)) continue;
+    const g = roomTiles(SEED, si, 0, p0.stairUp).grid;
+    for (let i = 0; i < g.length; i++) if (g[i] === T.STAIR_U) { exits++; break; }
+  }
+  ok('every mausoleum has a way out to the camp', exits === sites, `${exits}/${sites}`);
   ok('every stair down is answered by a stair up below', paired === pairs, `${paired}/${pairs} shafts`);
   ok('every stair tile is actually placed in its room', tilesOk === tiles, `${tilesOk}/${tiles}`);
   ok('every stair tile is reachable, not sealed in', reachOk === reach, `${reachOk}/${reach}`);

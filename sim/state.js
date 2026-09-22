@@ -23,8 +23,9 @@ export function spawnIn(seed, site, floor, room) {
 
 export function createState(seed) {
   seed = seed >>> 0;
-  const site = 0, floor = 0;
-  const room = floorPlan(seed, site, floor).cells[0];
+  // You start in the camp, above the mausoleum, as the campaign itself begins.
+  const site = 0, floor = -1;
+  const room = 0;
   const p = spawnIn(seed, site, floor, room);
   return {
     seed, tick: 0,
@@ -34,6 +35,8 @@ export function createState(seed) {
     lamp: 112 * UNITS,
     lastFrame: 0,
     moves: 0,          // room transitions, so the HUD can show progress
+    scrap: 0,          // the only currency
+    stash: [],         // what is left in camp
     carried: [],       // item kinds, in the order taken
     taken: [],         // keys of contents removed from the world
     opened: [],        // keys of containers opened
@@ -50,7 +53,8 @@ export function hashState(s) {
   mix(s.seed); mix(s.tick); mix(s.x); mix(s.y); mix(s.facing);
   mix(s.moving ? 1 : 0); mix(s.site); mix(s.floor); mix(s.room); mix(s.moves);
   const roll = (arr) => { mix(arr.length); for (const v of arr) for (let i = 0; i < v.length; i++) mix(v.charCodeAt(i)); };
-  roll(s.carried); roll(s.taken); roll(s.opened);
+  roll(s.carried); roll(s.taken); roll(s.opened); roll(s.stash);
+  mix(s.scrap);
   mix(s.cur); mix(s.side); roll([s.screen, s.screenKey]);
   return h >>> 0;
 }

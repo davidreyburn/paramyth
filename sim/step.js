@@ -6,8 +6,10 @@ import { VERB, hasVerb } from './frame.js';
 import { UNITS, spawnIn } from './state.js';
 import { roomTiles, floorPlan, floorCount, isSolid, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
 import { isContainer, isPortable, isSolidItem, footOf, bulkOf } from '../core/items.js';
-import { reachable, stairUnder, visible, carriedBulk, containerItems, BULK_BUDGET,
-         PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS } from './interact.js';
+import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
+         haulValue, BULK_BUDGET, STASH_SLOTS,
+         PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './interact.js';
+import { STATION } from '../core/camp.js';
 
 const SPEED = 192, SPEED_DIAG = 136;
 const SPRINT_NUM = 5, SPRINT_DEN = 3;
@@ -90,16 +92,20 @@ function enterFloor(s, floor) {
 // Movement stays blocked so a transfer can never be half-made in transit.
 function screenStep(s, frame) {
   const press = (v) => hasVerb(frame, v) && !hasVerb(s.lastFrame, v);
-  const cont = s.screen === 'container' ? containerItems(s, s.screenKey) : [];
-  const twoSided = s.screen === 'container';
+  const isStash = s.screen === 'stash';
+  const cont = s.screen === 'container' ? containerItems(s, s.screenKey)
+             : isStash ? s.stash.map((kind, i) => ({ kind, idx: i }))
+             : [];
+  const twoSided = s.screen === 'container' || isStash;
   if (!twoSided) s.side = 1;
 
   if (press(VERB.CANCEL) || press(VERB.DODGE) || press(VERB.MAP) || press(VERB.INVENTORY)) {
     s.screen = ''; s.screenKey = ''; s.cur = 0; s.side = 0; return;
   }
 
+  const leftCols = isStash ? STASH_COLS : CONT_COLS;
   const list = () => (s.side === 0 ? cont : s.carried);
-  const cols = () => (s.side === 0 ? CONT_COLS : PACK_COLS);
+  const cols = () => (s.side === 0 ? leftCols : PACK_COLS);
 
   if (press(VERB.LEFT)) {
     if (s.side === 1 && twoSided && s.cur % PACK_COLS === 0) { s.side = 0; s.cur = 0; }
@@ -107,7 +113,7 @@ function screenStep(s, frame) {
   }
   if (press(VERB.RIGHT)) {
     const n = list().length;
-    if (s.side === 0 && twoSided && (s.cur % CONT_COLS === CONT_COLS - 1 || s.cur >= n - 1)) { s.side = 1; s.cur = 0; }
+    if (s.side === 0 && twoSided && (s.cur % leftCols === leftCols - 1 || s.cur >= n - 1)) { s.side = 1; s.cur = 0; }
     else s.cur = Math.min(Math.max(0, n - 1), s.cur + 1);
   }
   if (press(VERB.UP))   s.cur = Math.max(0, s.cur - cols());
@@ -120,12 +126,34 @@ function screenStep(s, frame) {
     return true;
   };
 
-  if (press(VERB.INTERACT) && s.side === 0 && cont[s.cur]) {
-    take(cont[s.cur]);
-    s.cur = Math.min(s.cur, Math.max(0, containerItems(s, s.screenKey).length - 1));
+  // The stash moves BOTH ways; a container only gives.
+  const toPack = (kind) => {
+    if (carriedBulk(s) + bulkOf(kind) > BULK_BUDGET) return false;
+    s.carried.push(kind); return true;
+  };
+  const toStash = (i) => {
+    if (s.stash.length >= STASH_SLOTS) return false;
+    s.stash.push(s.carried[i]); s.carried.splice(i, 1); return true;
+  };
+
+  if (press(VERB.INTERACT)) {
+    if (s.side === 0 && cont[s.cur]) {
+      if (isStash) { if (toPack(cont[s.cur].kind)) s.stash.splice(s.cur, 1); }
+      else take(cont[s.cur]);
+      const left = isStash ? s.stash.length : containerItems(s, s.screenKey).length;
+      s.cur = Math.min(s.cur, Math.max(0, left - 1));
+    } else if (s.side === 1 && isStash && s.carried[s.cur]) {
+      toStash(s.cur);
+      s.cur = Math.min(s.cur, Math.max(0, s.carried.length - 1));
+    }
   }
   if (press(VERB.TOOL) && twoSided) {
-    for (const it of cont) if (!take(it)) break;
+    if (isStash) {
+      if (s.side === 0) { while (s.stash.length && toPack(s.stash[0])) s.stash.shift(); }
+      else { while (s.carried.length && toStash(0)); }
+    } else {
+      for (const it of cont) if (!take(it)) break;
+    }
     s.cur = 0;
   }
 }
@@ -171,9 +199,17 @@ export function step(s, frame) {
   // This order must match `prompt()`, and a gate holds them together.
   const pressed = hasVerb(frame, VERB.INTERACT) && !hasVerb(s.lastFrame, VERB.INTERACT);
   if (pressed) {
+    // A station first, then the stair underfoot, then whatever is beside you.
+    const station = stationAt(s);
     const st = stairUnder(s);
-    if (st === 'down' && s.floor + 1 < floorCount(s.seed, s.site)) enterFloor(s, s.floor + 1);
-    else if (st === 'up' && s.floor > 0) enterFloor(s, s.floor - 1);
+    if (station && station.kind === STATION.QUARTERMASTER) {
+      if (s.carried.length) { s.scrap += haulValue(s); s.carried.length = 0; }
+    } else if (station && station.kind === STATION.STASH) {
+      s.screen = 'stash'; s.screenKey = ''; s.cur = 0; s.side = 0;
+    } else if (station && station.kind === STATION.APPRAISER) {
+      /* not built yet */
+    } else if (st === 'down' && s.floor + 1 < floorCount(s.seed, s.site)) enterFloor(s, s.floor + 1);
+    else if (st === 'up' && s.floor > -1) enterFloor(s, s.floor - 1);
     else {
       const c = reachable(s);
       if (c && isContainer(c.kind)) {

@@ -15,11 +15,14 @@ export const KIND = {
   urn:     { label: 'urn',     container: true, solid: true, foot: 7, bulk: 0, fragility: 3 },
 
   // Portable. `bulk` is the whole economy: what you carry is what you cannot.
-  key:     { label: 'key',     bulk: 1, fragility: 0 },
-  gem:     { label: 'gem',     bulk: 1, fragility: 1 },
-  crystal: { label: 'crystal', bulk: 2, fragility: 2 },
-  trinket: { label: 'trinket', bulk: 1, fragility: 1 },
-  bones:   { label: 'bones',   bulk: 2, fragility: 2 },
+  // `value` is BASE scrap, before provenance. Once marks are legible a chain
+  // multiplies this; until then it is the flat worth of the material, and the
+  // interesting number is value per bulk — a gem is worth twelve times a rib.
+  key:     { label: 'key',     bulk: 1, value:  3, fragility: 0 },
+  gem:     { label: 'gem',     bulk: 1, value: 12, fragility: 1 },
+  crystal: { label: 'crystal', bulk: 2, value:  9, fragility: 2 },
+  trinket: { label: 'trinket', bulk: 1, value:  4, fragility: 1 },
+  bones:   { label: 'bones',   bulk: 2, value:  2, fragility: 2 },
 
   // Fixtures. Scenery until a system gives them a verb — but furniture still
   // takes up the floor it stands on.
@@ -34,6 +37,7 @@ export const isSolidItem = (k) => !!(KIND[k] && KIND[k].solid);
 export const isContainer = (k) => !!(KIND[k] && KIND[k].container);
 export const isPortable  = (k) => !!(KIND[k] && KIND[k].bulk > 0 && !KIND[k].container);
 export const bulkOf      = (k) => (KIND[k] && KIND[k].bulk) || 0;
+export const valueOf     = (k) => (KIND[k] && KIND[k].value) || 0;
 export const labelOf     = (k) => (KIND[k] && KIND[k].label) || k;
 
 // What the toast says. The verb is the whole interface: one button, one line.
