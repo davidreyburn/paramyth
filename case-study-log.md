@@ -4,6 +4,43 @@
 
 ---
 
+## 2026-09-22 — The stairs were lit like a wall
+
+**What.** Stairs read as a bright solid rectangle sitting on top of the floor.
+They were already `kind: overlay, base: FLOOR`, which is the fix you would reach
+for first — and it was already there and doing nothing.
+
+**Why.** Two separate things, and only the second one mattered. The art is
+400/400 opaque — a staircase fills its square, correctly — so the FLOOR base was
+covered completely and could never show. The actual cause was `shade`: stairs
+rendered at **1.0** and FLOOR at **0.42**. `shade` is the manifest's device for
+placing a tile in the value hierarchy, and its own note says floor sits dark and
+walkable while wall stone takes the light. The stairs were sitting in the wall's
+band. A walkable tile was being lit like masonry, so of course it read as a
+block laid on the ground rather than a hole in it.
+
+**Evidence.** Decoded the sprite: STAIR_U is 253 light / 147 dark / 0 clear.
+Rendered the tile over floor at 1.0, 0.95, 0.8, 0.65, 0.5 and 0.42 and looked at
+all six; 0.42 is the only one where the artist's dither band — the dissolve
+along the bottom edge, drawn precisely to fade a stair into a floor — actually
+dissolves, because that is the only value at which the two tones match.
+
+**Outcome.** Both stairs at the floor's value. Brightness now carries meaning
+that it did not before: dark is what you can walk on, light is stone standing
+up. Gated as paired constants against FLOOR, with a second gate asserting the
+wall stays above it.
+
+**Also.** Writing the overlay gate — *every overlay lets its base show through* —
+immediately caught `SARC` doing the same thing: five opaque cells, each paying
+for a floor draw nobody could ever see. Declared as a full-bleed tile now, which
+changes no pixels and removes the draw.
+
+**The trade.** The stairs are now much less conspicuous than a sarcophagus. That
+is what blending costs, and the lever is one number in the manifest if they
+should pop more.
+
+---
+
 ## 2026-09-22 — The pot that was renamed instead of looked at
 
 **What.** `pot` became `crate` in the item table, the manifest legend was edited

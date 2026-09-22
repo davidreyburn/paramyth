@@ -11,6 +11,19 @@ entire.** See `plans/roadmap.md`.
 
 ### Fixed
 
+- **Stairs drew as a solid block pasted over the floor.** They were already
+  declared as an overlay on FLOOR, but the art is 400/400 opaque, so the base
+  could never show. The real cause was `shade`: stairs rendered at **1.0**, the
+  *wall's* value, while FLOOR renders at 0.42. A walkable tile was being lit
+  like masonry. Both stairs now sit at the floor's value, which also lets the
+  artist's own dither band — the bottom edge that fades a stair into the floor —
+  do the job it was drawn for.
+- **Brightness now means something.** Dark is what you walk on (floor, stairs);
+  light is stone standing up (wall, sarcophagi). That is what the manifest's
+  `_shade` note always claimed and what the stairs were quietly contradicting.
+- **`SARC` claimed a base it covered completely.** Five opaque cells declaring
+  `base: FLOOR`, so every sarcophagus paid for a floor draw nobody could see.
+  It is a full-bleed tile, declared as one now. No pixel changes.
 - **Pots were showing up as crates.** The `pot` kind was renamed to `crate` on
   2026-09-22 on the belief that the sprite at decor 3,4 was a crate. It is a
   round-bellied pot, and there is no crate on either sheet — so for a release
@@ -20,6 +33,11 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- A gate asserting **every overlay lets its base show through**. Art with no
+  transparent pixel covers its base completely, so the base is a wasted draw and
+  a false claim — it found `SARC` the moment it was written.
+- A gate binding **walkable tiles to the floor's value** and keeping the wall
+  above it. These are paired constants and nothing held them together.
 - A gate binding item kinds to item art in both directions. A kind with no art
   falls back to a flat rectangle and art with no kind can never be drawn, and
   neither raises an error — which is how a rename touched one and not the other.

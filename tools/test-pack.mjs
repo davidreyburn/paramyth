@@ -195,6 +195,41 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
     for (const [sh, gx, gy] of def.cells || []) check(name, sh, gx, gy);
 
   ok('no tile or item draws as a featureless slab', flat.length === 0, flat.join(' | '));
+
+  // An overlay promises its base shows through. Art with no transparent pixel
+  // covers the base completely, so the base is a wasted draw and a false claim
+  // — which is how the stairs kept a FLOOR underneath that nobody could see.
+  const clearOf = (sheet, gx, gy) => {
+    const { out, stride } = sheets[sheet];
+    let clear = 0;
+    for (let y = gy*pack.tile; y < (gy+1)*pack.tile; y++)
+      for (let x = gx*pack.tile; x < (gx+1)*pack.tile; x++)
+        if (out[y*stride + x*4 + 3] < 8) clear++;
+    return clear;
+  };
+  const opaqueOverlays = [];
+  for (const [name, def] of Object.entries(pack.tiles))
+    if (def.kind === 'overlay')
+      for (const [sh, gx, gy] of def.cells || [])
+        if (clearOf(sh, gx, gy) === 0) opaqueOverlays.push(`${name} -> ${sh} ${gx},${gy}`);
+  ok('every overlay lets its base show through', opaqueOverlays.length === 0,
+     opaqueOverlays.join(' | ') || `${Object.values(pack.tiles).filter((d) => d.kind === 'overlay').length} overlays`);
+}
+
+// --- the value hierarchy ----------------------------------------------------
+// `shade` is what places a tile in the light: floor sits dark and walkable, wall
+// stone takes the light. A walkable tile drawn in the WALL's band reads as a
+// block pasted on the floor, which is exactly what the stairs did for three
+// releases. These are paired constants, so an assertion holds them together.
+{
+  const floor = pack.tiles.FLOOR.shade;
+  const walkable = ['STAIR_D', 'STAIR_U'];
+  const off = walkable.filter((n) => pack.tiles[n].shade !== floor);
+  ok('walkable tiles are drawn at the floor\'s value, not the wall\'s', off.length === 0,
+     off.map((n) => `${n} ${pack.tiles[n].shade} vs FLOOR ${floor}`).join(', ')
+       || `${walkable.join(', ')} all at ${floor}`);
+  ok('the wall still takes the light', pack.tiles.WALL.shade > floor,
+     `WALL ${pack.tiles.WALL.shade} > FLOOR ${floor}`);
 }
 
 // --- the word and the picture -----------------------------------------------

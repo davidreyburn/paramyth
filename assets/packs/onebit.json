@@ -14,7 +14,7 @@
     "tiles": "/inbox/1-bit%20tileset/tiles%20and%20decorations/tiles-table-20-20.png",
     "decor": "/inbox/1-bit%20tileset/tiles%20and%20decorations/decorations-table-20-20.png"
   },
-  "_shade": "Optional per-type multiplier on the stratum pair, toward black. Two-tone art cannot differ in value on its own, so this is what makes wall read apart from floor: floor sits dark and walkable, wall stone takes the light.",
+  "_shade": "Optional per-type multiplier on the stratum pair, toward black. Two-tone art cannot differ in value on its own, so this is what makes wall read apart from floor: floor sits dark and walkable, wall stone takes the light. WALKABLE tiles share the floor's value: the stairs sat at the wall's 1.0 and read as a bright block pasted over the floor (DJ, 2026-09-22). A gate holds them equal now.",
   "_kinds": "variants = pick one cell from its own coordinates. nineslice = pick from a 3x3 block by which orthogonal neighbours share the type; origin is the block's top-left. overlay = draw `base` first, then a cell on top.",
   "tiles": {
     "FLOOR": {
@@ -104,9 +104,9 @@
       ]
     },
     "SARC": {
-      "kind": "overlay",
+      "_": "Full-bleed masonry, so it is not an overlay: it covered its FLOOR base completely and the base was a wasted draw. It keeps the wall's value because a sarcophagus is stone standing up, not floor.",
+      "kind": "variants",
       "shade": 0.95,
-      "base": "FLOOR",
       "cells": [
         [
           "decor",
@@ -148,9 +148,8 @@
       ]
     },
     "STAIR_D": {
-      "kind": "overlay",
-      "shade": 1.0,
-      "base": "FLOOR",
+      "kind": "variants",
+      "shade": 0.42,
       "cells": [
         [
           "decor",
@@ -165,9 +164,8 @@
       ]
     },
     "STAIR_U": {
-      "kind": "overlay",
-      "shade": 1.0,
-      "base": "FLOOR",
+      "kind": "variants",
+      "shade": 0.42,
       "cells": [
         [
           "decor",
