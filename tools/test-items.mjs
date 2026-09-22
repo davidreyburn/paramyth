@@ -144,8 +144,10 @@ const delve = (site = 0, floor = 0, room = null) => {
     const s3 = delve();
     s3.site = found.site; s3.floor = found.floor; s3.room = found.room;
     s3.x = s2.x; s3.y = s2.y;
+    s3.carried = [];                    // hands empty, blade set aside
     step(s3, setVerb(0, VERB.INTERACT, true));
-    ok('an empty-handed pickup succeeds', s3.carried.length === 1, s3.carried.join(','));
+    ok('an empty-handed pickup succeeds', s3.carried.length === 1,
+       s3.carried.map((r) => r.kind).join(','));
   }
 
   const d = delve();
@@ -462,7 +464,12 @@ const delve = (site = 0, floor = 0, room = null) => {
   const s = createState(SEED);
   ok('you start in the camp', s.floor === -1, `floor ${s.floor}`);
   ok('the camp holds no salvage', visible(s).length === 0, `${visible(s).length}`);
-  ok('you start with nothing', s.scrap === 0 && !s.carried.length && !s.stash.length);
+  // You start ARMED and otherwise empty-handed: no scrap, no stash, no salvage,
+  // and three of your twenty bulk already spent on the blade.
+  ok('you start with a blade and nothing else',
+     s.scrap === 0 && !s.stash.length && s.carried.length === 1 && s.carried[0].kind === 'sword',
+     s.carried.map((r) => r.kind).join(','));
+  ok('and the blade is already costing you bulk', carriedBulk(s) === 3, `${carriedBulk(s)}/20`);
 
   const standAt = (st, state) => {
     state.x = ((st.tile % C) * TL + TL/2) * UNITS;
@@ -474,6 +481,7 @@ const delve = (site = 0, floor = 0, room = null) => {
 
   // Selling
   standAt(q, s);
+  s.carried = [];                       // the issued blade is kit, not salvage
   ok('an empty-handed sale is refused, and says so', prompt(s).refuse === true, prompt(s).text);
   s.carried = refs('gem', 'gem', 'bones', 'key');
   // Appraised, so the assertion below is about provenance moving a price and

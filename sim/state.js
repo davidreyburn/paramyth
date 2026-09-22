@@ -7,6 +7,26 @@ import { roomTiles, floorPlan, COLS, ROWS, TILE, T } from '../core/gen.js';
 export const UNITS = 256;
 export const px = (u) => u / UNITS;
 
+// "a bar of a dozen or so points" — design/combat-and-tools.md
+export const MAX_HP = 12;
+
+// A blow in flight. These live here, in L3, because `s.swing` is delta and its
+// phase is a pure function of the delta — not of any system. Putting them in
+// systems/combat/ would have forced step.js to read upward to slow a swinging
+// player down, which is the exact edge the layer contract forbids.
+export const WINDUP = 6, ACTIVE = 6, RECOVER = 10;
+export const SWING_TICKS = WINDUP + ACTIVE + RECOVER;
+export const HURT_INVULN = 30;          // ticks of grace after taking a hit
+
+export const swingPhase = (s) => {
+  if (!s.swing) return null;
+  const t = s.tick - s.swing.at;
+  if (t < WINDUP) return 'windup';
+  if (t < WINDUP + ACTIVE) return 'active';
+  if (t < SWING_TICKS) return 'recover';
+  return null;
+};
+
 export function spawnIn(seed, site, floor, room) {
   const { grid, reach } = roomTiles(seed, site, floor, room);
   const cx = COLS >> 1, cy = ROWS >> 1;
@@ -39,8 +59,19 @@ export function createState(seed) {
     // Stats. Keen is the eye, Lore is the education; a Worker starts able to
     // see that a thing is marked but not to read what the marks say.
     stats: { might: 1, finesse: 1, vigor: 1, lore: 0, keen: 1, bearing: 1 },
+    // The body. Health is small and legible and does not regenerate in the
+    // field, per design/combat-and-tools.md. `hurtAt` is the tick of the last
+    // hit taken, which is the whole invulnerability rule.
+    hp: MAX_HP, hurtAt: -9999,
+    swing: null,       // { at, dir, hit: [] } while a blow is in flight
+    foes: [],          // live enemies in THIS room, rebuilt on entry
+    slain: [],         // ids of the dead — the only durable fact about them
     stash: [],         // item refs left in camp
-    carried: [],       // item refs, in the order taken
+    // You start ARMED. It is dangerous out there (DJ, 2026-09-22), and a first
+    // delve that begins by hunting for a weapon is a tutorial, not an opening.
+    // The blade still costs three of your twenty bulk, so the decision it poses
+    // is whether to put it DOWN — which is the more interesting question anyway.
+    carried: [{ kind: 'sword', key: 'issue:0:0:0' }],
     known: [],         // keys whose record has been read
     taken: [],         // keys of contents removed from the world
     dropped: [],       // what you put back down, and where it lies
@@ -68,7 +99,17 @@ export function hashState(s) {
     for (let i = 0; i < d.key.length; i++) mix(d.key.charCodeAt(i));
     mix(d.site); mix(d.floor); mix(d.room); mix(d.tile);
   }
-  roll(s.taken); roll(s.opened); roll(s.known);
+  // The body and what is hunting it. Foe positions are part of the state, so
+  // replay has to reproduce them tick for tick.
+  mix(s.hp); mix(s.hurtAt < 0 ? 0 : s.hurtAt);
+  mix(s.swing ? 1 : 0);
+  if (s.swing) { mix(s.swing.at); mix(s.swing.dir); mix(s.swing.hit.length); }
+  mix(s.foes.length);
+  for (const f of s.foes) {
+    for (let i = 0; i < f.id.length; i++) mix(f.id.charCodeAt(i));
+    mix(f.x); mix(f.y); mix(f.hp); mix(f.awake ? 1 : 0); mix(f.bitAt < 0 ? 0 : f.bitAt);
+  }
+  roll(s.taken); roll(s.opened); roll(s.known); roll(s.slain);
   mix(s.scrap);
   for (const k of Object.keys(s.stats).sort()) mix(s.stats[k]);
   mix(s.cur); mix(s.side); roll([s.screen, s.screenKey]);

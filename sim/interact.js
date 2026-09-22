@@ -7,7 +7,8 @@ import { contentsOf, insideOf, roomTiles, ERAS, eraFor, absDepth,
 import { chainOf, marksOf, readMarks, worthMultiplier, describe,
          leadOf, placeLabel, possessionsOf, occupantOf } from '../core/provenance.js';
 import { campStations, STATION } from '../core/camp.js';
-import { KIND, isContainer, isPortable, bulkOf, valueOf, verbFor } from '../core/items.js';
+import { KIND, isContainer, isPortable, isWeapon, damageOf, reachOf, fragilityOf,
+         bulkOf, valueOf, verbFor } from '../core/items.js';
 import { UNITS } from './state.js';
 
 export const BULK_BUDGET = 20;
@@ -92,6 +93,50 @@ export const atPlace = (s, place) => place === placeHere(s);
 // Whose room this is. Standing in a grave you were sent to is worth saying so.
 export const occupantHere = (s) =>
   s.floor < 0 ? null : occupantOf(s.seed, s.site, s.floor, s.room, ERAS.indexOf(eraFor(absDepth(s.floor))));
+
+// You swing with the best blade you are carrying. No equip slot, no second
+// inventory, no new state — and because a weapon is an ordinary carried item it
+// is paid for out of the bulk budget like everything else, every single run.
+export function bestWeapon(s) {
+  let best = null;
+  for (const ref of s.carried) {
+    if (!isWeapon(ref.kind)) continue;
+    if (!best || damageOf(ref.kind) > damageOf(best.kind)) best = ref;
+  }
+  return best;
+}
+
+// What a hit puts at risk. The most fragile thing you carry goes first, which
+// is why the cargo worth most is the cargo hardest to bring home.
+export function mostFragile(s) {
+  let at = -1, worst = 0;
+  for (const [i, ref] of s.carried.entries()) {
+    const f = fragilityOf(ref.kind);
+    if (f > worst) { worst = f; at = i; }
+  }
+  return at;
+}
+
+// The swing's hitbox: one weapon-reach deep in front of you, a tile and a half
+// across, derived from `facing` alone so it is strictly forward. It lives here
+// rather than in systems/combat/ so that the renderer can draw the arc without
+// importing a system — which is what lets the system be deleted outright.
+const FACE = [[0, -1], [1, 0], [0, 1], [-1, 0]];        // s.facing: N E S W
+
+export function hitBox(s) {
+  const [fx, fy] = FACE[s.swing ? s.swing.dir : s.facing];
+  const reach = (reachOf(bestWeapon(s)?.kind) || TILE) * UNITS;
+  const wide = (TILE * 3 / 4) * UNITS;
+  const half = 5 * UNITS;
+  const cx = s.x + fx * (half + reach / 2);
+  const cy = s.y + fy * (half + reach / 2);
+  return {
+    x0: cx - (fx ? reach / 2 : wide), x1: cx + (fx ? reach / 2 : wide),
+    y0: cy - (fy ? reach / 2 : wide), y1: cy + (fy ? reach / 2 : wide),
+  };
+}
+
+export const inHitBox = (b, x, y) => x >= b.x0 && x <= b.x1 && y >= b.y0 && y <= b.y1;
 
 export function tier(bulk) {
   if (bulk <= 8) return 'light';

@@ -303,6 +303,54 @@ try {
     }
   }
 
+  // Threat, on the glass. A dog that exists in the delta and not on the screen
+  // is a dog the player walks into.
+  {
+    const { foesOf } = await import('../core/foes.js');
+    const { enterRoom } = await import('../sim/step.js');
+    const { floorPlan, COLS, TILE } = await import('../core/gen.js');
+    const { hitBox } = await import('../systems/combat/index.js');
+    const { VERB, setVerb } = await import('../sim/frame.js');
+
+    let den = null;
+    for (let f = 0; f < 4 && !den; f++)
+      for (const room of floorPlan(0x1594, 0, f).cells)
+        if (foesOf(0x1594, 0, f, room).length) { den = { f, room }; break; }
+    ok('a room with something in it', !!den, den ? `floor ${den.f} room ${den.room}` : 'none');
+
+    if (den) {
+      const s6 = createState(0x1594);
+      s6.floor = den.f; s6.room = den.room;
+      const p = spawnIn(0x1594, 0, den.f, den.room);
+      s6.x = p.x; s6.y = p.y; s6.lamp = 900 * 256;
+      enterRoom(s6);
+      ok('the roster reaches the delta', s6.foes.length > 0, `${s6.foes.length} foes`);
+
+      r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]);
+      const before = ctx.getImageData(0, 0, W, VIEW_H).data.join(',');
+
+      // Put a dog right next to the player, awake, and confirm the pixels move.
+      s6.foes[0].x = s6.x + 24*256; s6.foes[0].y = s6.y; s6.foes[0].awake = true;
+      r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]);
+      ok('a dog draws where it stands', before !== ctx.getImageData(0,0,W,VIEW_H).data.join(','));
+
+      // The swing must be visible for exactly its active frames.
+      s6.facing = 1;
+      s6.swing = { at: s6.tick, dir: 1, hit: [] };
+      s6.tick += 7;                                   // inside the active window
+      const box = hitBox(s6);
+      r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]);
+      const bx = Math.round(box.x0/256) + 2, by = Math.round((box.y0+box.y1)/512);
+      const sw = ctx.getImageData(Math.max(0,Math.min(W-1,bx)), Math.max(0,Math.min(VIEW_H-1,by)), 1, 1).data;
+      ok('the swing draws in front of the player', Math.max(sw[0],sw[1],sw[2]) > 60,
+         `rgb(${sw[0]},${sw[1]},${sw[2]}) at ${bx},${by}`);
+
+      // Health pips, top-left of the view.
+      const pip = ctx.getImageData(7, 9, 1, 1).data;
+      ok('the health pips draw', Math.max(pip[0],pip[1],pip[2]) > 60, `rgb(${pip[0]},${pip[1]},${pip[2]})`);
+    }
+  }
+
   const a=createState(7), b=createState(7), log=[];
   for(let i=0;i<500;i++){ const fr=(i*2654435761)&0x3ff; log.push(fr); step(a,fr); }
   for(const fr of log) step(b,fr);

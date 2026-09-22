@@ -9,6 +9,67 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+## [0.5.0] — 2026-09-22
+
+Something down there wants you dead, and your haul is what it costs you.
+
+### Added
+
+- **`systems/combat/` — the first L4 system this project has ever had.** It is a
+  pure function: `combat(s, frame) → actions[]`. It reads L0–L3, reads no other
+  system, and writes nothing. `apply` folds the actions in, because apply is the
+  only writer in the program. A gate asserts the state hash is unchanged across a
+  call, which is the difference between the layer contract being architecture and
+  being an assertion.
+- **The Rot-Touched Dog.** Asleep until you come within five tiles, then pursuit.
+  A roster is a pure function of a room's address, exactly like the contents
+  lying in it; the delta records only which ones you killed. About a quarter of
+  rooms hold one, rising with depth, none in camp.
+- **The swing** — windup 6 ticks, active 6, recovery 10, one hit per foe per
+  swing, and a hitbox derived from `facing` alone so it is strictly in front.
+  You keep 40% of your speed through it: committed, not frozen.
+- **The sword is an item.** Bulk 3, a value, a fragility, and — because its key
+  is its address — a real provenance chain. There is no equip slot: you swing
+  with the best blade in your pack, so arming yourself is paid for out of the
+  haul on every single run. You start carrying one, because it is dangerous out
+  there.
+- **Health**, twelve points, no field regeneration, drawn as pips over the world
+  rather than in the HUD strip, which holds four lines and is full.
+- **Death.** Everything drops where you fell — the blade too — and you wake in
+  camp with the stash intact. It reuses the `dropped` list built in 0.4.0 for
+  container transfer, exactly as `design/world-shape.md` said it would.
+- `sim/space.js` — collision and movement, extracted so a foe can walk around
+  the same barrels the player does without a system reaching back into `step.js`.
+
+### Changed
+
+- **Encumbrance finally reaches the movement path.** `tier()` has existed since
+  0.2.0 and changed *nothing*: the speed table in
+  `design/combat-and-tools.md` was never implemented. Light is full speed, laden
+  −20%, overloaded −45%. This is the whole slice: a dog at speed 170 against a
+  player at 192 / 154 / 106 means **light you outrun it, laden you do not**. The
+  dog is not a damage problem, it is a cargo problem, and the drop-load button is
+  the answer.
+- **Drop-load no longer disarms you.** It jettisons cargo and leaves the blade:
+  the button exists so you can survive, and dropping your only weapon while a dog
+  runs you down is the opposite of surviving. Death still takes everything.
+- A hit rolls against the most fragile thing you carry, and a break **destroys**
+  it — it does not reach the floor. Tuned to one-in-eight for an urn; at the
+  first-drafted rate it was two hits in five, which made the cargo worth carrying
+  impossible to bring home.
+
+### Gates
+
+- **`deletable`, proven by deletion.** `systems/` removed from disk: the game
+  boots, walks, values a haul, renders, and every non-combat gate passes.
+- **`layers`, greppable and gripped.** Nothing in `core/` or `sim/` may import
+  from `systems/`. The system list lives in `app/main.js`, which is wiring — so
+  `step(s, frame)` with no list is a complete peaceful game and the dangerous one
+  is a single line of wiring.
+- Replay holds with things alive and moving; no float enters a foe position; a
+  long walk that kills nothing grows the save by nothing.
+
+
 ### Added
 
 - `plans/backlog.md` — thirteen unscheduled ideas, with DJ's verdict recorded

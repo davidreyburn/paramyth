@@ -3,60 +3,42 @@
 // same result, forever, on every device.
 
 import { VERB, hasVerb } from './frame.js';
-import { UNITS, spawnIn } from './state.js';
-import { roomTiles, floorPlan, floorCount, isSolid, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
-import { isContainer, isPortable, isSolidItem, footOf, bulkOf } from '../core/items.js';
+import { UNITS, spawnIn, MAX_HP, SWING_TICKS, swingPhase } from './state.js';
+import { roomTiles, floorPlan, floorCount, CAMP, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
+import { isContainer, isPortable, isWeapon, bulkOf } from '../core/items.js';
 import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
-         haulValue, assessed, dropTile, APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
+         haulValue, assessed, dropTile, tier, mostFragile, bestWeapon,
+         APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './interact.js';
+import { blocked, solidBodies, solidTiles, HALF, centreOf } from './space.js';
+import { hchance } from '../core/addr.js';
+import { fragilityOf } from '../core/items.js';
+import { foesOf, FOE } from '../core/foes.js';
 import { STATION } from '../core/camp.js';
+// NOTE: nothing here imports `systems/`. L3 must not read L4 — the tick loop in
+// app/main.js owns the system list and hands it down, which is what makes
+// `step(s, frame)` a complete, peaceful game on its own. A gate greps for this.
+
+// Re-exported so the gates and the renderer keep their existing import site
+// while the code itself lives in space.js, where a foe can reach it too.
+export { solidBodies, solidTiles };
 
 const SPEED = 192, SPEED_DIAG = 136;
 const SPRINT_NUM = 5, SPRINT_DEN = 3;
-const HALF = 5 * UNITS;
 const RW = COLS * TILE * UNITS, RH = ROWS * TILE * UNITS;
 
-function blocked(grid, bodies, x, y) {
-  const x0 = Math.floor((x - HALF) / (TILE*UNITS)), x1 = Math.floor((x + HALF - 1) / (TILE*UNITS));
-  const y0 = Math.floor((y - HALF) / (TILE*UNITS)), y1 = Math.floor((y + HALF - 1) / (TILE*UNITS));
-  for (let ty = y0; ty <= y1; ty++)
-    for (let tx = x0; tx <= x1; tx++)
-      if (isSolid(grid, tx, ty)) return true;
+// The encumbrance table from design/combat-and-tools.md, which had never been
+// implemented: `tier()` existed and changed nothing. It matters now, because it
+// is the only reason a dog at speed 170 is frightening — light you outrun it,
+// laden you do not. Integer ratios, so no float enters the movement path.
+const LOAD = { light: [1, 1], laden: [4, 5], overloaded: [11, 20] };
 
-  // Objects are smaller than the squares they sit on, so they collide as boxes
-  // of their own size rather than claiming a whole tile.
-  for (let i = 0; i < bodies.length; i++) {
-    const b = bodies[i];
-    if (Math.abs(x - b.cx) < b.f + HALF && Math.abs(y - b.cy) < b.f + HALF) return true;
-  }
-  return false;
-}
-
-// What you walk around, as boxes. Taken items stop blocking, so this is derived
-// from the delta and never cached.
-export function solidBodies(s) {
-  const out = [];
-  for (const c of visible(s)) {
-    const f = footOf(c.kind);
-    if (!f) continue;
-    const tx = c.tile % COLS, ty = (c.tile / COLS) | 0;
-    out.push({
-      cx: (tx * TILE + TILE / 2) * UNITS,
-      cy: (ty * TILE + TILE / 2) * UNITS,
-      f: f * UNITS,
-      tile: c.tile,
-    });
-  }
-  return out;
-}
-
-// The generator still reasons in whole tiles, which is deliberately stricter
-// than collision: being conservative about sealing a way out is correct.
-export function solidTiles(s) {
-  const out = new Set();
-  for (const c of visible(s)) if (isSolidItem(c.kind)) out.add(c.tile);
-  return out;
-}
+// A hit rolls fragility/FRAGILE_DEN against the most fragile thing you carry.
+// The denominator is the dial: at 8 an urn broke on roughly two hits in five,
+// which made the cargo worth carrying impossible to bring home and turned every
+// fight into a total loss. At 24 an urn is one-in-eight per hit — a real reason
+// to avoid the fight, not a guarantee that fighting ruins the run.
+const FRAGILE_DEN = 24;
 
 const tileUnder = (grid, x, y) => {
   const tx = Math.floor(x / (TILE*UNITS)), ty = Math.floor(y / (TILE*UNITS));
@@ -86,6 +68,7 @@ function enterFloor(s, floor) {
     s.x = p.x; s.y = p.y;
   }
   s.moves++;
+  enterRoom(s);
 }
 
 // Putting a thing down. It lands on a real tile and it keeps its own address,
@@ -120,6 +103,82 @@ function pickUp(s, c) {
   }
   s.carried.push({ kind: c.kind, key: c.key });
   return true;
+}
+
+// The live roster for the room you are standing in: computed from the address,
+// minus whatever you already killed. Rebuilt on entry rather than stored, which
+// is what keeps the storage invariant — a hundred rooms walked and nothing
+// killed grows the save by nothing.
+export function enterRoom(s) {
+  const slain = new Set(s.slain);
+  s.foes = foesOf(s.seed, s.site, s.floor, s.room)
+    .filter((f) => !slain.has(f.id))
+    .map((f) => {
+      const p = centreOf(f.tile);
+      return { id: f.id, kind: f.kind, x: p.x, y: p.y, hp: FOE[f.kind].hp, awake: false, bitAt: -9999 };
+    });
+}
+
+// Everything you drop when you die, including the blade. `putDown` refuses when
+// the floor is full, so anything that will not fit is lost rather than silently
+// kept — dying in a packed room costs you more, which is correct.
+function die(s) {
+  while (s.carried.length && putDown(s, 0));
+  s.carried.length = 0;
+  s.hp = MAX_HP;
+  s.hurtAt = -9999;
+  s.swing = null;
+  s.deaths = (s.deaths || 0) + 1;
+  s.site = 0; s.floor = CAMP; s.room = 0;
+  const p = spawnIn(s.seed, s.site, s.floor, s.room);
+  s.x = p.x; s.y = p.y;
+  s.foes = [];
+  s.screen = ''; s.screenKey = '';
+}
+
+// apply: the only writer. A system proposes; this folds it in. Keeping the
+// vocabulary small is deliberate — every entry here is a thing that can happen
+// to the world, and a long list is a system that has started writing state.
+export function applyAction(s, a) {
+  const foe = (id) => s.foes.find((f) => f.id === id);
+  switch (a.k) {
+    case 'swing':
+      s.swing = { at: s.tick, dir: a.dir, hit: [] };
+      break;
+    case 'wake': {
+      const f = foe(a.id); if (f) f.awake = true;
+      break;
+    }
+    case 'moveFoe': {
+      const f = foe(a.id); if (f) { f.x = a.x; f.y = a.y; }
+      break;
+    }
+    case 'hurtFoe': {
+      const f = foe(a.id); if (!f) break;
+      s.swing.hit.push(f.id);
+      f.hp -= a.n;
+      f.awake = true;                       // hitting a sleeping dog wakes it
+      if (f.hp <= 0) {
+        s.slain.push(f.id);
+        s.foes = s.foes.filter((x) => x.id !== f.id);
+      }
+      break;
+    }
+    case 'bite': {
+      const f = foe(a.id); if (f) f.bitAt = s.tick;
+      s.hp -= a.n;
+      s.hurtAt = s.tick;
+      // Threat is denominated in cargo as well as health: a hit rolls against
+      // the most fragile thing you carry, and a break DESTROYS it. It does not
+      // go to the dropped list — there is nothing left to pick up.
+      const i = mostFragile(s);
+      if (i >= 0 && hchance(fragilityOf(s.carried[i].kind), FRAGILE_DEN, s.seed, s.tick, s.hp, 0xd100))
+        s.carried.splice(i, 1);
+      if (s.hp <= 0) die(s);
+      break;
+    }
+  }
+  return s;
 }
 
 // While a screen is open the world is still; the only verbs are the grid's.
@@ -210,7 +269,7 @@ function screenStep(s, frame) {
   }
 }
 
-export function step(s, frame) {
+export function step(s, frame, systems = []) {
   if (s.screen) { screenStep(s, frame); s.lastFrame = frame; s.tick++; return s; }
   const solids = solidBodies(s);
 
@@ -221,6 +280,11 @@ export function step(s, frame) {
 
   let speed = dx && dy ? SPEED_DIAG : SPEED;
   if (hasVerb(frame, VERB.SPRINT)) speed = ((speed * SPRINT_NUM) / SPRINT_DEN) | 0;
+  // What you carry is what you cannot outrun.
+  const [ln, ld] = LOAD[tier(carriedBulk(s))];
+  speed = ((speed * ln) / ld) | 0;
+  // A swing commits you without freezing you.
+  if (swingPhase(s)) speed = ((speed * 2) / 5) | 0;
 
   s.moving = dx !== 0 || dy !== 0;
   if (s.moving) {
@@ -239,6 +303,7 @@ export function step(s, frame) {
   const go = (next, ax, val) => {
     if (!plan.cells.includes(next)) return false;
     s.room = next; s[ax] = val; s.moves++;
+    enterRoom(s);
     return true;
   };
   if (s.x < 0)       go(s.room - 1,  'x', RW - HALF - UNITS) || (s.x = HALF);
@@ -276,14 +341,26 @@ export function step(s, frame) {
   // Drop the load and run. The best button in the game — and now it is a
   // decision rather than a penalty: the haul lands at your feet and is still
   // there when whatever you ran from is dealt with.
+  // It jettisons CARGO. It does not disarm you: the button exists so you can
+  // survive, and dropping your only blade while a dog runs you down is the
+  // opposite of surviving. Death still takes everything, per the design.
   if (hasVerb(frame, VERB.DROP) && !hasVerb(s.lastFrame, VERB.DROP) && s.carried.length) {
-    while (s.carried.length && putDown(s, 0));
+    const keep = bestWeapon(s);
+    for (let i = s.carried.length - 1; i >= 0; i--)
+      if (s.carried[i] !== keep) putDown(s, i);
   }
 
   // The pack, on its own button — Start on a pad, I on a keyboard. It toggles.
   if (hasVerb(frame, VERB.INVENTORY) && !hasVerb(s.lastFrame, VERB.INVENTORY)) {
     s.screen = 'pack'; s.cur = 0; s.side = 1;
   }
+
+  // The systems propose; apply folds it in. They run after the player has moved,
+  // in declared order, and none of them may see another's proposals.
+  for (const sys of systems)
+    for (const a of sys(s, frame)) applyAction(s, a);
+
+  if (s.swing && s.tick - s.swing.at >= SWING_TICKS) s.swing = null;
 
   s.lastFrame = frame;
   s.tick++;

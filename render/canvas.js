@@ -6,10 +6,12 @@ import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER } fr
 import { h } from '../core/addr.js';
 import { tonedSheet, drawsFor, shadeTone, variantFor } from './tileset.js';
 import { visible, prompt, containerItems, carriedBulk, tier,
-         itemValue, assessed, readOut, marksFor, leadFor, placeLabel, atPlace, APPRAISAL_FEE,
+         itemValue, assessed, readOut, marksFor, leadFor, placeLabel, atPlace, hitBox, APPRAISAL_FEE,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, STASH_ROWS,
          BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
 import { campStations } from '../core/camp.js';
+import { FOE } from '../core/foes.js';
+import { MAX_HP, swingPhase } from '../sim/state.js';
 import { isContainer, labelOf, bulkOf, KIND } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
@@ -301,6 +303,49 @@ export function createRenderer(canvas, pack = null) {
     }
   }
 
+  // Enemies, drawn the way the player is: a glyph with a hard shadow, so they
+  // read against the floor at any stratum tone without an animation system and
+  // without another sheet of unlicensed art.
+  function drawFoes(s) {
+    for (const f of s.foes) {
+      const def = FOE[f.kind];
+      const art = pack && pack.foes && pack.foes[f.kind];
+      const g = (art && art.glyph) || (def && def.glyph) || '?';
+      const x = Math.round(px(f.x)), y = Math.round(px(f.y));
+      ctx.font = 'bold 15px ui-monospace, monospace';
+      ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+      ctx.fillStyle = P.void; ctx.fillText(g, x + 1, y + 1);
+      // A sleeping dog is dim. Waking it is a thing that visibly happens.
+      ctx.fillStyle = f.awake ? '#c2836b' : '#6b6357';
+      ctx.fillText(g, x, y);
+      ctx.textAlign = 'start';
+    }
+  }
+
+  // The swing. Only the ACTIVE frames draw, so what you see on the screen is
+  // exactly the window in which the hitbox is live — no tell that lies.
+  function drawSwing(s) {
+    if (swingPhase(s) !== 'active') return;
+    const b = hitBox(s);
+    const x0 = px(b.x0), y0 = px(b.y0);
+    ctx.fillStyle = 'rgba(232,215,170,0.30)';
+    ctx.fillRect(Math.round(x0), Math.round(y0), Math.round(px(b.x1) - x0), Math.round(px(b.y1) - y0));
+    ctx.strokeStyle = P.parchment; ctx.lineWidth = 1;
+    ctx.strokeRect(Math.round(x0) + 0.5, Math.round(y0) + 0.5,
+                   Math.round(px(b.x1) - x0) - 1, Math.round(px(b.y1) - y0) - 1);
+  }
+
+  // Health, as pips in the corner of the view. It stays out of the HUD strip,
+  // which holds four lines and is full.
+  function drawHealth(s) {
+    const W_ = 4, H_ = 7, GAP = 2;
+    for (let i = 0; i < MAX_HP; i++) {
+      const x = 6 + i * (W_ + GAP), y = 6;
+      ctx.fillStyle = i < s.hp ? '#c2836b' : '#2a2622';
+      ctx.fillRect(x, y, W_, H_);
+    }
+  }
+
   function drawPlayer(s) {
     const x = Math.round(px(s.x)), y = Math.round(px(s.y));
     const pl = pack && pack.player;
@@ -358,8 +403,13 @@ export function createRenderer(canvas, pack = null) {
       drawRoom(world.grid, world.era);
       drawStations(state, tone);
       drawItems(state, tone);
+      drawFoes(state);
+      drawSwing(state);
       drawPlayer(state);
       drawLight(state);
+      // Over the light, because it is interface: a health bar you cannot read in
+      // the dark is a health bar that tells you nothing at the moment it matters.
+      if (state.floor >= 0) drawHealth(state);
       if (state.screen) drawScreen(state, tone);
       else drawToast(prompt(state));
       drawHud(hud);

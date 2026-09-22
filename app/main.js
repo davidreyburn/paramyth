@@ -2,6 +2,7 @@
 
 import { createState, hashState } from '../sim/state.js';
 import { step } from '../sim/step.js';
+import combat from '../systems/combat/index.js';
 import { VERB, VERB_NAMES, hasVerb } from '../sim/frame.js';
 import { createInput } from './input.js';
 import { createRenderer } from '../render/canvas.js';
@@ -9,6 +10,11 @@ import { loadPack } from '../render/tileset.js';
 import { roomTiles, floorPlan, floorCount } from '../core/gen.js';
 import { carriedBulk, tier, BULK_BUDGET, haulValue, leads, placeHere, placeLabel } from '../sim/interact.js';
 import { VERSION } from '../core/version.js';
+
+// The systems, in declared order. They live here and not in the kernel because
+// L3 must not read L4: `step(s, frame)` with no list is a complete peaceful
+// game, and this line is the only thing that makes it a dangerous one.
+const SYSTEMS = [combat];
 
 const SEED = 0x1594;
 const TICK_MS = 1000 / 60;
@@ -31,7 +37,7 @@ addEventListener('keydown', (e) => {
   if (e.code !== 'KeyR') return;
   const t0 = performance.now();
   const rebuilt = createState(SEED);
-  for (let i = 0; i < log.length; i++) step(rebuilt, log[i]);
+  for (let i = 0; i < log.length; i++) step(rebuilt, log[i], SYSTEMS);
   const ok = hashState(rebuilt) === hashState(state);
   const ms = (performance.now() - t0).toFixed(1);
   replayResult = ok
@@ -60,7 +66,7 @@ function loop(now) {
   while (acc >= TICK_MS && steps < MAX_STEPS_PER_FRAME) {
     frame = input.sample();
     log.push(frame);
-    step(state, frame);
+    step(state, frame, SYSTEMS);
     acc -= TICK_MS;
     steps++;
   }

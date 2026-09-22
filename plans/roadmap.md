@@ -18,14 +18,15 @@ Act I is defined in `design/world-shape.md` and gated by the campaign's own
 spoiler discipline: sets follow acts, so the Frontier Halls, the Fundament and
 Vorathum's Domain are later releases, not missing pieces.
 
-## Where it stands — 0.4.0
+## Where it stands — 0.5.0
 
-A generated mausoleum you can walk, light and rob, a camp to sell into, and an
-object's history that tells you where to go next. The kernel is deterministic
+A generated mausoleum you can walk, light, rob and be killed in, a camp to sell
+into, and an object's history that tells you where to go next. The kernel is deterministic
 and replayable, the world is a pure function of its address, and the actor graph
 inverts — which is the mechanic the whole design rests on and the one that was
-least certain to work. Threat, the world above and below, and everything under
-*Content and craft* remain untouched. That is a floor with one room built on it.
+least certain to work. The first L4 system exists, so the layer contract is now
+tested rather than asserted. The world above and below, and everything under
+*Content and craft*, remain untouched. That is a floor with two rooms on it.
 
 ## The distance
 
@@ -55,10 +56,17 @@ Also still open: a **foreign** reference names a site that computes but that
 nothing yet walks to. Those dead ends close when the Field has more than one
 mouth, not before.
 
-### Threat
-Eight enemies, eight dual-use tools, damage that costs cargo rather than only
-health, death, and the corpse run. Encounters rare and mostly avoidable, per
-`design/combat-and-tools.md`.
+### Threat — begun in 0.5.0
+One enemy of eight, one weapon, contact damage, the swing, death and a full
+drop. The claim that damage costs **cargo** rather than only health is built and
+gated: the encumbrance speed table finally reaches the movement path, so a dog
+outruns a laden player and not a light one.
+
+What is left: the other seven enemies, the eight dual-use tools, grabs, stamina,
+armor and condition, corruption, and the corpse as a lootable marker that
+bandits carry off. `plans/slice-01.md`'s Phase 5 is not done until a player has
+used the drop-load button on purpose — which is now possible and not yet
+observed.
 
 ### The world above and below
 The Field as a real surface with many mausoleum mouths. The Barrow Deep as one

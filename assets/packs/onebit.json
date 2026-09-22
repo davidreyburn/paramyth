@@ -244,6 +244,16 @@
         ]
       ]
     },
+    "sword": {
+      "_": "Placeholder: decor 4,4 is a spike cluster, the only blade-shaped art on this sheet. It is wrong and it is legible, which is the right trade until real art lands.",
+      "cells": [
+        [
+          "decor",
+          4,
+          4
+        ]
+      ]
+    },
     "key": {
       "cells": [
         [
@@ -311,6 +321,12 @@
           4
         ]
       ]
+    }
+  },
+  "_foes": "Enemies, keyed by the kinds in core/foes.js. A glyph, like the player, because the reference sheet's characters do not fit the tone either. Swap to a sprite by replacing this with { sheet, w, h, idle, walk }.",
+  "foes": {
+    "dog": {
+      "glyph": "D"
     }
   },
   "_stations": "Camp stations. PLACEHOLDER art borrowed from decor: there are no NPCs or counters on this sheet.",

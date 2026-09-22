@@ -4,6 +4,78 @@
 
 ---
 
+## 2026-09-22 — The encumbrance table had never been implemented
+
+**What.** `tier()` has returned light / laden / overloaded since 0.2.0 and the
+value has never reached anything. The speed column in
+`design/combat-and-tools.md` was, until today, decoration.
+
+**Why it matters more than it sounds.** It only surfaced because an enemy needed
+a speed. Picking 170 for a dog against a player at 192 is meaningless unless the
+player is sometimes slower than 192 — and they never were. The whole claim that
+*threat is denominated in cargo* rests on one unimplemented multiplication.
+
+**Evidence.** Measured, not asserted: at bulk 4 the player pulls away from a dog
+(gap 10240 → 12880); at bulk 19 the dog closes it (10240 → 2440). Same seed,
+same room, same dog.
+
+**Outcome.** Implemented as integer ratios, gated twice — once on the arithmetic
+(*light outruns a dog, laden does not*) and once on the engine actually applying
+it, because the arithmetic being right is exactly what was already true.
+
+---
+
+## 2026-09-22 — The first L4 system, and the upward import I nearly shipped
+
+**What.** `systems/combat/` is the first L4 system the project has had. Written
+first as a pure `combat(s, frame) → actions[]` with `sim/step.js` importing it
+and holding the system list.
+
+**Why that was wrong.** `step.js` is L3. Importing `systems/combat/` is a layer
+reading *upward* — the one edge `specs/spec-layer-contract.md` exists to
+forbid, and it names the failure precisely: *"it always arrives as a small
+reasonable convenience."* It arrived as one. It looked like wiring.
+
+**The fix, in three moves.** The system list moved to `app/main.js`, which
+describes itself as wiring only — so `step(s, frame)` with no list is a complete
+peaceful game and the dangerous one is a single line. `swingPhase` and the swing
+timings moved to L3, because `s.swing` is delta and its phase is a pure function
+of the delta, not of any system. `hitBox` moved to `sim/interact.js`, so the
+renderer can draw the arc without importing a system.
+
+**Evidence.** Two gates. One greps `core/` and `sim/` for any import of
+`systems/` and fails on a hit. The other is the real thing: `systems/` deleted
+from disk, and the game boots, walks, values a haul, renders, and passes every
+non-combat gate.
+
+**Outcome.** The contract is now tested rather than asserted. That third move —
+the renderer — is the one worth remembering: L5 may legally read anything, so
+nothing would have complained, and a deleted `systems/` would have taken the
+renderer down with it. *Legal* and *deletable* are different properties.
+
+---
+
+## 2026-09-22 — A fragility roll that ate every haul
+
+**What.** A hit rolls against the most fragile thing you carry. First draft used
+`fragility / 8`, which for an urn is two hits in five.
+
+**Why it was wrong.** `design/core-loop.md` says the cargo worth most is the
+cargo hardest to bring home — a *tension*, not a tax. At two-in-five per hit,
+any fight involving fragile goods was a total loss, so the correct play was to
+never carry anything breakable near anything alive, which deletes the decision
+rather than sharpening it.
+
+**Evidence.** 400 scripted hits: 185 breaks at the first rate, 49 at the shipped
+one. Gated at both ends now — *a hit can destroy cargo* and *losing the haul is
+a risk, not a certainty* — so the dial cannot drift in either direction unseen.
+
+**Outcome.** One-in-eight for an urn. The number is a guess and is flagged as a
+dial in `plans/slice-01.md`'s sense; what is not a guess is that both bounds are
+now held by assertions.
+
+---
+
 ## 2026-09-22 — The stairs were lit like a wall
 
 **What.** Stairs read as a bright solid rectangle sitting on top of the floor.
