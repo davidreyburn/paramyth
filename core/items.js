@@ -10,7 +10,7 @@ export const KIND = {
   // chair is something you brush past and a table is something you go around.
   // A tile is 20px, so 10 would fill it edge to edge; nothing does.
   chest:   { label: 'chest',   container: true, solid: true, foot: 8, bulk: 0, fragility: 0 },
-  crate:   { label: 'crate',   container: true, solid: true, foot: 6, bulk: 0, fragility: 1 },
+  pot:     { label: 'pot',     container: true, solid: true, foot: 6, bulk: 0, fragility: 1 },
   barrel:  { label: 'barrel',  container: true, solid: true, foot: 6, bulk: 0, fragility: 1 },
   urn:     { label: 'urn',     container: true, solid: true, foot: 7, bulk: 0, fragility: 3 },
 
@@ -50,9 +50,9 @@ export function verbFor(kind) {
 // Placement weights. Containers cluster near the surface; loose valuables and
 // the dead lie deeper — the same depth-is-era gradient the world already has.
 const TABLES = [
-  { upTo: 1,  w: [['chest',2],['crate',4],['barrel',3],['bones',1],['trinket',2],['table',2],['chair',2]] },
-  { upTo: 3,  w: [['chest',3],['crate',4],['urn',3],['barrel',3],['bones',3],['trinket',3],['key',1],['gem',1],['table',1],['chair',1]] },
-  { upTo: 8,  w: [['chest',3],['urn',4],['crate',2],['bones',4],['gem',2],['crystal',2],['trinket',2],['key',2]] },
+  { upTo: 1,  w: [['chest',2],['pot',4],['barrel',3],['bones',1],['trinket',2],['table',2],['chair',2]] },
+  { upTo: 3,  w: [['chest',3],['pot',4],['urn',3],['barrel',3],['bones',3],['trinket',3],['key',1],['gem',1],['table',1],['chair',1]] },
+  { upTo: 8,  w: [['chest',3],['urn',4],['pot',2],['bones',4],['gem',2],['crystal',2],['trinket',2],['key',2]] },
   { upTo: 99, w: [['urn',3],['bones',4],['crystal',4],['gem',3],['trinket',2],['key',1]] },
 ];
 

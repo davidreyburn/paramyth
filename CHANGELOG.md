@@ -9,6 +9,21 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Fixed
+
+- **Pots were showing up as crates.** The `pot` kind was renamed to `crate` on
+  2026-09-22 on the belief that the sprite at decor 3,4 was a crate. It is a
+  round-bellied pot, and there is no crate on either sheet — so for a release
+  every crate in the game was drawn as a pot, with a gate holding the mistake in
+  place. The kind is `pot` again, the word follows the picture, and it picked up
+  the second pot at decor 2,5 that nothing was using.
+
+### Added
+
+- A gate binding item kinds to item art in both directions. A kind with no art
+  falls back to a flat rectangle and art with no kind can never be drawn, and
+  neither raises an error — which is how a rename touched one and not the other.
+
 ## [0.4.0] — 2026-09-22
 
 The actor graph inverts. An object tells you where to go, and the place is

@@ -4,6 +4,36 @@
 
 ---
 
+## 2026-09-22 — The pot that was renamed instead of looked at
+
+**What.** `pot` became `crate` in the item table, the manifest legend was edited
+to say CRATE, and a gate was written asserting *pots are gone; the art is a
+crate*. The sprite at decor 3,4 is a round-bellied pot. There is no crate on
+either sheet. So every crate in the game was drawn as a pot, and the gate held
+it that way.
+
+**Why it happened.** The rename was made against the legend, not against the
+art. The legend is a text file; it agreed immediately. Nothing in the loop ever
+put the word and the picture side by side, and the one gate that mentioned both
+asserted the wrong one.
+
+**Evidence.** Rendered the decor sheet at 11× with the manifest's own cell
+indices overlaid. 3,4 is a pot with a rim and a belly; the barrels at 3,5 and
+3,6 are unmistakably barrels; the nearest thing to a crate anywhere is a slatted
+rack at 4,1 already doing duty as the quartermaster's counter.
+
+**Outcome.** The word follows the picture: the kind is `pot`, and it took the
+unused second pot at 2,5 as a variant. The real fix is the new gate — item kinds
+and item art must cover each other exactly, in both directions. A kind with no
+art draws a flat rectangle and art with no kind is simply unreachable, and
+neither one throws, which is why a half-done rename survived a full test run.
+
+**The pattern.** Same shape as the HUD's fifth line and the bare-kind pickup: the
+failure was silent because the thing that would have complained had been taught
+to agree. A gate written from the same belief as the code tests the belief.
+
+---
+
 ## 2026-09-22 — The inversion: an actor had to become an address
 
 **What.** In 0.3.0 an event's actor was `actorOf(seed, h(seed, ...salt, i) % 100000, era)`

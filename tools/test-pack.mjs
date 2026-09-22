@@ -197,6 +197,20 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
   ok('no tile or item draws as a featureless slab', flat.length === 0, flat.join(' | '));
 }
 
+// --- the word and the picture -----------------------------------------------
+// A kind with no art falls back to a flat rectangle, and art with no kind is a
+// cell nothing can ever draw. Neither shows up as an error, and a rename that
+// touches one and not the other is invisible until someone looks at the screen
+// and says the pots are showing up as crates.
+{
+  const { KIND } = await import('../core/items.js');
+  const kinds = Object.keys(KIND), arted = Object.keys(pack.items || {});
+  const noArt = kinds.filter((k) => !arted.includes(k));
+  const noKind = arted.filter((k) => !kinds.includes(k));
+  ok('every item kind has art', noArt.length === 0, noArt.join(', ') || `${kinds.length} kinds`);
+  ok('every item drawing has a kind', noKind.length === 0, noKind.join(', '));
+}
+
 // One version, in two files that must agree.
 {
   const { VERSION } = await import('../core/version.js');

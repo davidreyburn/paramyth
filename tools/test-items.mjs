@@ -251,7 +251,12 @@ const delve = (site = 0, floor = 0, room = null) => {
 {
   ok('sacks are gone', !('sack' in KIND) , Object.keys(KIND).join(', '));
 
-  ok('pots are gone; the art is a crate', !('pot' in KIND) && 'crate' in KIND, Object.keys(KIND).join(', '));
+  // The pot was renamed to `crate` on 2026-09-22 on the belief that the sprite
+  // at decor 3,4 was a crate. It is a round-bellied pot, and there is no crate
+  // on either sheet — so for one release every crate in the game was drawn as a
+  // pot. The word follows the picture, not the other way round.
+  ok('the crate is gone; the art was always a pot', !('crate' in KIND) && 'pot' in KIND,
+     Object.keys(KIND).join(', '));
 
   const solidKinds = Object.keys(KIND).filter((k) => isSolidItem(k));
   ok('containers and furniture are solid', solidKinds.length === 6, solidKinds.join(', '));
