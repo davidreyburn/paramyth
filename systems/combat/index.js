@@ -10,7 +10,7 @@
 // peaceful salvage game rather than a pile of dangling references.
 
 import { VERB, hasVerb } from '../../sim/frame.js';
-import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, swingPhase } from '../../sim/state.js';
+import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, swingPhase, friendly } from '../../sim/state.js';
 import { blocked, solidBodies, tileOf, HALF } from '../../sim/space.js';
 import { roomTiles, TILE, COLS } from '../../core/gen.js';
 import { FOE } from '../../core/foes.js';
@@ -25,7 +25,7 @@ export { hitBox };
 
 export function combat(s, frame) {
   const out = [];
-  if (s.screen || s.floor < 0) return out;        // no fighting in a menu or in camp
+  if (s.screen) return out;                       // the world is still behind a menu
 
   const grid = roomTiles(s.seed, s.site, s.floor, s.room).grid;
   const bodies = solidBodies(s);
@@ -33,7 +33,14 @@ export function combat(s, frame) {
 
   // --- the swing -----------------------------------------------------------
   const pressed = hasVerb(frame, VERB.ATTACK) && !hasVerb(s.lastFrame, VERB.ATTACK);
-  if (pressed && !phase && bestWeapon(s)) out.push({ k: 'swing', dir: s.facing });
+  if (pressed && !phase) {
+    // Steel stays sheathed in camp. But SAY so: a button that does nothing at
+    // all is indistinguishable from a button that is broken, and camp is the
+    // first place a player presses this one.
+    if (friendly(s)) out.push({ k: 'say', text: 'Not in camp \u2014 the Company frowns on drawn steel' });
+    else if (bestWeapon(s)) out.push({ k: 'swing', dir: s.facing });
+    else out.push({ k: 'say', text: 'Nothing to swing with \u2014 your hands are empty' });
+  }
 
   if (phase === 'active') {
     const box = hitBox(s);

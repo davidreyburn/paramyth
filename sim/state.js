@@ -18,6 +18,14 @@ export const WINDUP = 6, ACTIVE = 6, RECOVER = 10;
 export const SWING_TICKS = WINDUP + ACTIVE + RECOVER;
 export const HURT_INVULN = 30;          // ticks of grace after taking a hit
 
+// How long a spoken line stays on the glass. It is delta and not a render-side
+// timer so that a replay says the same things at the same ticks.
+export const SAY_TICKS = 100;
+export const saying = (s) => (s.say && s.tick - s.say.at < SAY_TICKS) ? s.say : null;
+
+// Where steel stays sheathed. Camp today; Grimhaven and Ashmark when they exist.
+export const friendly = (s) => s.floor < 0;
+
 export const swingPhase = (s) => {
   if (!s.swing) return null;
   const t = s.tick - s.swing.at;
@@ -64,6 +72,7 @@ export function createState(seed) {
     // hit taken, which is the whole invulnerability rule.
     hp: MAX_HP, hurtAt: -9999,
     swing: null,       // { at, dir, hit: [] } while a blow is in flight
+    say: null,         // { text, at } — a transient line, not a log
     foes: [],          // live enemies in THIS room, rebuilt on entry
     slain: [],         // ids of the dead — the only durable fact about them
     stash: [],         // item refs left in camp
@@ -104,6 +113,8 @@ export function hashState(s) {
   mix(s.hp); mix(s.hurtAt < 0 ? 0 : s.hurtAt);
   mix(s.swing ? 1 : 0);
   if (s.swing) { mix(s.swing.at); mix(s.swing.dir); mix(s.swing.hit.length); }
+  mix(s.say ? s.say.at : 0);
+  if (s.say) for (let i = 0; i < s.say.text.length; i++) mix(s.say.text.charCodeAt(i));
   mix(s.foes.length);
   for (const f of s.foes) {
     for (let i = 0; i < f.id.length; i++) mix(f.id.charCodeAt(i));

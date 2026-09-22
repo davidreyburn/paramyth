@@ -9,6 +9,22 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Added
+
+- **The world can say a line.** `s.say` is a transient, tick-stamped message in
+  the delta — not a render-side timer, so a replay says the same things at the
+  same ticks. It outranks the contextual prompt while it lives, and expires on
+  its own after 100 ticks.
+- **Refusals speak.** Pressing attack in camp keeps the blade sheathed, as it
+  always did, but now says *"Not in camp — the Company frowns on drawn steel"*
+  instead of doing nothing at all. Swinging empty-handed says so too. A button
+  that does nothing is indistinguishable from a button that is broken, and camp
+  is the first place a player presses this one.
+- `friendly(s)` marks where steel stays sheathed — camp today, Grimhaven and
+  Ashmark when they exist.
+- Gates: J reaches the frame as ATTACK, the camp refusal is raised, drawn, and
+  expires, and a screen still swallows the verb entirely.
+
 ## [0.5.0] — 2026-09-22
 
 Something down there wants you dead, and your haul is what it costs you.

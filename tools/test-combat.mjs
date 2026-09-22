@@ -7,7 +7,7 @@
 //
 // Two: that a dog is a cargo problem rather than a damage problem.
 
-import { createState, hashState, spawnIn, UNITS, MAX_HP } from '../sim/state.js';
+import { createState, hashState, spawnIn, UNITS, MAX_HP, saying, SAY_TICKS, friendly } from '../sim/state.js';
 import { step, applyAction, enterRoom } from '../sim/step.js';
 import combat, { WINDUP, ACTIVE, SWING_TICKS, HURT_INVULN, hitBox, swingPhase } from '../systems/combat/index.js';
 const SYSTEMS = [combat];
@@ -145,6 +145,37 @@ function delve(floor, room) {
   const den = denRoom();
   const s = delve(den.floor, den.room);
   ok('you are carrying something to swing', !!bestWeapon(s), bestWeapon(s)?.kind);
+
+  // J on the very first tick, in camp. Steel stays sheathed there — but the
+  // refusal has to SAY so. A button that does nothing at all is
+  // indistinguishable from a button that is broken, and camp is the first place
+  // a player presses this one.
+  const fresh = createState(SEED);
+  step(fresh, setVerb(0, VERB.ATTACK, true), [combat]);
+  ok('no blade is drawn in camp', !fresh.swing, `floor ${fresh.floor}`);
+  ok('but the refusal says so out loud', !!saying(fresh), fresh.say ? fresh.say.text : 'silence');
+
+  // And it goes away on its own rather than sticking to the glass.
+  fresh.tick += SAY_TICKS;
+  ok('and the line expires', !saying(fresh), `after ${SAY_TICKS} ticks`);
+
+  // Empty-handed below ground is the other refusal worth voicing.
+  const bare = delve(den.floor, den.room);
+  bare.carried = [];
+  step(bare, setVerb(0, VERB.ATTACK, true), [combat]);
+  ok('swinging with nothing says so too', !bare.swing && !!saying(bare),
+     bare.say ? bare.say.text : 'silence');
+
+  // A screen still swallows it: the world is still behind a menu.
+  const menu = createState(SEED);
+  menu.screen = 'pack';
+  step(menu, setVerb(0, VERB.ATTACK, true), [combat]);
+  ok('but a screen swallows the verb entirely', !menu.swing && !menu.say);
+
+  // Below ground, with a blade, it actually swings.
+  const armed = delve(den.floor, den.room);
+  step(armed, setVerb(0, VERB.ATTACK, true), [combat]);
+  ok('and below ground the blade comes out', !!armed.swing, `floor ${armed.floor}`);
 
   // The hitbox is strictly in FRONT, in all four facings. A melee arc that
   // wraps behind you is a game that stops being about where you stand.

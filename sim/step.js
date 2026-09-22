@@ -145,6 +145,9 @@ export function applyAction(s, a) {
     case 'swing':
       s.swing = { at: s.tick, dir: a.dir, hit: [] };
       break;
+    case 'say':
+      s.say = { text: a.text, at: s.tick };
+      break;
     case 'wake': {
       const f = foe(a.id); if (f) f.awake = true;
       break;

@@ -255,6 +255,19 @@ try {
        `${claimed.length} bindings, ${new Set(claimed).size} distinct`);
     ok('Escape is not also a dodge', !hasVerb(tap('Escape'), VERB.DODGE));
     ok('E still reaches the frame as INTERACT', hasVerb(tap('KeyE'), VERB.INTERACT));
+    ok('J reaches the frame as ATTACK', hasVerb(tap('KeyJ'), VERB.ATTACK));
+
+    // And pressing it in camp must SAY something rather than do nothing.
+    const combat = (await import('../systems/combat/index.js')).default;
+    const { saying } = await import('../sim/state.js');
+    const c1 = createState(0x1594);
+    step(c1, setVerb(0, VERB.ATTACK, true), [combat]);
+    ok('J in camp refuses out loud', !c1.swing && !!saying(c1), c1.say ? c1.say.text : 'silence');
+    r.draw(c1, [{text:''},{text:''},{text:''},{text:''}]);
+    const band = ctx.getImageData(0, VIEW_H - 30, W, 20).data;
+    let ink = 0;
+    for (let i = 0; i < band.length; i += 4) if (Math.max(band[i], band[i+1], band[i+2]) > 120) ink++;
+    ok('and the refusal is on the glass', ink > 20, `${ink} text px`);
     ok('the frame is clear once keys are released', inp.sample() === 0, String(inp.sample()));
   }
 

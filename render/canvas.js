@@ -11,7 +11,7 @@ import { visible, prompt, containerItems, carriedBulk, tier,
          BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
 import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
-import { MAX_HP, swingPhase } from '../sim/state.js';
+import { MAX_HP, swingPhase, saying } from '../sim/state.js';
 import { isContainer, labelOf, bulkOf, KIND } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
@@ -410,8 +410,10 @@ export function createRenderer(canvas, pack = null) {
       // Over the light, because it is interface: a health bar you cannot read in
       // the dark is a health bar that tells you nothing at the moment it matters.
       if (state.floor >= 0) drawHealth(state);
+      // What the world just said outranks what you are standing next to: a
+      // refusal you asked for is more urgent than a verb you did not.
       if (state.screen) drawScreen(state, tone);
-      else drawToast(prompt(state));
+      else drawToast(saying(state) ? { text: saying(state).text, refuse: true } : prompt(state));
       drawHud(hud);
       return world;
     },
