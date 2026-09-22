@@ -217,8 +217,9 @@ reads at depth. Depth stops being a larger number and becomes a change in kind.
 *epistemology* rather than through damage numbers, and it gives Bearing — the
 stat with no job in the salvage loop — the best job in the game.
 
-**Status: UNCONFIRMED.** DJ did not follow the first pitch, which was written
-badly. This is the same idea stated properly and has not been ruled on.
+**Status:** confirmed (DJ, 2026-09-22), on the second telling. The first pitch
+was written badly and got a *not sure what you meant*, which is worth recording:
+the idea did not change between the two tellings, only the account of it did.
 
 ---
 
