@@ -1,0 +1,122 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Paramyth Atlas</title>
+<style>
+  body { margin:0; background:#0b0a09; color:#8a7f70; font:12px ui-monospace,monospace; padding:14px; }
+  h1 { font-size:12px; font-weight:400; color:#c4b49a; margin:0 0 2px; letter-spacing:.08em; }
+  p  { margin:0 0 12px; color:#5f584e; max-width:78ch; line-height:1.5; }
+  canvas { display:block; image-rendering:pixelated; margin-bottom:14px; cursor:crosshair; }
+  .legend span { margin-right:14px; }
+  .k { display:inline-block; width:9px; height:9px; vertical-align:-1px; margin-right:4px; }
+  label { color:#7d7060; } input { background:#151311; color:#c4b49a; border:1px solid #2e2823; padding:2px 5px; font:inherit; width:9ch; }
+</style></head>
+<body>
+<h1>PARAMYTH ATLAS — floor topology by site and depth</h1>
+<p>It draws the void rather than the rock. Each tile is one floor's room graph:
+occupied cells, the links between them, and the stairs. Read it down a column to
+see depth vary within one site; read it across a row to see sites differ from
+each other. A generator blind to an axis prints identical tiles along that axis,
+which is invisible from inside a room and obvious here.</p>
+<div class="legend" id="legend"></div>
+<label>seed <input id="seed" value="1594"></label>
+<canvas id="overview"></canvas>
+<h1 id="detailLabel">CLICK A TILE — room interiors</h1>
+<canvas id="detail"></canvas>
+
+<script>
+window.addEventListener('error', (e) => {
+  document.body.insertAdjacentHTML('afterbegin',
+    '<div style="padding:10px;border-left:3px solid #b5553f;background:#231b19;color:#e0a08c;margin-bottom:10px;white-space:pre-wrap">'
+    + 'This page failed to start.\n\n  ' + (e.message || e) + '\n  ' + (e.filename || '') + ':' + (e.lineno || '')
+    + (location.protocol === 'file:' ? '\n\nIt was opened from the file system. Run npm start and open http://localhost:3140/tools/atlas.html' : '')
+    + '</div>');
+});
+</script>
+<script type="module">
+import { floorPlan, floorCount, roomTiles, ERAS, COLS, ROWS, GW, GH, T } from '../core/gen.js';
+
+const SITES = 14, FLOORS = 4;
+const CELL = 15, PAD = 4, TW = GW*CELL + PAD*2, TH = GH*CELL + PAD*2 + 11;
+const ov = document.getElementById('overview'), octx = ov.getContext('2d');
+const dt = document.getElementById('detail'), dctx = dt.getContext('2d');
+let seed = 0x1594, sel = null;
+
+document.getElementById('legend').innerHTML = ERAS.map((e) =>
+  `<span><i class="k" style="background:${e.tint}"></i>${e.name}</span>`).join('');
+
+document.getElementById('seed').addEventListener('change', (e) => {
+  seed = (parseInt(e.target.value, 16) || parseInt(e.target.value, 10) || 0) >>> 0;
+  sel = null; drawOverview(); drawDetail();
+});
+
+function drawFloorTile(ctx, ox, oy, site, floor) {
+  if (floor >= floorCount(seed, site)) return false;
+  const p = floorPlan(seed, site, floor);
+  ctx.fillStyle = '#0f0e0d'; ctx.fillRect(ox, oy, TW, TH - 11);
+
+  for (const [a, b] of p.links) {
+    const ax = ox+PAD + (a%GW)*CELL + CELL/2, ay = oy+PAD + ((a/GW|0))*CELL + CELL/2;
+    const bx = ox+PAD + (b%GW)*CELL + CELL/2, by = oy+PAD + ((b/GW|0))*CELL + CELL/2;
+    ctx.strokeStyle = '#4a4138'; ctx.lineWidth = 3;
+    ctx.beginPath(); ctx.moveTo(ax, ay); ctx.lineTo(bx, by); ctx.stroke();
+  }
+  for (const i of p.cells) {
+    const x = ox+PAD + (i%GW)*CELL, y = oy+PAD + ((i/GW|0))*CELL;
+    ctx.fillStyle = p.era.tint; ctx.fillRect(x+2, y+2, CELL-4, CELL-4);
+    if (i === p.stairDown) { ctx.fillStyle = '#000'; ctx.fillRect(x+CELL/2-2, y+CELL/2-2, 4, 4); }
+    if (i === p.stairUp)   { ctx.fillStyle = '#e8d5b0'; ctx.fillRect(x+CELL/2-1, y+CELL/2-1, 2, 2); }
+  }
+  return true;
+}
+
+function drawOverview() {
+  ov.width = 40 + FLOORS*(TW+8); ov.height = 18 + SITES*(TH+4);
+  octx.fillStyle = '#0b0a09'; octx.fillRect(0, 0, ov.width, ov.height);
+  octx.font = '9px ui-monospace,monospace'; octx.textBaseline = 'top';
+  for (let f = 0; f < FLOORS; f++) {
+    octx.fillStyle = '#5f584e';
+    octx.fillText('floor ' + (f+1), 40 + f*(TW+8), 4);
+  }
+  for (let s = 0; s < SITES; s++) {
+    const oy = 18 + s*(TH+4);
+    octx.fillStyle = '#4a443c'; octx.fillText('site ' + String(s).padStart(2, '0'), 2, oy + 8);
+    for (let f = 0; f < FLOORS; f++) drawFloorTile(octx, 40 + f*(TW+8), oy, s, f);
+  }
+}
+
+ov.addEventListener('click', (e) => {
+  const r = ov.getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  const f = Math.floor((x - 40) / (TW+8)), s = Math.floor((y - 18) / (TH+4));
+  if (f >= 0 && f < FLOORS && s >= 0 && s < SITES && f < floorCount(seed, s)) { sel = { s, f }; drawDetail(); }
+});
+
+const PX = 3;
+const COL = { [T.FLOOR]:'#16120f', [T.WALL]:'#2e2723', [T.RUBBLE]:'#382c22',
+  [T.SARC]:'#54493f', [T.NICHE]:'#0b0908', [T.PILLAR]:'#4e433b',
+  [T.STAIR_D]:'#000000', [T.STAIR_U]:'#a08a6e' };
+
+function drawDetail() {
+  const label = document.getElementById('detailLabel');
+  if (!sel) { dt.width = 1; dt.height = 1; label.textContent = 'CLICK A TILE — room interiors'; return; }
+  const p = floorPlan(seed, sel.s, sel.f);
+  const rw = COLS*PX, rh = ROWS*PX;
+  dt.width = GW*(rw+8); dt.height = GH*(rh+18);
+  dctx.fillStyle = '#0b0a09'; dctx.fillRect(0, 0, dt.width, dt.height);
+  dctx.font = '9px ui-monospace,monospace'; dctx.textBaseline = 'top';
+  label.textContent = `SITE ${sel.s} · FLOOR ${sel.f+1}/${floorCount(seed, sel.s)} · ${p.era.name.toUpperCase()} · ${p.cells.length} rooms`;
+
+  for (const i of p.cells) {
+    const ox = (i%GW)*(rw+8), oy = ((i/GW|0))*(rh+18) + 11;
+    const { grid, archetype } = roomTiles(seed, sel.s, sel.f, i);
+    dctx.fillStyle = '#6b6055';
+    dctx.fillText(`r${i} ${archetype}`, ox, oy - 11);
+    for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+      dctx.fillStyle = COL[grid[ty*COLS+tx]] || '#f0f';
+      dctx.fillRect(ox + tx*PX, oy + ty*PX, PX, PX);
+    }
+  }
+}
+
+drawOverview(); drawDetail();
+window.__atlasReady = true;
+</script></body></html>

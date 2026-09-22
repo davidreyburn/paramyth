@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>tileset contact sheet</title>
+<style>
+  body { margin:0; background:#1b1a18; font:12px ui-monospace,monospace; color:#c9c3b6; padding:12px; }
+  h1 { font-size:12px; font-weight:400; color:#c4b49a; margin:0 0 6px; letter-spacing:.06em; }
+  #status { padding:8px 10px; border-left:3px solid #4a443c; background:#232220; margin-bottom:10px; line-height:1.6; white-space:pre-wrap; }
+  .bad { border-left-color:#b5553f !important; color:#e0a08c; }
+  canvas { display:block; image-rendering:pixelated; }
+  .bar { margin-bottom:10px; color:#7d7060; } .bar a { color:#a89a80; margin-right:12px; }
+</style></head>
+<body>
+<h1>TILESET CONTACT SHEET — grid coordinates for assets/packs/*.json</h1>
+<div class="bar" id="bar"></div>
+<div id="status">loading…</div>
+<canvas id="c"></canvas>
+<script>
+const status = document.getElementById('status');
+const say = (m, bad) => { status.textContent = m; status.className = bad ? 'bad' : ''; };
+if (location.protocol === 'file:') say('Opened from the file system. Run npm start and open http://localhost:3140/tools/tileset-sheet.html', true);
+</script>
+<script type="module">
+const say = (m, bad) => { const s = document.getElementById('status'); s.textContent = m; s.className = bad ? 'bad' : ''; };
+window.addEventListener('error', (e) => say('Failed to start.\n\n  ' + (e.message || e) + '\n  ' + (e.filename||'') + ':' + (e.lineno||''), true));
+
+const q = new URLSearchParams(location.search);
+const pack = await (await fetch('../assets/packs/onebit.json')).json();
+const which = q.get('sheet') || 'tiles';
+const S = +(q.get('scale') || 3);
+const T = pack.tile;
+const c0 = +(q.get('c0') || 0), r0 = +(q.get('r0') || 0);
+
+document.getElementById('bar').innerHTML =
+  Object.keys(pack.sheets).map((k) => `<a href="?sheet=${k}&scale=${S}">${k}${k===which?' ◀':''}</a>`).join('')
+  + ` | zoom <a href="?sheet=${which}&scale=2">2×</a><a href="?sheet=${which}&scale=3">3×</a><a href="?sheet=${which}&scale=5">5×</a>`;
+
+const SRC = '..' + decodeURIComponent(pack.sheets[which]).replace(/^\./, '');
+const img = new Image();
+img.onerror = () => say('Could not load the sheet.\n\n  tried: ' + new URL(pack.sheets[which], location.href).href, true);
+
+img.onload = () => {
+  const GX = Math.floor(img.width / T), GY = Math.floor(img.height / T);
+  const c1 = Math.min(+(q.get('c1') || GX - 1), GX - 1);
+  const r1 = Math.min(+(q.get('r1') || GY - 1), GY - 1);
+  const NX = c1 - c0 + 1, NY = r1 - r0 + 1;
+  const LBL = 26, CW = T * S, RH = T * S + 12;
+
+  const c = document.getElementById('c'), x = c.getContext('2d');
+  c.width = LBL + NX * CW; c.height = 14 + NY * RH;
+  x.imageSmoothingEnabled = false;
+  x.fillStyle = '#1b1a18'; x.fillRect(0, 0, c.width, c.height);
+  x.font = '10px ui-monospace,monospace'; x.textBaseline = 'top';
+
+  for (let j = 0; j < NY; j++) {
+    const gy = r0 + j, oy = 14 + j * RH;
+    x.fillStyle = '#7d8f6a'; x.fillText('r' + gy, 1, oy + CW / 2 - 5);
+    for (let i = 0; i < NX; i++) {
+      const gx = c0 + i, ox = LBL + i * CW;
+      if (j === 0) { x.fillStyle = '#8a9fbf'; x.fillText(String(gx), ox + CW / 2 - 4, 1); }
+      x.fillStyle = (gx + gy) % 2 ? '#232220' : '#2a2825';
+      x.fillRect(ox, oy, CW, CW);
+      x.drawImage(img, gx * T, gy * T, T, T, ox, oy, CW, CW);
+      x.strokeStyle = '#3a3833'; x.lineWidth = 1; x.strokeRect(ox + .5, oy + .5, CW - 1, CW - 1);
+    }
+  }
+  say(`${which}: ${img.width}×${img.height}, ${GX}×${GY} cells of ${T}px `
+    + `(showing c${c0}–c${c1}, r${r0}–r${r1} at ${S}×). `
+    + 'A mapping entry is ["' + which + '", col, row].');
+  window.__sheetReady = true;
+};
+img.src = SRC;
+</script></body></html>

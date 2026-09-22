@@ -1,0 +1,224 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>Tile Mapper</title>
+<style>
+  body { margin:0; background:#141311; color:#c9c3b6; font:12px ui-monospace,monospace; padding:12px; }
+  h1 { font-size:12px; font-weight:400; color:#c4b49a; margin:0 0 4px; letter-spacing:.06em; }
+  p.note { color:#5f584e; margin:0 0 10px; max-width:104ch; line-height:1.55; }
+  #status { padding:7px 9px; border-left:3px solid #4a443c; background:#201f1d; margin-bottom:10px; white-space:pre-wrap; }
+  .bad { border-left-color:#b5553f !important; color:#e0a08c; }
+  .bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:10px; }
+  .bar label { color:#7d7060; }
+  select,input,button { background:#1d1c1a; color:#c9c3b6; border:1px solid #33302b; padding:3px 7px; font:inherit; }
+  button { cursor:pointer; } button:hover { background:#272522; } button.on { border-color:#c4b49a; background:#272522; }
+  .cols { display:flex; gap:14px; align-items:flex-start; }
+  #types { width:230px; flex:none; }
+  .ty { padding:5px 7px; margin-bottom:3px; border:1px solid #2b2824; cursor:pointer; }
+  .ty:hover { background:#1e1d1b; } .ty.sel { border-color:#c4b49a; background:#232120; }
+  .ty .k { color:#5f584e; float:right; font-size:11px; }
+  .sw { width:9px; height:9px; display:inline-block; margin-right:6px; vertical-align:-1px; }
+  canvas { display:block; image-rendering:pixelated; }
+  #previewWrap { margin-top:14px; }
+  textarea { width:100%; height:200px; background:#1a1917; color:#9a9184; border:1px solid #2b2824; font:11px ui-monospace,monospace; margin-top:8px; display:none; }
+</style></head>
+<body>
+<h1>TILE MAPPER — assign sheet cells to tile types</h1>
+<p class="note">Pick a type, pick a sheet, then click cells.
+<b>variants</b> and <b>overlay</b> types toggle a cell in or out of their variant list.
+<b>nineslice</b> types (walls) take a single click that sets the top-left of their 3×3 block — a wall's tile is chosen by which neighbours share its type, which is why it cannot be a random variant.
+Assigned cells carry the type's colour; cells drawn dim hold art nothing uses yet.
+The preview is a real generated room in the current mapping, fully lit so the art is judged rather than the lighting.</p>
+<div id="status">loading…</div>
+
+<div class="bar">
+  <span id="sheetBtns"></span>
+  <label>stratum <select id="tone"></select></label>
+  <label>seed <input id="seed" value="1594" size="6"></label>
+  <label>site <input id="site" type="number" value="0" min="0" max="99" size="3"></label>
+  <label>floor <input id="floor" type="number" value="0" min="0" max="3" size="3"></label>
+  <button id="reroll">next room</button>
+  <button id="export">export manifest</button>
+  <button id="revert">revert</button>
+  <span id="stats" style="color:#5f584e"></span>
+</div>
+
+<div class="cols"><div id="types"></div><canvas id="sheet"></canvas></div>
+<div id="previewWrap"><canvas id="preview"></canvas></div>
+<textarea id="out" spellcheck="false"></textarea>
+
+<script>
+window.addEventListener('error', (e) => {
+  const s = document.getElementById('status');
+  s.className = 'bad';
+  s.textContent = 'This page failed to start.\n\n  ' + (e.message || e) + '\n  ' + (e.filename || '') + ':' + (e.lineno || '')
+    + (location.protocol === 'file:' ? '\n\nOpened from the file system. Run npm start and open http://localhost:3140/tools/tile-mapper.html' : '');
+});
+</script>
+<script type="module">
+import { roomTiles, floorPlan, floorCount, COLS, ROWS, TILE, T } from '../core/gen.js';
+import { TONES } from '../core/palette.js';
+import { loadPack, tonedSheet, drawsFor, shadeTone } from '../render/tileset.js';
+
+const PACK_URL = '../assets/packs/onebit.json';
+const say = (m, bad) => { const s = document.getElementById('status'); s.textContent = m; s.className = bad ? 'bad' : ''; };
+const COLOR = { FLOOR:'#6e7f96', WALL:'#8a7a5e', RUBBLE:'#7d8470', SARC:'#c0a060',
+                NICHE:'#8a6b91', PILLAR:'#77c23a', STAIR_D:'#d77000', STAIR_U:'#a5004c' };
+
+const pack = await loadPack(PACK_URL);
+if (!pack.ok) say('Sheets missing: ' + pack.missing.join(', '), true);
+const pristine = JSON.parse(JSON.stringify(pack.tiles));
+
+const PT = pack.tile, S = 2;
+let sheetName = 'tiles', sel = 'FLOOR', tone = 'Recent';
+let seed = 0x1594, site = 0, floor = 0, roomPick = 0;
+
+// Which cells hold any art — that is what "unclaimed" is measured against.
+const ART = {};
+for (const [k, img] of Object.entries(pack.sheets)) {
+  const pc = document.createElement('canvas');
+  pc.width = img.width; pc.height = img.height;
+  const px = pc.getContext('2d', { willReadFrequently: true });
+  px.drawImage(img, 0, 0);
+  const GX = Math.floor(img.width / PT), GY = Math.floor(img.height / PT);
+  const a = { GX, GY, cells: [] };
+  for (let gy = 0; gy < GY; gy++) for (let gx = 0; gx < GX; gx++) {
+    const d = px.getImageData(gx*PT, gy*PT, PT, PT).data;
+    let n = 0; for (let i = 3; i < d.length; i += 4) if (d[i] > 8) n++;
+    a.cells[gy*GX + gx] = n > 4;
+  }
+  ART[k] = a;
+}
+
+const sheetC = document.getElementById('sheet'), sx = sheetC.getContext('2d');
+const prevC = document.getElementById('preview'), pv = prevC.getContext('2d');
+const NAME = Object.fromEntries(Object.entries(T).map(([k, v]) => [v, k]));
+
+document.getElementById('sheetBtns').innerHTML = Object.keys(pack.sheets)
+  .map((k) => `<button data-s="${k}" class="${k===sheetName?'on':''}">${k}</button>`).join(' ');
+document.querySelectorAll('#sheetBtns button').forEach((b) => b.onclick = () => {
+  sheetName = b.dataset.s;
+  document.querySelectorAll('#sheetBtns button').forEach((o) => o.classList.toggle('on', o.dataset.s === sheetName));
+  drawSheet();
+});
+
+const toneSel = document.getElementById('tone');
+toneSel.innerHTML = Object.keys(TONES).map((k) => `<option>${k}</option>`).join('');
+toneSel.onchange = () => { tone = toneSel.value; drawSheet(); drawPreview(); };
+
+function ownersOf(sh, gx, gy) {
+  const out = [];
+  for (const [name, d] of Object.entries(pack.tiles)) {
+    if (d.kind === 'nineslice') {
+      if (d.sheet === sh && gx >= d.origin[0] && gx < d.origin[0]+3 && gy >= d.origin[1] && gy < d.origin[1]+3) out.push(name);
+    } else if ((d.cells || []).some((c) => c[0] === sh && c[1] === gx && c[2] === gy)) out.push(name);
+  }
+  return out;
+}
+
+function drawTypes() {
+  document.getElementById('types').innerHTML = Object.keys(T).map((name) => {
+    const d = pack.tiles[name] || {};
+    const detail = d.kind === 'nineslice' ? `${d.sheet} @${d.origin.join(',')}`
+                 : `${(d.cells||[]).length} cell${(d.cells||[]).length===1?'':'s'}${d.base ? ' / '+d.base : ''}`;
+    const sh = d.shade === undefined || d.shade === 1 ? '' : `  shade ${d.shade}`;
+    return `<div class="ty ${name===sel?'sel':''}" data-t="${name}">
+      <span class="k">${d.kind || '?'}</span>
+      <i class="sw" style="background:${COLOR[name]}"></i>${name}
+      <div style="color:#5f584e;margin-top:2px">${detail}${sh}</div></div>`;
+  }).join('');
+  document.querySelectorAll('.ty').forEach((el) => el.onclick = () => { sel = el.dataset.t; drawTypes(); drawSheet(); });
+}
+
+function drawSheet() {
+  const { GX, GY, cells } = ART[sheetName];
+  sheetC.width = GX*PT*S; sheetC.height = GY*PT*S;
+  sx.imageSmoothingEnabled = false;
+  sx.fillStyle = '#141311'; sx.fillRect(0, 0, sheetC.width, sheetC.height);
+  const toned = tonedSheet(pack, sheetName, TONES[tone]);
+  sx.font = '9px ui-monospace,monospace'; sx.textBaseline = 'top';
+
+  for (let gy = 0; gy < GY; gy++) for (let gx = 0; gx < GX; gx++) {
+    const ox = gx*PT*S, oy = gy*PT*S;
+    const owners = ownersOf(sheetName, gx, gy);
+    const art = cells[gy*GX + gx];
+    sx.globalAlpha = art ? (owners.length ? 1 : 0.8) : 0.1;
+    sx.fillStyle = (gx+gy)%2 ? '#1c1b19' : '#211f1d';
+    sx.fillRect(ox, oy, PT*S, PT*S);
+    sx.drawImage(toned, gx*PT, gy*PT, PT, PT, ox, oy, PT*S, PT*S);
+    sx.globalAlpha = 1;
+    if (owners.length) {
+      sx.strokeStyle = COLOR[owners[0]]; sx.lineWidth = 2;
+      sx.strokeRect(ox+1, oy+1, PT*S-2, PT*S-2);
+      sx.fillStyle = COLOR[owners[0]];
+      sx.fillText(owners.map((o) => o.slice(0,3)).join(','), ox+2, oy+2);
+    } else { sx.strokeStyle = '#2b2824'; sx.lineWidth = 1; sx.strokeRect(ox+.5, oy+.5, PT*S-1, PT*S-1); }
+  }
+  let claimed = 0, withArt = 0;
+  for (const [k, a] of Object.entries(ART))
+    a.cells.forEach((has, i) => { if (!has) return; withArt++; if (ownersOf(k, i % a.GX, (i/a.GX)|0).length) claimed++; });
+  document.getElementById('stats').textContent = `${claimed}/${withArt} cells with art assigned · ${withArt-claimed} unclaimed (both sheets)`;
+}
+
+sheetC.onclick = (e) => {
+  const r = sheetC.getBoundingClientRect();
+  const gx = Math.floor((e.clientX - r.left) / (PT*S)), gy = Math.floor((e.clientY - r.top) / (PT*S));
+  const { GX, GY } = ART[sheetName];
+  if (gx < 0 || gy < 0 || gx >= GX || gy >= GY) return;
+  const d = pack.tiles[sel];
+
+  if (d.kind === 'nineslice') {
+    if (gx + 3 > GX || gy + 3 > GY) return say(`A nine-slice needs a 3×3 block; (${gx},${gy}) runs off the sheet.`, true);
+    d.sheet = sheetName; d.origin = [gx, gy];
+    say(`${sel}: nine-slice origin set to ${sheetName} ${gx},${gy}`);
+  } else {
+    const list = d.cells || (d.cells = []);
+    const at = list.findIndex((c) => c[0] === sheetName && c[1] === gx && c[2] === gy);
+    if (at >= 0) { if (list.length > 1) list.splice(at, 1); else return say('A type needs at least one variant.', true); }
+    else list.push([sheetName, gx, gy]);
+    say(`${sel}: ${list.length} variant(s)`);
+  }
+  drawTypes(); drawSheet(); drawPreview();
+};
+
+function drawPreview() {
+  const plan = floorPlan(seed, site, floor);
+  const room = plan.cells[roomPick % plan.cells.length];
+  const { grid, archetype, era } = roomTiles(seed, site, floor, room);
+  prevC.width = COLS*TILE; prevC.height = ROWS*TILE + 14;
+  pv.imageSmoothingEnabled = false;
+  pv.fillStyle = '#000'; pv.fillRect(0, 0, prevC.width, prevC.height);
+  const at = (tx, ty) => tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS ? -1 : grid[ty*COLS+tx];
+
+  for (let ty = 0; ty < ROWS; ty++) for (let tx = 0; tx < COLS; tx++) {
+    const t = grid[ty*COLS+tx], name = NAME[t] || 'FLOOR';
+    const same = (nx, ny) => { const o = at(nx, ny); return o === -1 || o === t; };
+    const draws = drawsFor(pack, name, tx, ty, [
+      same(tx,ty-1), same(tx+1,ty), same(tx,ty+1), same(tx-1,ty),
+      same(tx-1,ty-1), same(tx+1,ty-1), same(tx+1,ty+1), same(tx-1,ty+1)]);
+    if (!draws) continue;
+    for (const [sh, gx, gy, shade] of draws) {
+      const toned = tonedSheet(pack, sh, shadeTone(TONES[tone], shade));
+      if (toned) pv.drawImage(toned, gx*PT, gy*PT, PT, PT, tx*TILE, ty*TILE, TILE, TILE);
+    }
+  }
+  pv.font = '9px ui-monospace,monospace'; pv.textBaseline = 'top'; pv.fillStyle = '#7d7060';
+  pv.fillText(`site ${site} · floor ${floor+1}/${floorCount(seed,site)} · room ${room} · ${era.name} · ${archetype}   (fully lit — art only)`, 2, ROWS*TILE + 3);
+}
+
+document.getElementById('reroll').onclick = () => { roomPick++; drawPreview(); };
+document.getElementById('seed').onchange = (e) => { seed = (parseInt(e.target.value,16) || 0) >>> 0; drawPreview(); };
+document.getElementById('site').onchange = (e) => { site = +e.target.value; floor = 0; drawPreview(); };
+document.getElementById('floor').onchange = (e) => { floor = Math.min(+e.target.value, floorCount(seed,site)-1); drawPreview(); };
+document.getElementById('revert').onclick = () => { pack.tiles = JSON.parse(JSON.stringify(pristine)); drawTypes(); drawSheet(); drawPreview(); say('reverted to the manifest on disk'); };
+document.getElementById('export').onclick = async () => {
+  const src = await (await fetch(PACK_URL)).json();
+  src.tiles = pack.tiles;
+  const json = JSON.stringify(src, null, 2);
+  const out = document.getElementById('out');
+  out.style.display = 'block'; out.value = json; out.select();
+  try { await navigator.clipboard.writeText(json); say('Manifest copied to clipboard. Paste over assets/packs/onebit.json.'); }
+  catch { say('Manifest below — select all and copy over assets/packs/onebit.json.'); }
+};
+
+drawTypes(); drawSheet(); drawPreview();
+if (pack.ok) say(`tiles + decor loaded. Selected: ${sel} (${pack.tiles[sel].kind}).`);
+window.__mapperReady = true;
+</script></body></html>

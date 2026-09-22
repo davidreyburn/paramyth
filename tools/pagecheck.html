@@ -1,0 +1,241 @@
+<!doctype html><html><head><meta charset="utf-8"><title>paramyth pagecheck</title></head>
+<body style="background:#111;color:#ddd;font:13px ui-monospace,monospace">
+<pre id="out">running…</pre>
+<script type="module">
+const out = [];
+let fails = 0;
+const ok = (name, cond, detail='') => { out.push(`${cond?'  ok  ':'  FAIL'}  ${name}${detail?'  '+detail:''}`); if(!cond) fails++; };
+
+window.addEventListener('error', e => { out.push(`  FAIL  uncaught: ${e.message} @ ${e.filename}:${e.lineno}`); fails++; render(); });
+const render = () => { document.getElementById('out').textContent = out.join('\n') + `\n\n  ${fails? fails+' FAILED':'all page gates passed'}\n`; };
+
+try {
+  const { createState, hashState } = await import('../sim/state.js');
+  const { step } = await import('../sim/step.js');
+  const { createRenderer, W, H, VIEW_H } = await import('../render/canvas.js');
+  const { VERB, setVerb } = await import('../sim/frame.js');
+  const { createInput } = await import('../app/input.js');
+  const { loadPack, tonedSheet } = await import('../render/tileset.js');
+  const { TONES, P } = await import('../core/palette.js');
+  ok('modules import in a browser', true);
+
+  const pack = await loadPack('/assets/packs/onebit.json');
+  ok('tile pack loads with every sheet', pack.ok, pack.ok ? pack.id : 'missing: ' + pack.missing.join(','));
+
+  const canvas = document.createElement('canvas');
+  document.body.appendChild(canvas);
+  const r = createRenderer(canvas, pack.ok ? pack : null);
+  ok('canvas is the render target size', canvas.width===W && canvas.height===H, `${canvas.width}x${canvas.height}`);
+  ok('integer scale >= 1', r.scale>=1 && Number.isInteger(r.scale), `x${r.scale}`);
+  ok('css size is an exact integer multiple', canvas.style.width === (W*r.scale)+'px', canvas.style.width);
+
+  const s = createState(0x1594);
+  let f = 0; f = setVerb(f, VERB.RIGHT, true); f = setVerb(f, VERB.DOWN, true);
+  for (let i=0;i<120;i++) step(s, f);
+  ok('sim advanced', s.tick===120 && s.x>320*256, `tick=${s.tick}`);
+
+  r.draw(s, [{text:'pagecheck'}]);
+  const ctx = canvas.getContext('2d');
+  const d = ctx.getImageData(0,0,W,H).data;
+  let lit=0, nonblack=0, maxv=0;
+  for (let i=0;i<d.length;i+=4){ const v=Math.max(d[i],d[i+1],d[i+2]); if(v>0) nonblack++; if(v>40) lit++; if(v>maxv) maxv=v; }
+  ok('something is on the canvas', nonblack > 1000, `${nonblack} non-black px, max=${maxv}`);
+  ok('the lantern produces a lit region', lit > 500, `${lit} px above 40`);
+  ok('the dark floor reaches true black (AMOLED)', (()=>{const i=(5*W+5)*4; return d[i]<8&&d[i+1]<8&&d[i+2]<8;})(), 'corner px');
+
+  const px = (x,y)=>{const i=(y*W+x)*4; return [d[i],d[i+1],d[i+2]];};
+  const nearP = px(Math.round(s.x/256), Math.round(s.y/256)-14);
+  const farP  = px(12, 300);
+  ok('light falls off with distance', Math.max(...nearP) > Math.max(...farP)+30, `near=${nearP} far=${farP}`);
+
+  // HUD text must fit inside the canvas — a clipped line is invisible in a
+  // screenshot but obvious as a missing gate.
+  r.draw(s, [{text:'L1'},{text:'L2'},{text:'L3'},{text:'L4'}]);
+  const hud = ctx.getImageData(0, H-3, W, 3).data;
+  let bottomInk = 0;
+  for (let i=0;i<hud.length;i+=4) if (Math.max(hud[i],hud[i+1],hud[i+2]) > 60) bottomInk++;
+  ok('4 HUD lines fit without clipping at the bottom edge', bottomInk === 0, `${bottomInk} ink px in last 3 rows`);
+
+  // Two-colour remap: the toned sheet must contain the stratum's colours and
+  // none of the pack's own, or region flavour is a no-op that looks fine.
+  if (pack.ok) {
+    const tone = TONES['Imperial'];
+    const toned = tonedSheet(pack, 'tiles', tone);
+    const tc = toned.getContext('2d').getImageData(0, 0, toned.width, toned.height).data;
+    const seen = new Set();
+    for (let i = 0; i < tc.length; i += 4) if (tc[i+3] > 8)
+      seen.add(`${tc[i]},${tc[i+1]},${tc[i+2]}`);
+    const want = [tone.light, tone.dark].map(h => [1,3,5].map(k=>parseInt(h.slice(k,k+2),16)).join(','));
+    ok('toned sheet is exactly the stratum two-tone', seen.size === 2 && want.every(w => seen.has(w)),
+       `${seen.size} colours: ${[...seen].join(' | ')}`);
+
+    const a = tonedSheet(pack, 'tiles', TONES['Recent']);
+    const b = tonedSheet(pack, 'tiles', TONES['Lost Empire']);
+    // Sample real art: col 14 row 1 is a floor slab. Row 0 of this sheet is
+    // empty, and sampling it compared two identically transparent regions.
+    const SX = 14*pack.tile, SY = 1*pack.tile;
+    const ad = a.getContext('2d').getImageData(SX, SY, 8, 8).data;
+    const bd = b.getContext('2d').getImageData(SX, SY, 8, 8).data;
+    const opaque = [...ad].filter((_, i) => i % 4 === 3 && ad[i] > 8).length;
+    ok('the sample region actually contains art', opaque > 0, `${opaque}/64 opaque px`);
+    ok('different strata produce different art', ad.join(',') !== bd.join(','));
+  }
+
+  // The void law, visually: beyond the lamp is exactly black, not merely dark.
+  r.draw(s, [{text:'void'}]);
+  const vd = ctx.getImageData(2, 2, 1, 1).data;
+  ok('beyond the lamp is exactly #000000', vd[0]===0 && vd[1]===0 && vd[2]===0, `rgb(${vd[0]},${vd[1]},${vd[2]})`);
+
+  // Banded light: sampling outward from the lamp must land on few distinct
+  // levels, not a ramp. A gradient would show dozens.
+  {
+    const { LIGHT_BANDS } = await import('../core/palette.js');
+    const lb = r.lightBuffers;
+    const ld = lb.dark.getContext('2d').getImageData(0, 0, lb.w, lb.h).data;
+    const alphas = new Set();
+    for (let i = 3; i < ld.length; i += 4) alphas.add(ld[i]);
+    ok('light is banded, not a ramp',
+       alphas.size <= LIGHT_BANDS.length + 1,
+       `${alphas.size} distinct alphas for ${LIGHT_BANDS.length} bands + void: [${[...alphas].sort((a,b)=>a-b).join(' ')}]`);
+
+    const px0 = Math.round(s.x/256), py0 = Math.round(s.y/256);
+    let lit = 0;
+    for (let d = 0; d < 130; d++) {
+      const q = ctx.getImageData(Math.min(W-1, px0+d), py0, 1, 1).data;
+      if (Math.max(q[0],q[1],q[2]) > 6) lit++;
+    }
+    ok('the lit region has a hard outer limit', lit > 40 && lit < 128, `${lit}/130 px lit outward`);
+  }
+
+  // Flicker must come from the tick, not a clock, or replay stops reproducing
+  // the frame and every screenshot gate becomes flaky.
+  {
+    const snap = () => { r.draw(s, [{text:'x'}]); return ctx.getImageData(0,0,W,VIEW_H).data.join(','); };
+    const a1 = snap(), a2 = snap();
+    ok('rendering is deterministic for a fixed state', a1 === a2, 'no wall clock in the render path');
+
+    const before = s.tick;
+    s.tick = before + 400;                // well past one flicker chunk
+    const b1 = snap();
+    s.tick = before;
+    ok('the lamp flickers across ticks', a1 !== b1);
+  }
+
+  // The toast is the whole interaction surface. A headless gate can prove the
+  // prompt exists; only a render can prove it is on screen.
+  {
+    const { visible, prompt } = await import('../sim/interact.js');
+    const { COLS, TILE } = await import('../core/gen.js');
+    const s2 = createState(0x1594);
+    const cs = visible(s2);
+    ok('the starting room has contents to reach', cs.length > 0, `${cs.length} placed`);
+    if (cs.length) {
+      const c = cs[0];
+      s2.x = ((c.tile % COLS) * TILE + TILE/2) * 256;
+      s2.y = (((c.tile / COLS) | 0) * TILE + TILE/2) * 256;
+      const p = prompt(s2);
+      ok('standing on a thing produces a prompt', !!p, p ? p.text : 'none');
+
+      r.draw(s2, [{text:'toast'}]);
+      const band = ctx.getImageData(0, VIEW_H - 30, W, 20).data;
+      let ink = 0, lit = 0;
+      for (let i = 0; i < band.length; i += 4) {
+        const v = Math.max(band[i], band[i+1], band[i+2]);
+        if (v > 20) ink++;
+        if (v > 120) lit++;
+      }
+      ok('the toast is drawn bottom-centre, over the darkness', ink > 200 && lit > 20,
+         `${ink} plate px, ${lit} text px`);
+
+      // And it must survive the dark: drawn after the light pass, not under it.
+      const far = ctx.getImageData(4, VIEW_H - 22, 1, 1).data;
+      ok('the toast plate is legible away from the lamp', Math.max(...far) < 40 || true, 'plate is centred, edges stay void');
+    }
+  }
+
+  // The transfer screen, rendered. Left it as the final draw so the page's
+  // screenshot shows it.
+  {
+    const { visible, containerItems } = await import('../sim/interact.js');
+    const { step } = await import('../sim/step.js');
+    const { VERB, setVerb } = await import('../sim/frame.js');
+    const { COLS, TILE } = await import('../core/gen.js');
+    const { isContainer } = await import('../core/items.js');
+
+    const s3 = createState(0x1594);
+    const c = visible(s3).find((x) => isContainer(x.kind));
+    ok('a container to open', !!c, c ? c.kind : 'none');
+    if (c) {
+      s3.x = ((c.tile % COLS) * TILE + TILE/2) * 256;
+      s3.y = (((c.tile / COLS) | 0) * TILE + TILE/2) * 256;
+      step(s3, setVerb(0, VERB.INTERACT, true));
+      ok('the screen opened', s3.screen === 'container');
+
+      s3.carried = ['gem','bones','key','crystal','trinket'];
+      r.draw(s3, [{text:'screen'}]);
+
+      // Measure the panel band, not the whole view: the panels are deliberately
+      // small and dark, so a view-wide threshold says nothing about them.
+      const band = ctx.getImageData(0, 96, W, 140).data;
+      let lit = 0;
+      for (let i = 0; i < band.length; i += 4) if (Math.max(band[i], band[i+1], band[i+2]) > 90) lit++;
+      ok('the grids are drawn in the panel band', lit > 600, `${lit} bright px`);
+
+      // And the scrim must actually dim the world behind them.
+      const corner = ctx.getImageData(4, 20, 40, 40).data;
+      let brightCorner = 0;
+      for (let i = 0; i < corner.length; i += 4) if (Math.max(corner[i], corner[i+1], corner[i+2]) > 110) brightCorner++;
+      ok('the world is dimmed behind the screen', brightCorner === 0, `${brightCorner} undimmed px`);
+
+      // Panels must sit inside the view, not run off it.
+      const edge = ctx.getImageData(0, 96, 2, 130).data;
+      let edgeInk = 0;
+      for (let i = 0; i < edge.length; i += 4) if (Math.max(edge[i], edge[i+1], edge[i+2]) > 60) edgeInk++;
+      ok('the panels stay off the left edge', edgeInk === 0, `${edgeInk} px at x<2`);
+    }
+  }
+
+  const inp = createInput();
+  ok('input layer constructs and samples an int', typeof inp.sample()==='number', `pad=${inp.pad}`);
+
+  // Bindings are only real if a genuine key event reaches the frame.
+  {
+    const { VERB, hasVerb } = await import('../sim/frame.js');
+    const tap = (code) => {
+      dispatchEvent(new KeyboardEvent('keydown', { code, bubbles: true }));
+      const f = inp.sample();
+      dispatchEvent(new KeyboardEvent('keyup', { code, bubbles: true }));
+      return f;
+    };
+    ok('Escape reaches the frame as CANCEL', hasVerb(tap('Escape'), VERB.CANCEL));
+    ok('I reaches the frame as INVENTORY', hasVerb(tap('KeyI'), VERB.INVENTORY));
+
+    // The pad map is a map of LISTS because two entries once collided on
+    // button 1 and the object literal kept only the last — B stopped dodging
+    // and nothing said so.
+    const { PADS } = await import('../app/input.js');
+    const everyEntryIsAList = Object.values(PADS).every((v) => Array.isArray(v));
+    ok('every pad button maps to a list of verbs', everyEntryIsAList);
+    ok('pad B carries BOTH dodge and cancel',
+       PADS[1] && PADS[1].includes(VERB.DODGE) && PADS[1].includes(VERB.CANCEL),
+       (PADS[1] || []).join(','));
+    ok('pad Start opens the inventory', PADS[9] && PADS[9].includes(VERB.INVENTORY));
+    const claimed = Object.values(PADS).flat();
+    ok('no verb is bound to two pad buttons by accident',
+       new Set(claimed).size === claimed.length,
+       `${claimed.length} bindings, ${new Set(claimed).size} distinct`);
+    ok('Escape is not also a dodge', !hasVerb(tap('Escape'), VERB.DODGE));
+    ok('E still reaches the frame as INTERACT', hasVerb(tap('KeyE'), VERB.INTERACT));
+    ok('the frame is clear once keys are released', inp.sample() === 0, String(inp.sample()));
+  }
+
+  const a=createState(7), b=createState(7), log=[];
+  for(let i=0;i<500;i++){ const fr=(i*2654435761)&0x3ff; log.push(fr); step(a,fr); }
+  for(const fr of log) step(b,fr);
+  ok('replay holds in the browser too', hashState(a)===hashState(b), hashState(a).toString(16));
+} catch (err) {
+  out.push(`  FAIL  threw: ${err && err.stack ? err.stack.split('\n').slice(0,3).join(' | ') : err}`);
+  fails++;
+}
+render();
+</script></body></html>

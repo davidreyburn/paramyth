@@ -1,0 +1,11 @@
+.DS_Store
+node_modules/
+*.log
+
+# 24 MB across 6,034 files of CC0 reference art, none of it used yet. It is
+# public domain and permanently available, so vendoring it would cost the repo
+# its size forever to save a download:
+#   https://github.com/crawl/tiles/tree/master/releases
+#   https://opengameart.org/content/dungeon-crawl-32x32-tiles
+# Drop it back into inbox/ to browse it; remove this line to commit it.
+inbox/Dungeon Crawl Stone Soup Full/
