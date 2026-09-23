@@ -70,6 +70,13 @@ export const LIGHT_DOWNSCALE = 4;
 // camera. Three to one, front to back.
 export const LAMP_BACK = 0.34;
 
+// Daylight. Above ground there is no lamp pass at all, but skipping it alone
+// left the surface DIMMER than a lantern-lit room underground — the overlay adds
+// warmth on top of the tiles, so removing it removed light. The surface lifts
+// its whole two-tone pair instead, which is the same mechanism `shade` uses and
+// keeps the stratum's hue.
+export const SURFACE_LIFT = 1.9;
+
 // cosT is the cosine of the angle between a pixel and the facing direction: 1
 // straight ahead, 0 abeam, -1 directly behind. Returns the fraction of the full
 // lamp radius that reaches that way, so the outermost band still touches the

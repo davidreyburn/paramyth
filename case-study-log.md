@@ -4,6 +4,32 @@
 
 ---
 
+## 2026-09-22 — Two gates that were measuring the wrong pixels
+
+**What.** Making the surface daylit needed two new gates, and the first draft of
+each was wrong in the same way: it measured something that could not tell the
+two cases apart.
+
+**One.** *"the refusal is on the glass"* counted bright pixels in the toast band.
+That worked while the camp was dark. The camp is daylit now, so the band is
+bright whether or not a toast is drawn — the gate would have passed forever. It
+measures a **difference** now: draw with the line, draw without it, and the band
+must change.
+
+**Two.** *"underground is still void at the edges"* sampled (6,6) and read
+`194,131,107`. That is `#c2836b` exactly — the health pip colour. The probe was
+sitting on the HP bar, which is the same colour whether the sun is up or not. It
+samples (4,250) now, which is floor in both cases.
+
+**Why it is worth writing down.** Both were caught by the gates disagreeing with
+a screenshot, not by review. A gate that samples a fixed screen coordinate is
+coupled to the whole HUD layout, and nothing declares that coupling. The
+recurring lesson from this week: *a gate that can pass for the wrong reason is
+not a gate.* Same shape as the combat gate that kept its own copy of SPEED, and
+the pot that was renamed against the legend rather than the art.
+
+---
+
 ## 2026-09-22 — A gate that kept its own copy of the number it was checking
 
 **What.** Base player speed went from 192 to 288. The combat gate that exists

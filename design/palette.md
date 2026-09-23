@@ -96,6 +96,12 @@ Principle 3 becomes a rendering law:
   *few bands: 3 or fewer*, which argues a flame reads as few steps, not many.)
 - Light is always at a source: a carried lamp, a torch, a rune, spore-bloom. No
   ambient term, ever. A room with no source in it is `void`.
+- **Underground.** The clause above is a law about the dark, and the sky is a
+  source: above ground there is no lamp pass at all, and the surface renders at
+  its tiles' own value lifted ×1.9 (DJ, 2026-09-22). Camp, the Field, Grimhaven
+  and Ashmark are daylit. The contrast is the point — a mausoleum mouth should
+  read as a hole punched in a bright world, and a hub you have to squint at makes
+  selling a haul feel like another delve.
 - **A carried lamp is an EGG, not a disc** (DJ, 2026-09-22). It is pinched behind
   the bearer and swells toward whatever they face — three to one, front to back.
   A disc read as an *aura*, something the character emits; an egg reads as

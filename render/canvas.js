@@ -3,7 +3,7 @@
 import { roomTiles, COLS, ROWS, TILE, T } from '../core/gen.js';
 import { UNITS, px } from '../sim/state.js';
 import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER,
-         LAMP_BACK, lampShape } from '../core/palette.js';
+         LAMP_BACK, lampShape, SURFACE_LIFT } from '../core/palette.js';
 import { h } from '../core/addr.js';
 import { tonedSheet, drawsFor, shadeTone, variantFor } from './tileset.js';
 import { visible, prompt, containerItems, carriedBulk, tier,
@@ -12,7 +12,7 @@ import { visible, prompt, containerItems, carriedBulk, tier,
          BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
 import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
-import { MAX_HP, swingPhase, saying, lampVec } from '../sim/state.js';
+import { MAX_HP, swingPhase, saying, lampVec, surface } from '../sim/state.js';
 import { isContainer, labelOf, bulkOf, KIND } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
@@ -59,6 +59,14 @@ export function createRenderer(canvas, pack = null) {
   const BR2 = LIGHT_BANDS.map((b) => b.r * b.r);
 
   function drawLight(s) {
+    // Daylight above ground. No lamp pass at all — not a wider radius, not a
+    // brighter band: the overlay simply does not run, so the surface renders at
+    // the tiles' own value. `design/palette.md`'s no-ambient-term law is about
+    // the DARK; it is a law for rooms with no source in them, and the sky is a
+    // source. Skipping the pass is also free, which is the cheapest possible
+    // answer to a hub that felt like another delve.
+    if (surface(s)) return;
+
     // Flicker keyed to the tick, never to a clock: replay must reproduce the
     // exact frame, and a wall-clock flame would have broken that silently.
     const chunk = (s.tick / (60 / FLICKER.hz)) | 0;
@@ -115,8 +123,8 @@ export function createRenderer(canvas, pack = null) {
     ctx.drawImage(darkBuf, 0, 0, LW, LH, 0, 0, W, VIEW_H);
   }
 
-  function drawRoom(grid, era) {
-    const tone = TONES[era.name] || TONES['Recent'];
+  function drawRoom(grid, era, lift = 1) {
+    const tone = shadeTone(TONES[era.name] || TONES['Recent'], lift);
     const at = (tx, ty) =>
       tx < 0 || ty < 0 || tx >= COLS || ty >= ROWS ? -1 : grid[ty*COLS + tx];
 
@@ -409,7 +417,7 @@ export function createRenderer(canvas, pack = null) {
       const world = roomTiles(state.seed, state.site, state.floor, state.room);
       const tone = TONES[world.era.name] || TONES['Recent'];
       ctx.fillStyle = P.void; ctx.fillRect(0, 0, W, H);
-      drawRoom(world.grid, world.era);
+      drawRoom(world.grid, world.era, surface(state) ? SURFACE_LIFT : 1);
       drawStations(state, tone);
       drawItems(state, tone);
       drawFoes(state);

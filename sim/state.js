@@ -53,7 +53,14 @@ export const HURT_INVULN = 30;          // ticks of grace after taking a hit
 export const SAY_TICKS = 100;
 export const saying = (s) => (s.say && s.tick - s.say.at < SAY_TICKS) ? s.say : null;
 
-// Where steel stays sheathed. Camp today; Grimhaven and Ashmark when they exist.
+// Above ground. The surface is DAYLIT: the Field, the camp, Grimhaven, Ashmark.
+// A lantern is for underground, and a hub you have to squint at is a hub that
+// makes selling a haul feel like another delve.
+export const surface = (s) => s.floor < 0;
+
+// Where steel stays sheathed. These two are the same test today and will not
+// stay that way: the Field is surface and emphatically not friendly — it has
+// bandit holds on it. Kept apart so that day does not have to mean safe.
 export const friendly = (s) => s.floor < 0;
 
 export const swingPhase = (s) => {

@@ -5,7 +5,7 @@ import { readFile } from 'node:fs/promises';
 import { drawsFor } from '../render/tileset.js';
 import { roomTiles, floorPlan, COLS, ROWS } from '../core/gen.js';
 import { T } from '../core/gen.js';
-import { LIGHT_BANDS, LIGHT_BEYOND, TONES, P, FLICKER, LAMP_BACK, lampShape } from '../core/palette.js';
+import { LIGHT_BANDS, LIGHT_BEYOND, TONES, P, FLICKER, LAMP_BACK, lampShape, SURFACE_LIFT } from '../core/palette.js';
 import { ERAS } from '../core/gen.js';
 
 let failures = 0;
@@ -97,6 +97,25 @@ ok('outermost band reaches the lamp radius exactly', LIGHT_BANDS.at(-1).r === 1)
 // what they face. These bind the shape so it cannot quietly become a circle
 // again, and cannot become a spotlight that blinds you to your own back.
 ok('the lamp reaches its full radius dead ahead', lampShape(1) === 1, `${lampShape(1)}`);
+ok('daylight lifts the surface rather than dimming it', SURFACE_LIFT > 1, `x${SURFACE_LIFT}`);
+{
+  // Push the lift far enough and two channels clamp at 255 together, which drags
+  // the stratum's hue toward grey — the camp goes from warm stone to overcast
+  // concrete. One channel clipping is what makes it read as sunlit; two is what
+  // makes it read as washed out.
+  //
+  // Only the eras that can actually BE above ground matter here. The deep
+  // strata clip at this lift and it costs nothing, because nothing lifts them:
+  // there is no daylight in the Barrow Deep.
+  const { campRoom } = await import('../core/camp.js');
+  const surfaceEras = [campRoom().era.name];
+  const lift = (hx, k) => [1,3,5].map((i) =>
+    Math.min(255, Math.round(parseInt(hx.slice(i, i+2), 16) * k)));
+  const washed = surfaceEras.filter((n) =>
+    lift(TONES[n].light, SURFACE_LIFT).filter((c) => c === 255).length >= 2);
+  ok('and does not wash the surface stratum out to grey', washed.length === 0,
+     `${surfaceEras.join(', ')} at x${SURFACE_LIFT} -> ${lift(TONES[surfaceEras[0]].light, SURFACE_LIFT).join(',')}`);
+}
 ok('and least of all directly behind', lampShape(-1) === LAMP_BACK, `${lampShape(-1)}`);
 ok('it never reaches further than the declared radius',
    [1, 0.5, 0, -0.5, -1].every((c) => lampShape(c) <= 1));

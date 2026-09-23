@@ -11,6 +11,16 @@ entire.** See `plans/roadmap.md`.
 
 ### Changed
 
+- **The surface is daylit.** Camp and every above-ground location render with no
+  lamp pass at all — the overlay simply does not run. `design/palette.md`'s
+  no-ambient-term law is a law about *the dark*: it governs rooms with no source
+  in them, and the sky is a source.
+- Skipping the overlay alone was not enough: it left the surface **dimmer** than
+  a lantern-lit room, because the warm pass adds light on top of the tiles, so
+  removing it removed light. The surface lifts its whole two-tone pair instead
+  (×1.9), which is the same mechanism `shade` already uses and keeps the
+  stratum's hue. Above about ×2.2 two channels clamp together and warm stone
+  turns to overcast concrete, so there is a gate holding it under that.
 - **The lamp swings round rather than snapping.** Turning takes eight ticks for
   a right angle, always the short way, so the light lags the body the way a
   lantern in a hand actually does. The angle is an **integer** — 1024 brads to a

@@ -281,11 +281,14 @@ try {
     const c1 = createState(0x1594);
     step(c1, setVerb(0, VERB.ATTACK, true), [combat]);
     ok('J in camp refuses out loud', !c1.swing && !!saying(c1), c1.say ? c1.say.text : 'silence');
+    // Measured as a DIFFERENCE, not as brightness: the camp is daylit now, so a
+    // bright toast band proves nothing on its own.
+    const bandOf = () => ctx.getImageData(0, VIEW_H - 30, W, 20).data.join(',');
     r.draw(c1, [{text:''},{text:''},{text:''},{text:''}]);
-    const band = ctx.getImageData(0, VIEW_H - 30, W, 20).data;
-    let ink = 0;
-    for (let i = 0; i < band.length; i += 4) if (Math.max(band[i], band[i+1], band[i+2]) > 120) ink++;
-    ok('and the refusal is on the glass', ink > 20, `${ink} text px`);
+    const withSay = bandOf();
+    c1.say = null;
+    r.draw(c1, [{text:''},{text:''},{text:''},{text:''}]);
+    ok('and the refusal is on the glass', withSay !== bandOf());
     ok('the frame is clear once keys are released', inp.sample() === 0, String(inp.sample()));
   }
 
@@ -380,6 +383,23 @@ try {
       const pip = ctx.getImageData(7, 9, 1, 1).data;
       ok('the health pips draw', Math.max(pip[0],pip[1],pip[2]) > 60, `rgb(${pip[0]},${pip[1]},${pip[2]})`);
     }
+  }
+
+  // Daylight above ground. The corner of a camp must NOT be void, and the corner
+  // of a mausoleum must be — same renderer, same frame, opposite law.
+  {
+    const { surface } = await import('../sim/state.js');
+    // Sampled at (4,250), not (4,6): the health pips live along the top-left of
+    // the view and the first draft of this gate was measuring the HP bar, which
+    // is the same colour whether the sun is up or not.
+    const corner = (st) => { r.draw(st, [{text:''},{text:''},{text:''},{text:''}]);
+      const q = ctx.getImageData(4, 250, 1, 1).data; return Math.max(q[0],q[1],q[2]); };
+    const camp = createState(0x1594);
+    ok('the camp is above ground', surface(camp) && !surface(delve()));
+    const lit = corner(camp), dark = corner(delve());
+    ok('the surface is lit corner to corner', lit > 60, `corner ${lit}`);
+    ok('and underground is still void at the edges', dark === 0, `corner ${dark}`);
+    ok('the surface is brighter than a lantern makes a floor', lit > dark, `${lit} vs ${dark}`);
   }
 
   const a=createState(7), b=createState(7), log=[];
