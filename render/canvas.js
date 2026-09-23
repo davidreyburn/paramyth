@@ -5,7 +5,7 @@ import { UNITS, px } from '../sim/state.js';
 import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER,
          LAMP_BACK, lampShape, SURFACE_LIFT } from '../core/palette.js';
 import { h } from '../core/addr.js';
-import { tonedSheet, drawsFor, shadeTone, variantFor } from './tileset.js';
+import { tonedSheet, drawsFor, shadeTone, variantFor, glazeFor } from './tileset.js';
 import { visible, prompt, containerItems, carriedBulk, tier,
          itemValue, assessed, readOut, marksFor, leadFor, placeLabel, atPlace, hitBox, APPRAISAL_FEE,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, STASH_ROWS,
@@ -165,8 +165,10 @@ export function createRenderer(canvas, pack = null) {
       if (def) {
         const cells = (c.open && def.opened) ? def.opened : def.cells;
         const [sh, gx, gy] = variantFor(cells, tx, ty);
-        // A fixed tone wins over the stratum's: wood is wood at every depth.
-        const sheet = tonedSheet(pack, sh, shadeTone(def.tone || tone, def.shade === undefined ? 1 : def.shade));
+        // A fixed tone wins over the stratum's: wood is wood at every depth, and
+        // a glazed pot keeps the glaze it was fired with wherever it ends up.
+        const fixed = def.tone || glazeFor(pack, c.kind, c.key);
+        const sheet = tonedSheet(pack, sh, shadeTone(fixed || tone, def.shade === undefined ? 1 : def.shade));
         if (sheet) {
           ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile,
                         tx*TILE, ty*TILE, TILE, TILE);
@@ -202,6 +204,7 @@ export function createRenderer(canvas, pack = null) {
 
   function drawCell(x, y, ref, idx, tone, selected) {
     const kind = ref && (ref.kind || ref);
+    const key = ref && ref.key;
     ctx.fillStyle = selected ? '#2e2921' : '#191714';
     ctx.fillRect(x, y, PLATE, PLATE);
     ctx.strokeStyle = selected ? P.lantern : '#332d26';
@@ -211,7 +214,8 @@ export function createRenderer(canvas, pack = null) {
     const def = pack && pack.items && pack.items[kind];
     if (def) {
       const [sh, gx, gy] = variantFor(def.cells, idx, 0);
-      const sheet = tonedSheet(pack, sh, def.tone || tone);
+      // The glaze follows the object into your pack, which is the whole tell.
+      const sheet = tonedSheet(pack, sh, def.tone || glazeFor(pack, kind, key) || tone);
       if (sheet) {
         ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile,
                       x + ((PLATE - ICON) >> 1), y + ((PLATE - ICON) >> 1), ICON, ICON);

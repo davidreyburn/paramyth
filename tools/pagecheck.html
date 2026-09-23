@@ -450,6 +450,30 @@ try {
     }
   }
 
+  // The glaze follows the pot into your pack. That is the tell: an imperial urn
+  // stays cobalt among the terracotta, with no writing and no UI.
+  {
+    const { glazeFor } = await import('../render/tileset.js');
+    const deep = glazeFor(pack, 'urn', '0:3:1:1');
+    ok('a deep urn has a deep glaze', !!deep, deep && deep.light);
+
+    const st = createState(0x1594);
+    st.screen = 'pack'; st.side = 1; st.cur = 0;
+    st.carried = [{ kind: 'urn', key: '0:3:1:1' }];
+    r.draw(st, [{text:''},{text:''},{text:''},{text:''}]);
+    const one = ctx.getImageData(0, 96, W, 120).data.join(',');
+
+    st.carried = [{ kind: 'urn', key: '0:0:1:1' }];   // same kind, surface address
+    r.draw(st, [{text:''},{text:''},{text:''},{text:''}]);
+    const two = ctx.getImageData(0, 96, W, 120).data.join(',');
+    ok('two urns of different depth are different colours in the pack', one !== two);
+
+    st.carried = [{ kind: 'urn', key: '0:3:1:1' }];   // back to the first
+    r.draw(st, [{text:''},{text:''},{text:''},{text:''}]);
+    ok('and the same urn is the same colour every time',
+       ctx.getImageData(0, 96, W, 120).data.join(',') === one);
+  }
+
   const a=createState(7), b=createState(7), log=[];
   for(let i=0;i<500;i++){ const fr=(i*2654435761)&0x3ff; log.push(fr); step(a,fr); }
   for(const fr of log) step(b,fr);

@@ -2,7 +2,7 @@
 // every tile the generator can emit, and the game must still run without it.
 
 import { readFile } from 'node:fs/promises';
-import { drawsFor } from '../render/tileset.js';
+import { drawsFor, glazeFor } from '../render/tileset.js';
 import { roomTiles, floorPlan, COLS, ROWS } from '../core/gen.js';
 import { T } from '../core/gen.js';
 import { LIGHT_BANDS, LIGHT_BEYOND, TONES, P, FLICKER, LAMP_BACK, lampShape, SURFACE_LIFT } from '../core/palette.js';
@@ -299,6 +299,53 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
      JSON.stringify(pack.stations.stash.tone) === JSON.stringify(pack.items.chest.tone));
   ok('wood is one timber everywhere',
      new Set(['barrel','table','chair'].map((k) => JSON.stringify(pack.items[k].tone))).size === 1);
+
+  // --- glaze ----------------------------------------------------------------
+  // Pottery is not one colour the way timber is. A piece keeps its own glaze
+  // forever, chosen from a palette belonging to the stratum it was FIRED in —
+  // so a cobalt urn stays cobalt when you carry it up into the terracotta.
+  {
+    const strata = ERAS.map((e) => e.name);
+    const missing = strata.filter((n) => !(pack.glazes && pack.glazes[n] && pack.glazes[n].length));
+    ok('every stratum has a glaze palette', missing.length === 0, missing.join(', ') || strata.join(', '));
+
+    const thin = strata.filter((n) => pack.glazes[n].length < 2);
+    ok('and more than one glaze in each, or it is just a tone', thin.length === 0,
+       thin.join(', ') || strata.map((n) => `${n} ${pack.glazes[n].length}`).join(' \u00b7 '));
+
+    const sets = strata.map((n) => JSON.stringify(pack.glazes[n]));
+    ok('no two strata share a palette', new Set(sets).size === sets.length);
+
+    const allLights = strata.flatMap((n) => pack.glazes[n].map((g) => g.light));
+    ok('and no glaze is reused across strata', new Set(allLights).size === allLights.length);
+
+    ok('pottery is glazed', ['pot', 'urn'].every((k) => pack.items[k].glazed));
+    ok('and things that are not pottery are not',
+       ['chest','barrel','table','chair','sword','gem'].every((k) => !pack.items[k].glazed));
+
+    // The same pot is the same colour forever. This is the actual request.
+    const a1 = glazeFor(pack, 'urn', '0:2:1:3'), a2 = glazeFor(pack, 'urn', '0:2:1:3');
+    ok('one pot is one colour, forever', a1 && a1.light === a2.light, a1 && a1.light);
+
+    // Coverage: every glaze declared must actually be reachable, or it is dead
+    // content that looks identical to working content.
+    const used = new Set();
+    for (let f = 0; f < 12; f++)
+      for (let i = 0; i < 200; i++) {
+        const g = glazeFor(pack, 'urn', `0:${f}:${i % 6}:${i}`);
+        if (g) used.add(g.light);
+      }
+    const dead = allLights.filter((l) => !used.has(l));
+    ok('every glaze is reachable', dead.length === 0, dead.join(', ') || `${used.size}/${allLights.length}`);
+
+    // And a piece is glazed from its OWN address, not from wherever it is lying.
+    const deep = glazeFor(pack, 'urn', '0:9:1:1'), shallow = glazeFor(pack, 'urn', '0:0:1:1');
+    const deepSet = pack.glazes[ERAS.at(-1).name].map((g) => g.light);
+    const topSet = pack.glazes[ERAS[0].name].map((g) => g.light);
+    ok('a deep pot is glazed deep and a shallow one shallow',
+       deepSet.includes(deep.light) && topSet.includes(shallow.light),
+       `${deep.light} vs ${shallow.light}`);
+  }
   ok('the wall still takes the light', pack.tiles.WALL.shade > floor,
      `WALL ${pack.tiles.WALL.shade} > FLOOR ${floor}`);
 }

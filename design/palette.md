@@ -139,8 +139,26 @@ Mechanically this is one optional `tone` on any pack def, tile or item or
 station, which replaces the stratum pair. `shade` still applies on top, so a
 fixed tone can still be dimmed.
 
-Ceramics — pots, urns, crystal — deliberately keep taking the stratum. They are
-the local material, dug out of the ground they are lying in.
+**Pottery is the third case, and the most interesting one.** It is not one colour
+the way timber is, because a pot is whatever it was dipped in — so it gets a
+fixed tone drawn from a palette that belongs to the stratum it was **fired** in.
+Three glazes per stratum, none shared:
+
+| Stratum | Glazes |
+|---|---|
+| Recent | terracotta, cream, plain clay |
+| War Dead | olive, pale green, iron-grey |
+| Imperial | cobalt, white-glaze, gold |
+| Lost Empire | violet, oxblood, bone |
+
+The glaze is chosen from the piece's **own address**, not from the room it is
+standing in. That is the whole point: carry an imperial cobalt urn up into a
+surface barrow and it stays cobalt among the terracotta, and it stays cobalt in
+your pack. `design/world-shape.md` asks for exactly this — *"an item found
+shallow that carries a deep chain is immediately, legibly wrong"* — and this
+renders it for free, with no writing and no UI.
+
+Crystal keeps taking the stratum. It is mineral, not fired: the local rock.
 
 ## Flicker as an effect state
 

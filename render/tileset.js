@@ -16,6 +16,9 @@ export async function loadPack(url) {
   return { ...pack, sheets, missing, ok: missing.length === 0 };
 }
 
+import { h } from '../core/addr.js';
+import { eraFor, absDepth, ERAS } from '../core/gen.js';
+
 const hex = (s) => [parseInt(s.slice(1,3),16), parseInt(s.slice(3,5),16), parseInt(s.slice(5,7),16)];
 
 // The reference art is genuinely two-tone, so region flavour is an exact
@@ -123,4 +126,27 @@ export function drawsFor(pack, name, tx, ty, neighbours) {
     return [...(base || []), [c[0], c[1], c[2], k, t]];
   }
   return null;
+}
+
+// Glaze. Fired clay is not one colour the way timber is: a pot is whatever it was
+// dipped in, and which glazes existed depends on where and when it was fired. So
+// pottery gets a fixed tone like wood does — the SAME pot is the same colour
+// forever — drawn from a palette that belongs to its own stratum.
+//
+// It is chosen from the item's OWN address, not from the room it is standing in.
+// That is the point: carry an imperial cobalt urn up to a surface barrow and it
+// stays cobalt among the terracotta, which is `design/world-shape.md`'s tell —
+// "an item found shallow that carries a deep chain is immediately, legibly
+// wrong" — rendered, for free, with no writing and no UI.
+export function glazeFor(pack, kind, key) {
+  const def = pack.items && pack.items[kind];
+  if (!def || !def.glazed || !pack.glazes || key === undefined) return null;
+  const floor = Number(String(key).split(':')[1]);
+  const era = eraFor(absDepth(Number.isFinite(floor) ? floor : 0));
+  const list = pack.glazes[era.name] || pack.glazes[ERAS[0].name];
+  if (!list || !list.length) return null;
+  const str = String(key);
+  let acc = 0;
+  for (let i = 0; i < str.length; i++) acc = (acc * 31 + str.charCodeAt(i)) >>> 0;
+  return list[h(acc, 0x61a2e) % list.length];
 }

@@ -16,6 +16,18 @@ entire.** See `plans/roadmap.md`.
   replaces the stratum's remap. That is the whole rule and it is worth stating:
   the stratum tint is for *architecture*, which should read as the region it is
   in; an object is made of a material and carries it around with it.
+- **Pottery is glazed, and a glaze belongs to a stratum.** Pots and urns are not
+  one colour the way timber is — a piece is whatever it was dipped in, and which
+  glazes existed depends on where and when it was fired. Recent is earthenware
+  and cream; the War Dead's is olive and pale green; Imperial is cobalt, gold and
+  white-glaze; the Lost Empire's is violet, oxblood and bone. Three to a stratum,
+  twelve in all, none shared.
+- **A piece is glazed from its own address, not from the room it is lying in.**
+  So an imperial cobalt urn stays cobalt when you carry it up into the
+  terracotta, and it stays cobalt in your pack. That is
+  `design/world-shape.md`'s tell — *"an item found shallow that carries a deep
+  chain is immediately, legibly wrong"* — rendered for free, with no writing and
+  no UI.
 - **Chests are banded gold**, in the world, in your pack, and on the stash
   counter — which is the same sprite and now the same colour. **Barrels, tables
   and chairs are timber**, one timber everywhere.

@@ -209,6 +209,7 @@
       ]
     },
     "pot": {
+      "glazed": true,
       "cells": [
         [
           "decor",
@@ -239,6 +240,7 @@
       ]
     },
     "urn": {
+      "glazed": true,
       "cells": [
         [
           "decor",
@@ -340,6 +342,66 @@
     "dog": {
       "glyph": "D"
     }
+  },
+  "_glazes": "See glazes._ below.",
+  "glazes": {
+    "_": "Glazes, by stratum. Pottery is not one colour the way timber is: it is whatever it was dipped in, and which glazes existed depends on where and when it was fired. A piece keeps its glaze wherever you carry it, chosen from its OWN address \u2014 so an imperial cobalt urn stays cobalt among surface terracotta, which is exactly the tell design/world-shape.md wants.",
+    "Recent": [
+      {
+        "light": "#b5623a",
+        "dark": "#3a1d10"
+      },
+      {
+        "light": "#cbb48a",
+        "dark": "#3d3425"
+      },
+      {
+        "light": "#9a8460",
+        "dark": "#2e2618"
+      }
+    ],
+    "War Dead": [
+      {
+        "light": "#7f9464",
+        "dark": "#232c1a"
+      },
+      {
+        "light": "#a8b49a",
+        "dark": "#30382b"
+      },
+      {
+        "light": "#6f7a72",
+        "dark": "#212824"
+      }
+    ],
+    "Imperial": [
+      {
+        "light": "#4a72b5",
+        "dark": "#141e30"
+      },
+      {
+        "light": "#c9d4e2",
+        "dark": "#38404c"
+      },
+      {
+        "light": "#b58f3a",
+        "dark": "#372a10"
+      }
+    ],
+    "Lost Empire": [
+      {
+        "light": "#8d3a45",
+        "dark": "#290f14"
+      },
+      {
+        "light": "#7a4a97",
+        "dark": "#22132e"
+      },
+      {
+        "light": "#cfc3ad",
+        "dark": "#393630"
+      }
+    ]
   },
   "_stations": "Camp stations. PLACEHOLDER art borrowed from decor: there are no NPCs or counters on this sheet.",
   "stations": {
