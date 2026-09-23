@@ -261,11 +261,44 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
 // releases. These are paired constants, so an assertion holds them together.
 {
   const floor = pack.tiles.FLOOR.shade;
-  const walkable = ['STAIR_D', 'STAIR_U'];
-  const off = walkable.filter((n) => pack.tiles[n].shade !== floor);
-  ok('walkable tiles are drawn at the floor\'s value, not the wall\'s', off.length === 0,
-     off.map((n) => `${n} ${pack.tiles[n].shade} vs FLOOR ${floor}`).join(', ')
-       || `${walkable.join(', ')} all at ${floor}`);
+  const lum = (hx) => [1,3,5].reduce((a, i) => a + parseInt(hx.slice(i, i+2), 16), 0) / 3;
+  const stairs = ['STAIR_D', 'STAIR_U'].map((n) => pack.tiles[n]);
+
+  // Stairs were pulled down to the floor's own value to stop them reading as a
+  // bright block pasted on the ground. That worked, and then they were nearly
+  // invisible (DJ, 2026-09-22). They carry their OWN tone now, which answers
+  // both complaints at once, so this gate asserts the new intent rather than the
+  // old value.
+  ok('stairs carry a fixed tone, so a staircase looks the same at every depth',
+     stairs.every((t) => t.tone), stairs.map((t) => t.tone && t.tone.light).join(' '));
+  ok('and both stairs agree with each other',
+     JSON.stringify(stairs[0].tone) === JSON.stringify(stairs[1].tone));
+
+  if (stairs.every((t) => t.tone)) {
+    const st = stairs[0].tone;
+    const brightestFloor = Math.max(...Object.values(TONES).map((t) => lum(t.light) * floor));
+    ok('a stair is brighter than any floor it sits in, so you can find it',
+       lum(st.light) > brightestFloor * 1.5,
+       `stair ${lum(st.light).toFixed(0)} vs brightest floor ${brightestFloor.toFixed(0)}`);
+    ok('but its dark half stays dark, so a descent still reads as a hole',
+       lum(st.dark) <= brightestFloor * 1.15,
+       `stair dark ${lum(st.dark).toFixed(0)} vs floor ${brightestFloor.toFixed(0)}`);
+  }
+
+  // Objects made of a material carry it around with them; architecture takes the
+  // colour of the region it is in. That split is the whole rule.
+  const FIXED = ['chest', 'barrel', 'table', 'chair'];
+  const drifting = FIXED.filter((k) => !(pack.items[k] && pack.items[k].tone));
+  ok('wood and gold are fixed across strata', drifting.length === 0,
+     drifting.join(', ') || FIXED.join(', '));
+  ok('the chest reads as gold, not as stone',
+     lum(pack.items.chest.tone.light) > 150
+       && parseInt(pack.items.chest.tone.light.slice(1,3),16) > parseInt(pack.items.chest.tone.light.slice(5,7),16) + 60,
+     pack.items.chest.tone.light);
+  ok('the stash counter is the same chest, in the same gold',
+     JSON.stringify(pack.stations.stash.tone) === JSON.stringify(pack.items.chest.tone));
+  ok('wood is one timber everywhere',
+     new Set(['barrel','table','chair'].map((k) => JSON.stringify(pack.items[k].tone))).size === 1);
   ok('the wall still takes the light', pack.tiles.WALL.shade > floor,
      `WALL ${pack.tiles.WALL.shade} > FLOOR ${floor}`);
 }

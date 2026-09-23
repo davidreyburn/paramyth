@@ -11,6 +11,19 @@ entire.** See `plans/roadmap.md`.
 
 ### Changed
 
+- **Objects keep their own colour; architecture keeps the region's.** Any pack
+  def — tile, item or station — may declare a fixed `tone`, a two-tone pair that
+  replaces the stratum's remap. That is the whole rule and it is worth stating:
+  the stratum tint is for *architecture*, which should read as the region it is
+  in; an object is made of a material and carries it around with it.
+- **Chests are banded gold**, in the world, in your pack, and on the stash
+  counter — which is the same sprite and now the same colour. **Barrels, tables
+  and chairs are timber**, one timber everywhere.
+- **Stairs are bright pale stone, fixed across strata, and hard to miss.** They
+  were pulled down to the floor's own value to stop them reading as a block
+  pasted on the ground; that worked and left them nearly invisible. Their own
+  tone answers both — bright enough to find, with the dark half kept dark so a
+  descent still reads as a hole rather than a slab.
 - **The surface is daylit.** Camp and every above-ground location render with no
   lamp pass at all — the overlay simply does not run. `design/palette.md`'s
   no-ambient-term law is a law about *the dark*: it governs rooms with no source

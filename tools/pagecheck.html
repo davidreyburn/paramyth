@@ -402,6 +402,54 @@ try {
     ok('the surface is brighter than a lantern makes a floor', lit > dark, `${lit} vs ${dark}`);
   }
 
+  // A chest is gold in a Recent barrow and gold in an Imperial one. The data
+  // gates assert the manifest declares a fixed tone; this asserts the RENDERER
+  // actually reaches for it instead of the stratum's.
+  {
+    const { contentsOf, floorPlan: FP2, floorCount, ERAS, eraFor, absDepth, COLS: C2, TILE: T2 } = await import('../core/gen.js');
+    const { enterRoom } = await import('../sim/step.js');
+    const seen = [];
+    for (let f = 0; f < 4 && seen.length < 2; f++) {
+      const era = ERAS.indexOf(eraFor(absDepth(f)));
+      if (seen.some((x) => x.era === era)) continue;
+      for (const room of FP2(0x1594, 0, f).cells) {
+        const hit = contentsOf(0x1594, 0, f, room).find((c) => c.kind === 'chest');
+        if (hit) { seen.push({ f, room, tile: hit.tile, era }); break; }
+      }
+    }
+    ok('two strata with a chest in them to compare', seen.length === 2,
+       seen.map((x) => `floor ${x.f} era ${x.era}`).join(' vs '));
+
+    if (seen.length === 2) {
+      // Stand at the SAME offset from the chest in both, facing the same way,
+      // with the lamp at the same angle. The first draft let the player spawn
+      // wherever the room put them, so the two chests sat at different distances
+      // from the lantern and it was comparing how lit they were, not what colour
+      // they are: 174,143,42 against 255,238,75, both of them gold.
+      const brightest = (pk) => {
+        const st = createState(0x1594);
+        st.floor = pk.f; st.room = pk.room;
+        enterRoom(st); st.foes = []; st.lamp = 900 * 256;
+        st.x = ((pk.tile % C2) * T2 + T2/2) * 256 - 2 * T2 * 256;
+        st.y = (((pk.tile / C2) | 0) * T2 + T2/2) * 256;
+        st.facing = 1; st.lampDir = 0; st.tick = 0;
+        r.draw(st, [{text:''},{text:''},{text:''},{text:''}]);
+        const tx = pk.tile % C2, ty = (pk.tile / C2) | 0;
+        const d2 = ctx.getImageData(tx*T2, ty*T2, T2, T2).data;
+        let best = [0,0,0], bl = -1;
+        for (let i = 0; i < d2.length; i += 4) {
+          const l = d2[i] + d2[i+1] + d2[i+2];
+          if (l > bl) { bl = l; best = [d2[i], d2[i+1], d2[i+2]]; }
+        }
+        return best.join(',');
+      };
+      const one = brightest(seen[0]), two = brightest(seen[1]);
+      ok('a chest is the same gold at every depth', one === two, `${one} vs ${two}`);
+      ok('and that gold is actually gold', (() => { const [R,G,B] = one.split(',').map(Number);
+        return R > 180 && R > B + 60; })(), one);
+    }
+  }
+
   const a=createState(7), b=createState(7), log=[];
   for(let i=0;i<500;i++){ const fr=(i*2654435761)&0x3ff; log.push(fr); step(a,fr); }
   for(const fr of log) step(b,fr);

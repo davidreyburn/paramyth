@@ -91,29 +91,36 @@ export function innerCornerKey(nb) {
 }
 
 // Resolve a tile type to the ordered list of cells to blit.
-// Each draw is [sheet, col, row, shade] — shade travels with the cell so an
-// overlay's base keeps its own value while the object on top keeps the other.
+// Each draw is [sheet, col, row, shade, tone] — both travel with the CELL, not
+// with the call, so an overlay's base keeps its own value and its own colour
+// while the thing on top keeps the other.
+//
+// `tone` is an optional fixed two-tone pair that replaces the stratum's. It is
+// how a wooden barrel stays wooden at every depth: the stratum remap is for
+// architecture, which should read as the region it is in, and not for objects,
+// which are made of a material and carry it around with them.
 export function drawsFor(pack, name, tx, ty, neighbours) {
   const def = pack.tiles[name];
   if (!def) return null;
   const k = def.shade === undefined ? 1 : def.shade;
+  const t = def.tone;
   if (def.kind === 'variants') {
     const c = variantFor(def.cells, tx, ty);
-    return [[c[0], c[1], c[2], k]];
+    return [[c[0], c[1], c[2], k, t]];
   }
   if (def.kind === 'nineslice') {
     if (def.inner) {
       const dk = innerCornerKey(neighbours);
       const off = dk && def.inner[dk];
-      if (off) return [[def.sheet, def.origin[0] + off[0], def.origin[1] + off[1], k]];
+      if (off) return [[def.sheet, def.origin[0] + off[0], def.origin[1] + off[1], k, t]];
     }
     const [ox, oy] = ninesliceOffset(neighbours[0], neighbours[1], neighbours[2], neighbours[3]);
-    return [[def.sheet, def.origin[0] + ox, def.origin[1] + oy, k]];
+    return [[def.sheet, def.origin[0] + ox, def.origin[1] + oy, k, t]];
   }
   if (def.kind === 'overlay') {
     const base = def.base ? drawsFor(pack, def.base, tx, ty, neighbours) : [];
     const c = variantFor(def.cells, tx, ty);
-    return [...(base || []), [c[0], c[1], c[2], k]];
+    return [...(base || []), [c[0], c[1], c[2], k, t]];
   }
   return null;
 }

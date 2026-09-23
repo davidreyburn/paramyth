@@ -118,6 +118,30 @@ Principle 3 becomes a rendering law:
   are retreating onto backs into a wall, and the interesting decision is meant to
   be the load in their hands, not the camera.
 
+## What the stratum tints, and what it does not
+
+The two-tone remap gives a region its flavour, and for a while it gave it to
+everything in the region — so a barrel was a different colour on every floor and
+a chest was whatever the rock was (DJ, 2026-09-22).
+
+The split, stated once:
+
+- **Architecture takes the stratum.** Walls, floors, rubble, sarcophagi. They are
+  made of the place, and they should read as the place.
+- **Objects keep their own material.** Wood is wood at every depth; a chest is
+  banded gold in the Outer Mausoleum and in the Barrow Deep alike. An object was
+  carried in from somewhere, which is the entire premise of the salvage loop —
+  a thing whose colour changes with the room it is in is scenery, not cargo.
+- **Stairs keep their own stone**, because a staircase is a promise about the
+  building and a promise should look the same every time you meet it.
+
+Mechanically this is one optional `tone` on any pack def, tile or item or
+station, which replaces the stratum pair. `shade` still applies on top, so a
+fixed tone can still be dimmed.
+
+Ceramics — pots, urns, crystal — deliberately keep taking the stratum. They are
+the local material, dug out of the ground they are lying in.
+
 ## Flicker as an effect state
 
 The resting lamp is **near-still**: 1.5 Hz, 1.8% radius pulse, 3% edge crumble.

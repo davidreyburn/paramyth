@@ -148,8 +148,10 @@
       ]
     },
     "STAIR_D": {
+      "_": "A fixed pale stone at full value. Pulled down to the floor's 0.42 to stop it reading as a bright block pasted on the ground, which worked and then made it nearly invisible (DJ, 2026-09-22). Its own tone solves both: bright enough to find, dark half kept dark so a descent still reads as a hole, and the same at every depth so a staircase looks like a staircase wherever you meet it.",
       "kind": "variants",
-      "shade": 0.42,
+      "tone": { "light": "#e2d5ab", "dark": "#332d22" },
+      "shade": 1.0,
       "cells": [
         [
           "decor",
@@ -164,8 +166,10 @@
       ]
     },
     "STAIR_U": {
+      "_": "A fixed pale stone at full value. Pulled down to the floor's 0.42 to stop it reading as a bright block pasted on the ground, which worked and then made it nearly invisible (DJ, 2026-09-22). Its own tone solves both: bright enough to find, dark half kept dark so a descent still reads as a hole, and the same at every depth so a staircase looks like a staircase wherever you meet it.",
       "kind": "variants",
-      "shade": 0.42,
+      "tone": { "light": "#e2d5ab", "dark": "#332d22" },
+      "shade": 1.0,
       "cells": [
         [
           "decor",
@@ -187,6 +191,8 @@
   "_items": "Item art, keyed by the kinds in core/items.js. `cells` are variants; a container may also declare `opened`. Items draw at full shade so loot reads against the dark floor.",
   "items": {
     "chest": {
+      "_": "Banded gold. The art's light half becomes bright yellow, which is what makes a chest read as the thing worth crossing a room for.",
+      "tone": { "light": "#f0c63c", "dark": "#4a3610" },
       "cells": [
         [
           "decor",
@@ -217,6 +223,8 @@
       ]
     },
     "barrel": {
+      "_": "Wood. A fixed tone, so it is the same timber at every depth \u2014 the stratum remap is for architecture, not for objects.",
+      "tone": { "light": "#a4763a", "dark": "#3a2513" },
       "cells": [
         [
           "decor",
@@ -305,6 +313,8 @@
       ]
     },
     "table": {
+      "_": "Wood. A fixed tone, so it is the same timber at every depth \u2014 the stratum remap is for architecture, not for objects.",
+      "tone": { "light": "#a4763a", "dark": "#3a2513" },
       "cells": [
         [
           "decor",
@@ -314,6 +324,8 @@
       ]
     },
     "chair": {
+      "_": "Wood. A fixed tone, so it is the same timber at every depth \u2014 the stratum remap is for architecture, not for objects.",
+      "tone": { "light": "#a4763a", "dark": "#3a2513" },
       "cells": [
         [
           "decor",
@@ -341,6 +353,8 @@
       ]
     },
     "stash": {
+      "_": "The same chest sprite as the item, so the same banded gold.",
+      "tone": { "light": "#f0c63c", "dark": "#4a3610" },
       "cells": [
         [
           "decor",

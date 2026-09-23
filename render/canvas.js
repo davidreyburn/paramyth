@@ -140,8 +140,8 @@ export function createRenderer(canvas, pack = null) {
             same(tx-1, ty-1), same(tx+1, ty-1), same(tx+1, ty+1), same(tx-1, ty+1)]);
           if (draws) {
             let drew = false;
-            for (const [sheetName, gx, gy, shade] of draws) {
-              const sheet = tonedSheet(pack, sheetName, shadeTone(tone, shade));
+            for (const [sheetName, gx, gy, shade, fixed] of draws) {
+              const sheet = tonedSheet(pack, sheetName, shadeTone(fixed || tone, shade));
               if (!sheet) continue;
               ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile,
                             tx*TILE, ty*TILE, TILE, TILE);
@@ -165,7 +165,8 @@ export function createRenderer(canvas, pack = null) {
       if (def) {
         const cells = (c.open && def.opened) ? def.opened : def.cells;
         const [sh, gx, gy] = variantFor(cells, tx, ty);
-        const sheet = tonedSheet(pack, sh, shadeTone(tone, def.shade === undefined ? 1 : def.shade));
+        // A fixed tone wins over the stratum's: wood is wood at every depth.
+        const sheet = tonedSheet(pack, sh, shadeTone(def.tone || tone, def.shade === undefined ? 1 : def.shade));
         if (sheet) {
           ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile,
                         tx*TILE, ty*TILE, TILE, TILE);
@@ -210,7 +211,7 @@ export function createRenderer(canvas, pack = null) {
     const def = pack && pack.items && pack.items[kind];
     if (def) {
       const [sh, gx, gy] = variantFor(def.cells, idx, 0);
-      const sheet = tonedSheet(pack, sh, tone);
+      const sheet = tonedSheet(pack, sh, def.tone || tone);
       if (sheet) {
         ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile,
                       x + ((PLATE - ICON) >> 1), y + ((PLATE - ICON) >> 1), ICON, ICON);
@@ -314,7 +315,7 @@ export function createRenderer(canvas, pack = null) {
       if (!def) continue;
       const tx = st.tile % COLS, ty = (st.tile / COLS) | 0;
       const [sh, gx, gy] = variantFor(def.cells, tx, ty);
-      const sheet = tonedSheet(pack, sh, tone);
+      const sheet = tonedSheet(pack, sh, def.tone || tone);
       if (sheet) ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile,
                                tx*TILE, ty*TILE, TILE, TILE);
     }
