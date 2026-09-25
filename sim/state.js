@@ -54,6 +54,10 @@ export const PLAYER_WEIGHT = 1;
 // How long a spoken line stays on the glass. It is delta and not a render-side
 // timer so that a replay says the same things at the same ticks.
 export const SAY_TICKS = 100;
+// Two effects, both a tick stamped in the delta and a draw that is a pure
+// function of it — because the renderer may not touch the clock.
+export const FADE_TICKS = 18;           // the dithered fade after a change of floor
+export const POP_TICKS = 10;            // a slain foe's bubble, expanding and breaking
 export const saying = (s) => (s.say && s.tick - s.say.at < SAY_TICKS) ? s.say : null;
 
 // Above ground. The surface is DAYLIT: the Field, the camp, Grimhaven, Ashmark.
@@ -115,6 +119,8 @@ export function createState(seed) {
     hp: MAX_HP, hurtAt: -9999,
     swing: null,       // { at, dir, hit: [] } while a blow is in flight
     say: null,         // { text, at } — a transient line, not a log
+    arrivedAt: -FADE_TICKS,   // tick of the last change of floor; the fade is drawn from it
+    pops: [],          // { x, y, at, kind } where something just died
     foes: [],          // live enemies in THIS room, rebuilt on entry
     slain: [],         // ids of the dead — the only durable fact about them
     stash: [],         // item refs left in camp
@@ -183,6 +189,9 @@ export function hashState(s) {
   mix(s.swing ? 1 : 0);
   if (s.swing) { mix(s.swing.at); mix(s.swing.dir); mix(s.swing.hit.length); }
   mix(s.say ? s.say.at : 0);
+  mix(s.arrivedAt);
+  mix(s.pops.length);
+  for (const p of s.pops) { mix(p.x); mix(p.y); mix(p.at); for (let i = 0; i < p.kind.length; i++) mix(p.kind.charCodeAt(i)); }
   if (s.say) for (let i = 0; i < s.say.text.length; i++) mix(s.say.text.charCodeAt(i));
   mix(s.foes.length);
   for (const f of s.foes) {

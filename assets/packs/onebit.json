@@ -362,7 +362,12 @@
           0
         ]
       ],
-      "_": "Blasting Cap; B.Cap in the UI. DJ's bomb, own art, cell 1."
+      "_": "Blasting Cap; B.Cap in the UI. DJ's bomb, own art, cell 1.",
+      "tone": {
+        "light": "#8e8983",
+        "dark": "#2b2521"
+      },
+      "_tone": "iron. A fixed tone wins over the stratum: a bomb is the same bomb at every depth."
     }
   },
   "_foes": "Enemies, keyed by the kinds in core/foes.js. A glyph, like the player, because the reference sheet's characters do not fit the tone either. Swap to a sprite by replacing this with { sheet, w, h, idle, walk }.",
@@ -370,12 +375,16 @@
     "dog": {
       "glyph": "D",
       "tone": "#c2836b",
-      "_": "warm: something alive and wrong"
+      "_": "warm: something alive and wrong",
+      "pop": "#a5004c",
+      "_pop": "rot-red (palette.rot): what a rot-touched thing is full of"
     },
     "sentinel": {
       "glyph": "S",
       "tone": "#8a9472",
-      "_": "lichen on old stone (palette.lichen): a statue that moves"
+      "_": "lichen on old stone (palette.lichen): a statue that moves",
+      "pop": "#b1afa8",
+      "_pop": "bone: stone dust"
     }
   },
   "_glazes": "See glazes._ below.",

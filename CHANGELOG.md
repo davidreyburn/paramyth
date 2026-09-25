@@ -11,6 +11,15 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **Polish** (`plans/polish-2026-09-25.md`). A **dithered fade** on every change
+  of floor — 4×4 Bayer, all to none over 18 ticks, over the world and the light
+  and under the HUD — keyed to a new `arrivedAt` in the delta, because the
+  renderer may not touch the clock. A **pop** where a foe dies: a one-pixel
+  midpoint-circle ring that grows for ten ticks and breaks halfway, in the
+  kind's colour from the pack (rot-red dog, bone Sentinel). And the **cap keeps
+  one colour** at every depth: iron, by the pack's fixed-tone rule. Both
+  effects are hashed, replayed and gated on the glass.
+
 - **The Blasting Cap** — `B.Cap` on the glass — the first tool. In the TOOL
   slot; the tool button (K / pad 3) sets it one tile ahead, or at your feet when
   the tile ahead is solid, and the next cap in your pack takes the slot. A

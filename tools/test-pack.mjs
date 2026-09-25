@@ -392,5 +392,12 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
   ok('every foe kind has art in the pack', bare.length === 0, bare.join(', ') || Object.keys(FOE).join(', '));
 }
 
+// The cap is the same bomb at every depth: a fixed tone, and not a stratum's.
+{
+  const t = pack.items.bcap && pack.items.bcap.tone;
+  const stratum = Object.values(TONES).some((x) => t && x.light === t.light);
+  ok('the cap keeps one colour at every depth', !!t && !!t.light && !!t.dark && !stratum, t ? `${t.light}/${t.dark}` : 'no fixed tone');
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all asset gates passed\n');
 process.exit(failures ? 1 : 0);

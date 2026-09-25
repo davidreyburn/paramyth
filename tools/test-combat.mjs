@@ -982,5 +982,25 @@ let runFrom;
   }
 }
 
+// --- the glass remembers: fade and pop are delta -------------------------------
+{
+  const { FADE_TICKS, POP_TICKS } = await import('../sim/state.js');
+  const den = denRoom();
+  const s = delve(den.floor, den.room);
+  ok('a new state does not fade in', s.tick - s.arrivedAt >= FADE_TICKS);
+  const f = s.foes[0];
+  applyAction(s, { k: 'hurtFoe', id: f.id, n: 999 });
+  ok('a kill leaves a pop where it died', s.pops.length === 1 && s.pops[0].kind === f.kind && s.pops[0].x === f.x, `${s.pops[0]?.kind} at ${s.pops[0]?.x},${s.pops[0]?.y}`);
+  for (let i = 0; i < POP_TICKS; i++) step(s, 0, SYSTEMS);
+  ok('and the pop expires', s.pops.length === 0, `${POP_TICKS} ticks`);
+  s.hp = 1; s.hurtAt = -9999;
+  const t = s.tick;
+  applyAction(s, { k: 'bite', id: 'x', n: 5 });
+  ok('dying stamps the arrival, like a stair does', s.deaths === 1 && s.arrivedAt === t, `arrivedAt ${s.arrivedAt} at tick ${t}`);
+  const a = delve(den.floor, den.room), b = delve(den.floor, den.room);
+  for (const st of [a, b]) { applyAction(st, { k: 'hurtFoe', id: st.foes[0].id, n: 999 }); for (let i = 0; i < 4; i++) step(st, 0, SYSTEMS); }
+  ok('replay holds with a pop in flight', hashState(a) === hashState(b) && a.pops.length === 1);
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all combat gates passed\n');
 process.exit(failures ? 1 : 0);

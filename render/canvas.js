@@ -14,7 +14,7 @@ import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
 import { blastOf } from '../core/items.js';
 import { liveBlasts, capsHere } from '../sim/blast.js';
-import { MAX_HP, swingPhase, saying, lampVec, surface } from '../sim/state.js';
+import { MAX_HP, FADE_TICKS, POP_TICKS, swingPhase, saying, lampVec, surface } from '../sim/state.js';
 import { isContainer, labelOf, bulkOf, KIND, SLOTS } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
@@ -496,6 +496,49 @@ export function createRenderer(canvas, pack = null) {
     }
   }
 
+  // The dithered fade after a change of floor: an ordered 4x4 Bayer dither
+  // whose coverage falls from all to none across FADE_TICKS. Seventeen pattern
+  // tiles built once; a level is one fillRect. Keyed to arrivedAt, so a
+  // fixed state draws the same fade twice.
+  const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+  const fadeTiles = [];
+  for (let level = 0; level <= 16; level++) {
+    const t = document.createElement('canvas'); t.width = 4; t.height = 4;
+    const tx = t.getContext('2d'); tx.fillStyle = P.void;
+    for (let y = 0; y < 4; y++) for (let x = 0; x < 4; x++) if (BAYER[y][x] < level) tx.fillRect(x, y, 1, 1);
+    fadeTiles.push(ctx.createPattern(t, 'repeat'));
+  }
+  function drawFade(s) {
+    const age = s.tick - (s.arrivedAt ?? -FADE_TICKS);
+    if (age < 0 || age >= FADE_TICKS) return;
+    const level = Math.ceil(16 * (1 - age / FADE_TICKS));
+    if (level <= 0) return;
+    ctx.fillStyle = fadeTiles[level];
+    ctx.fillRect(0, 0, W, VIEW_H);
+  }
+
+  // Where something died: a one-pixel ring, by the midpoint circle so it is
+  // crisp pixels and not an anti-aliased arc, growing from the spot. Whole
+  // for the first half of its life, then every other pixel: the bubble
+  // thins and breaks. The colour is the kind's, from the pack.
+  function drawPops(s) {
+    for (const p of s.pops) {
+      const age = s.tick - p.at;
+      if (age < 0 || age >= POP_TICKS) continue;
+      const art = pack && pack.foes && pack.foes[p.kind];
+      ctx.fillStyle = (art && art.pop) || P.rot;
+      const cx = Math.round(px(p.x)), cy = Math.round(px(p.y)), r = 2 + age * 2;
+      const broken = age >= POP_TICKS / 2;
+      let x = r, y = 0, err = 1 - r, i = 0;
+      const dot = (dx, dy) => { if (!broken || (i++ & 1) === 0) ctx.fillRect(cx + dx, cy + dy, 1, 1); };
+      while (x >= y) {
+        dot(x, y); dot(y, x); dot(-y, x); dot(-x, y); dot(-x, -y); dot(-y, -x); dot(y, -x); dot(x, -y);
+        y++;
+        if (err < 0) err += 2 * y + 1; else { x--; err += 2 * (y - x) + 1; }
+      }
+    }
+  }
+
   // A set cap: a small ember square that blinks, faster as the fuse runs down.
   // Keyed to the tick, so it draws the same twice. The blink IS the warning.
   function drawCharges(s) {
@@ -609,10 +652,14 @@ export function createRenderer(canvas, pack = null) {
       drawItems(state, tone);
       drawCharges(state);
       drawFoes(state);
+      drawPops(state);
       drawSwing(state);
       drawBlasts(state);
       drawPlayer(state);
       drawLight(state);
+      // Over the world and the light, under the interface: you arrive in the dark
+      // and it resolves; the health bar and the toast never dither.
+      drawFade(state);
       // Over the light, because it is interface: a health bar you cannot read in
       // the dark is a health bar that tells you nothing at the moment it matters.
       if (state.floor >= 0) drawHealth(state);

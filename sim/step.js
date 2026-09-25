@@ -3,7 +3,7 @@
 // same result, forever, on every device.
 
 import { VERB, hasVerb } from './frame.js';
-import { UNITS, spawnIn, MAX_HP, SWING_TICKS, swingPhase, lampStep, friendly } from './state.js';
+import { UNITS, spawnIn, MAX_HP, SWING_TICKS, POP_TICKS, swingPhase, lampStep, friendly } from './state.js';
 import { plant, fuseStep } from './blast.js';
 import { roomTiles, floorPlan, floorCount, CAMP, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
 import { isContainer, isPortable, isWeapon, bulkOf, SLOTS, slotOf, blastOf, KIND } from '../core/items.js';
@@ -69,6 +69,7 @@ function enterFloor(s, floor) {
     s.x = p.x; s.y = p.y;
   }
   s.moves++;
+  s.arrivedAt = s.tick;                 // the fade starts here
   enterRoom(s);
 }
 
@@ -169,6 +170,7 @@ function die(s) {
   const p = spawnIn(s.seed, s.site, s.floor, s.room);
   s.x = p.x; s.y = p.y;
   s.foes = [];
+  s.arrivedAt = s.tick;                 // waking in camp is a change of floor
   s.screen = ''; s.screenKey = '';
 }
 
@@ -215,6 +217,7 @@ export function applyAction(s, a) {
       if (f.hp <= 0) {
         s.slain.push(f.id);
         s.foes = s.foes.filter((x) => x.id !== f.id);
+        s.pops.push({ x: f.x, y: f.y, at: s.tick, kind: f.kind });   // where it died, for the glass
       }
       break;
     }
@@ -487,5 +490,7 @@ export function step(s, frame, systems = []) {
 
   s.lastFrame = frame;
   s.tick++;
+  // Pops age with the tick that just ended, so one lives exactly POP_TICKS.
+  if (s.pops.length && s.tick - s.pops[0].at >= POP_TICKS) s.pops = s.pops.filter((p) => s.tick - p.at < POP_TICKS);
   return s;
 }

@@ -433,6 +433,31 @@ try {
       ok('and draws the same twice', shot() === withBlast);
       s6.blasts = [];
 
+      // The fade: all void on arrival, a dither halfway, gone after FADE_TICKS.
+      const { FADE_TICKS, POP_TICKS } = await import('../sim/state.js');
+      const voidShare = () => { const d = ctx.getImageData(0, 0, W, VIEW_H).data; let v = 0; for (let i = 0; i < d.length; i += 4) if (d[i] < 8 && d[i+1] < 8 && d[i+2] < 8) v++; return v / (d.length / 4); };
+      r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]); const openShare = voidShare();
+      s6.arrivedAt = s6.tick; r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]); const arriving = voidShare();
+      ok('on arrival the view is dark', arriving > 0.97, `${(100*arriving).toFixed(0)}% void`);
+      s6.arrivedAt = s6.tick - (FADE_TICKS >> 1); r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]); const half = voidShare();
+      ok('halfway it is a dither, not a block', half > openShare + 0.15 && half < 0.9, `${(100*half).toFixed(0)}% void, open ${(100*openShare).toFixed(0)}%`);
+      const mid = ctx.getImageData((W >> 1) - 8, (VIEW_H >> 1) - 8, 16, 16).data; let dark = 0;
+      for (let i = 0; i < mid.length; i += 4) if (mid[i] < 8 && mid[i+1] < 8 && mid[i+2] < 8) dark++;
+      ok('and the dither is a pattern, not a fog', dark > 20 && dark < 236, `${dark}/256 void in a 16x16 patch`);
+      s6.arrivedAt = s6.tick - FADE_TICKS; const afterFade = shot();
+      ok('after the fade the view is untouched', voidShare() === openShare && afterFade === plain);
+
+      // The pop: draws while it lives, the same each time, and not after.
+      s6.pops = [{ x: s6.x + 30*256, y: s6.y, at: s6.tick, kind: 'dog' }];
+      const popped = shot();
+      ok('a slain foe pops', popped !== plain);
+      ok('and pops the same twice', shot() === popped);
+      s6.pops[0].at = s6.tick - (POP_TICKS >> 1); const breaking = shot();
+      ok('and the bubble grows and breaks', breaking !== popped && breaking !== plain);
+      s6.pops[0].at = s6.tick - POP_TICKS;
+      ok('then is gone', shot() === plain);
+      s6.pops = [];
+
       // The swing must be visible for exactly its active frames.
       s6.facing = 1;
       s6.swing = { at: s6.tick, dir: 1, hit: [] };
