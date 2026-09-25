@@ -11,6 +11,16 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **Knockback, both ways** — step 1 of `plans/foe-behaviour.md`. A hit shoves the
+  foe along the swing: the weapon's `knock` (sword 24px, fists 8px — a distance,
+  not a force) divided by the foe's `weight` (dog 1; a rooted thing at Infinity
+  does not move). It is a velocity worked off through `slide()` with a ×¾ decay,
+  so walls and bodies stop it, and it **staggers** the foe for `staggerTicks`
+  (15) — the back-off you can force. A bite that lands shoves you 12px the
+  other way. `mode` (`asleep` / `hunt` / `stagger`) replaces the `awake` flag on
+  the foe record: the seed of the mode machine. Integer throughout; every new
+  field is hashed and replayed. A staggered foe shudders on screen. 18 gates.
+
 - **The first piece of our own art.** DJ's 20×20 sword, drawn in ASCII and
   rendered to `assets/sheets/paramyth-20.png` in the pack's exact light tone, so
   the stratum remap tints it like everything else. It is a third sheet in the

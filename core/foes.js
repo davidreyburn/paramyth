@@ -35,6 +35,12 @@ export const FOE = {
     foot: 5,          // collision half-extent in pixels, as items use
     wake: 5,          // tiles: how near you must be before it notices
     bite: 45,         // ticks between bites, so contact is not a shredder
+    // Knockback, both ways. `weight` divides what a hit does to it — a dog is
+    // the reference weight, a Sentinel will be heavy, a Warden rooted at
+    // Infinity. `knock` is how far its own bite carries you, in px.
+    weight: 1,
+    knock: 12,
+    staggerTicks: 15, // a quarter second helpless after a hit lands
   },
 };
 

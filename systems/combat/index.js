@@ -10,11 +10,11 @@
 // peaceful salvage game rather than a pile of dangling references.
 
 import { VERB, hasVerb } from '../../sim/frame.js';
-import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, swingPhase, friendly } from '../../sim/state.js';
-import { blocked, solidBodies, actorBodies, touching, tileOf, HALF } from '../../sim/space.js';
+import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, PLAYER_WEIGHT, swingPhase, friendly } from '../../sim/state.js';
+import { blocked, solidBodies, actorBodies, touching, tileOf, HALF, impulse } from '../../sim/space.js';
 import { roomTiles, TILE, COLS } from '../../core/gen.js';
 import { FOE } from '../../core/foes.js';
-import { weaponOf, hitBox, inHitBox } from '../../sim/interact.js';
+import { weaponOf, hitBox, inHitBox, FACE } from '../../sim/interact.js';
 
 // The swing's timing and its phase function live in L3 beside the delta field
 // they describe; re-exported here so a reader of this file still sees them.
@@ -42,11 +42,17 @@ export function combat(s, frame) {
 
   if (phase === 'active') {
     const box = hitBox(s);
-    const dmg = weaponOf(s).damage;
+    const w = weaponOf(s);
+    const [fx, fy] = FACE[s.swing.dir];
     for (const f of s.foes) {
       if (s.swing.hit.includes(f.id)) continue;   // one hit per foe per swing
       if (!inHitBox(box, f.x, f.y)) continue;
-      out.push({ k: 'hurtFoe', id: f.id, n: dmg });
+      out.push({ k: 'hurtFoe', id: f.id, n: w.damage });
+      // The shove goes along the swing, scaled by the weapon and divided by
+      // what it hit. Proposed even when zero, so a rooted foe's stillness is
+      // a decision apply can see rather than an action that went missing.
+      const imp = impulse(w.knock, (FOE[f.kind] || {}).weight || 1);
+      out.push({ k: 'shoveFoe', id: f.id, vx: fx * imp, vy: fy * imp });
     }
   }
 
@@ -58,9 +64,14 @@ export function combat(s, frame) {
 
     const [fx, fy] = tileOf(f.x, f.y);
     const near = Math.max(Math.abs(fx - px), Math.abs(fy - py));
-    if (!f.awake) {
+    if (f.mode === 'asleep') {
       if (near <= def.wake) out.push({ k: 'wake', id: f.id });
       continue;                                    // an asleep dog does nothing else
+    }
+    // Shoved and helpless: no step, no bite, until the stagger runs out.
+    if (f.mode === 'stagger') {
+      if (s.tick - f.modeAt >= def.staggerTicks) out.push({ k: 'setMode', id: f.id, mode: 'hunt' });
+      continue;
     }
 
     // Pursuit, one axis at a time so it slides along walls instead of sticking.
@@ -80,7 +91,14 @@ export function combat(s, frame) {
     // the fragility roll is what makes a fight cost the haul and not just the bar.
     const ready = s.tick - (f.bitAt || -9999) >= def.bite;
     const grace = s.tick - s.hurtAt < HURT_INVULN;
-    if (touching(s.x, s.y, nx, ny) && ready && !grace) out.push({ k: 'bite', id: f.id, n: def.damage });
+    if (touching(s.x, s.y, nx, ny) && ready && !grace) {
+      // The bite shoves you too, along the axis it mostly came from — one
+      // axis, so a diagonal contact is not a longer throw than a square one.
+      const ax = s.x - nx, ay = s.y - ny;
+      const imp = impulse(def.knock || 0, PLAYER_WEIGHT);
+      const [vx, vy] = Math.abs(ax) >= Math.abs(ay) ? [Math.sign(ax) * imp, 0] : [0, Math.sign(ay) * imp];
+      out.push({ k: 'bite', id: f.id, n: def.damage, vx, vy });
+    }
   }
 
   return out;

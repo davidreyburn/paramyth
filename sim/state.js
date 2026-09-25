@@ -47,6 +47,9 @@ export function lampStep(cur, facing) {
 export const WINDUP = 6, ACTIVE = 6, RECOVER = 10;
 export const SWING_TICKS = WINDUP + ACTIVE + RECOVER;
 export const HURT_INVULN = 30;          // ticks of grace after taking a hit
+// What a bite's shove is divided by. Armor will add to this; today you are a
+// dog's equal, which is the reference the dog's `knock` was tuned against.
+export const PLAYER_WEIGHT = 1;
 
 // How long a spoken line stays on the glass. It is delta and not a render-side
 // timer so that a replay says the same things at the same ticks.
@@ -96,6 +99,7 @@ export function createState(seed) {
     seed, tick: 0,
     site, floor, room,
     x: p.x, y: p.y,
+    vx: 0, vy: 0,      // a shove in flight; see space.js carry()
     facing: 2, moving: false,
     lamp: 112 * UNITS,
     lampDir: LAMP_AIM[2],   // the lamp starts pointing where you do: south
@@ -150,7 +154,7 @@ export function hashState(s) {
   const mix = (v) => { v = v >>> 0; for (let i = 0; i < 4; i++) { h ^= (v >>> (i*8)) & 0xff; h = Math.imul(h, 0x01000193); } };
   mix(s.seed); mix(s.tick); mix(s.x); mix(s.y); mix(s.facing);
   mix(s.moving ? 1 : 0); mix(s.site); mix(s.floor); mix(s.room); mix(s.moves);
-  mix(s.lampDir);
+  mix(s.lampDir); mix(s.vx); mix(s.vy);
   const roll = (arr) => { mix(arr.length); for (const v of arr) for (let i = 0; i < v.length; i++) mix(v.charCodeAt(i)); };
   const rollRefs = (arr) => { mix(arr.length); for (const r of arr) { for (let i = 0; i < r.kind.length; i++) mix(r.kind.charCodeAt(i)); for (let i = 0; i < r.key.length; i++) mix(r.key.charCodeAt(i)); } };
   rollRefs(s.carried); rollRefs(s.stash);
@@ -178,7 +182,9 @@ export function hashState(s) {
   mix(s.foes.length);
   for (const f of s.foes) {
     for (let i = 0; i < f.id.length; i++) mix(f.id.charCodeAt(i));
-    mix(f.x); mix(f.y); mix(f.hp); mix(f.awake ? 1 : 0); mix(f.bitAt < 0 ? 0 : f.bitAt);
+    mix(f.x); mix(f.y); mix(f.hp); mix(f.bitAt < 0 ? 0 : f.bitAt);
+    mix(f.modeAt); mix(f.vx); mix(f.vy);
+    for (let i = 0; i < f.mode.length; i++) mix(f.mode.charCodeAt(i));
   }
   roll(s.taken); roll(s.opened); roll(s.known); roll(s.slain);
   mix(s.scrap);

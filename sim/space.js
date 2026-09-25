@@ -64,6 +64,33 @@ export const TOUCH = 2 * UNITS;
 export const touching = (ax, ay, bx, by) =>
   Math.abs(ax - bx) < 2 * HALF + TOUCH && Math.abs(ay - by) < 2 * HALF + TOUCH;
 
+// Knockback. A `knock` is a DISTANCE in px: how far a shove carries a body of
+// weight 1 with nothing in the way. The velocity that produces it decays by
+// KNOCK_DECAY each tick, so the total travel is the geometric series
+// v0 * den/(den-num); solving for v0 gives the impulse. Weight divides it.
+// Integer throughout; a rooted foe (weight Infinity) gets zero and stays put.
+export const KNOCK_DECAY = [3, 4];
+export function impulse(knock, weight) {
+  if (!(weight > 0) || weight === Infinity) return 0;
+  return ((knock * UNITS * (KNOCK_DECAY[1] - KNOCK_DECAY[0])) / (KNOCK_DECAY[1] * weight)) | 0;
+}
+export function decay(v) {
+  const n = ((v * KNOCK_DECAY[0]) / KNOCK_DECAY[1]) | 0;
+  return Math.abs(n) < UNITS >> 3 ? 0 : n;
+}
+
+// One tick of a shove in flight, for anything with x, y, vx, vy. Walls and
+// bodies stop it through `slide()`, and a component that was stopped is
+// zeroed. `slammed` reports that: it is the wall-slam hook (backlog 12) and is
+// not acted on yet. Returns null when nothing is in flight.
+export function carry(grid, bodies, b) {
+  if (!b.vx && !b.vy) return null;
+  const to = slide(grid, bodies, b.x, b.y, b.vx, b.vy);
+  const fullX = to.x === b.x + b.vx, fullY = to.y === b.y + b.vy;
+  return { x: to.x, y: to.y, vx: fullX ? decay(b.vx) : 0, vy: fullY ? decay(b.vy) : 0,
+           slammed: (!!b.vx && !fullX) || (!!b.vy && !fullY) };
+}
+
 // Tile coordinates of a subpixel position. One definition, because three
 // different roundings of the same idea is how a prompt and a button disagree.
 export const tileOf = (x, y) => [Math.floor(x / (TILE*UNITS)), Math.floor(y / (TILE*UNITS))];

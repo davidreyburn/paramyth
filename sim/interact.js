@@ -7,7 +7,7 @@ import { contentsOf, insideOf, roomTiles, ERAS, eraFor, absDepth,
 import { chainOf, marksOf, readMarks, worthMultiplier, describe,
          leadOf, placeLabel, possessionsOf, occupantOf } from '../core/provenance.js';
 import { campStations, STATION } from '../core/camp.js';
-import { KIND, UNARMED, SLOTS, slotOf, isContainer, isPortable, isWeapon, damageOf, reachOf, wideOf,
+import { KIND, UNARMED, SLOTS, slotOf, isContainer, isPortable, isWeapon, damageOf, reachOf, wideOf, knockOf,
          fragilityOf, footOf, bulkOf, valueOf, verbFor } from '../core/items.js';
 import { UNITS } from './state.js';
 
@@ -125,7 +125,7 @@ export function weaponOf(s) {
   const ref = bestWeapon(s);
   if (!ref) return UNARMED;
   return { label: ref.kind, damage: damageOf(ref.kind), reach: reachOf(ref.kind),
-           wide: wideOf(ref.kind), ref };
+           wide: wideOf(ref.kind), knock: knockOf(ref.kind), ref };
 }
 
 // The swing's hitbox: a weapon-reach deep in front of you and its own width
@@ -133,7 +133,7 @@ export function weaponOf(s) {
 // small square right in front of you; a sword makes a wide arc a tile out. It
 // lives here rather than in systems/combat/ so the renderer can draw the shape
 // without importing a system — which is what lets the system be deleted.
-const FACE = [[0, -1], [1, 0], [0, 1], [-1, 0]];        // s.facing: N E S W
+export const FACE = [[0, -1], [1, 0], [0, 1], [-1, 0]]; // s.facing: N E S W
 
 export function hitBox(s) {
   const [fx, fy] = FACE[s.swing ? s.swing.dir : s.facing];

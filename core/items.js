@@ -22,7 +22,7 @@ export const KIND = {
   // chain, and an appraiser will read you the history of the thing you have been
   // killing with. There is no equip slot — you swing with the best blade you are
   // carrying, so arming yourself is paid for out of the haul, every run.
-  sword:   { label: 'sword',   bulk: 3, value: 14, fragility: 0, damage: 3, reach: 22, wide: 15, slot: 'weapon' },
+  sword:   { label: 'sword',   bulk: 3, value: 14, fragility: 0, damage: 3, reach: 22, wide: 15, knock: 24, slot: 'weapon' },
 
   key:     { label: 'key',     bulk: 1, value:  3, fragility: 0 },
   gem:     { label: 'gem',     bulk: 1, value: 12, fragility: 1 },
@@ -41,7 +41,9 @@ export const KIND = {
 // an empty pack. A short square reach directly in front, and a third of a
 // sword's damage: enough that being disarmed is a bad position rather than a
 // dead stop.
-export const UNARMED = { label: 'fists', damage: 1, reach: 10, wide: 5 };
+// `knock` is how far a hit carries a foe of weight 1, in px. A sword moves a
+// dog a tile and a bit; fists are a shove, not a launch. A maul will be more.
+export const UNARMED = { label: 'fists', damage: 1, reach: 10, wide: 5, knock: 8 };
 
 export const footOf = (k) => (KIND[k] && KIND[k].foot) || 0;
 
@@ -58,6 +60,7 @@ export const slotOf = (k) => (KIND[k] && KIND[k].slot) || null;
 export const damageOf     = (k) => (KIND[k] && KIND[k].damage) || 0;
 export const reachOf      = (k) => (KIND[k] && KIND[k].reach) || 0;
 export const wideOf       = (k) => (KIND[k] && KIND[k].wide) || 0;
+export const knockOf      = (k) => (KIND[k] && KIND[k].knock) || 0;
 export const fragilityOf  = (k) => (KIND[k] && KIND[k].fragility) || 0;
 export const isPortable  = (k) => !!(KIND[k] && KIND[k].bulk > 0 && !KIND[k].container);
 export const bulkOf      = (k) => (KIND[k] && KIND[k].bulk) || 0;

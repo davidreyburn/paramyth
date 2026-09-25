@@ -451,12 +451,16 @@ export function createRenderer(canvas, pack = null) {
       const def = FOE[f.kind];
       const art = pack && pack.foes && pack.foes[f.kind];
       const g = (art && art.glyph) || (def && def.glyph) || '?';
-      const x = Math.round(px(f.x)), y = Math.round(px(f.y));
+      // A staggered foe shudders: one pixel either way by tick parity, which is
+      // delta and so draws the same for the same state. The full telegraph is
+      // step 3 of the foe plan; this is only the mode that exists today.
+      const stagger = f.mode === 'stagger';
+      const x = Math.round(px(f.x)) + (stagger ? ((s.tick & 1) ? 1 : -1) : 0), y = Math.round(px(f.y));
       ctx.font = 'bold 15px ui-monospace, monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
       ctx.fillStyle = P.void; ctx.fillText(g, x + 1, y + 1);
       // A sleeping dog is dim. Waking it is a thing that visibly happens.
-      ctx.fillStyle = f.awake ? '#c2836b' : '#6b6357';
+      ctx.fillStyle = stagger ? P.parchment : f.mode !== 'asleep' ? '#c2836b' : '#6b6357';
       ctx.fillText(g, x, y);
       ctx.textAlign = 'start';
     }

@@ -193,10 +193,10 @@ Tuned at the table, not here. Integer, in the units the code already uses.
 
 ## Sequence
 
-0. **Bodies.** Actors collide with actors. The bite trigger becomes touching.
+0. ✓ (v0.6.1+, `c22473e`) **Bodies.** Actors collide with actors. The bite trigger becomes touching.
    Room entry nudges a coincident foe. Its own commit, first, because it changes
    what contact *means* and everything after is built on the new meaning.
-1. **Knockback. Smaller, self-contained, immediately satisfying, and
+1. ✓ (2026-09-25) **Knockback. Smaller, self-contained, immediately satisfying, and
    `stagger` is the first mode — so it seeds the `mode` field the machine needs.
    One commit.
 2. **The machine.** Replace pursuit-and-cooldown with the five modes. Corridor
@@ -210,6 +210,24 @@ Tuned at the table, not here. Integer, in the units the code already uses.
 One MINOR release — *0.7.0, the dog learns to hunt* — in five commits. The
 `interact.js` split from the review could ride along, since this touches
 `weaponOf` and `hitBox`, but it is optional and should not gate the release.
+
+## Status after step 1 (2026-09-25)
+
+- `mode` on the foe record is `asleep` / `hunt` / `stagger`. `hunt` is today's
+  straight pursuit under an honest name; step 2 splits it into `circle` /
+  `lunge` / `recover`. The `bite` cooldown is still in place until then.
+- `space.js` has the arithmetic: `impulse(knock, weight)`, `decay(v)` and
+  `carry(grid, bodies, body)`. `carry` returns `slammed` when a wall or body
+  cut the shove short — the hook for backlog 12, unused so far.
+- `knock` is a **distance in px**, not a force: the impulse is solved from the
+  decay series so that the sum comes out to `knock`. Tuning reads directly.
+- The player gains `vx, vy` and `PLAYER_WEIGHT` (1; armor will add to it). A
+  player *stagger* (`staggerAt`) is deferred: with no dodge or guard verb yet
+  there is nothing for it to deny, and a helpless player with no answer is a
+  tax. Revisit with the guard verb.
+- Fixture lesson: a foe placed 11px away is already *touching*. It wakes on
+  the first tick and bites during the windup, shoving you before the blade
+  lands. Measure a shove from where the foe stood when the hit registered.
 
 ## Open questions — resolved (DJ, 2026-09-24)
 

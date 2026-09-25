@@ -47,7 +47,7 @@ function delve(floor, room) {
   // A system PROPOSES. It must not touch the delta, or apply is not the only
   // writer and every guarantee downstream of that is decoration.
   const s = delve(den.floor, den.room);
-  s.foes[0].awake = true;
+  s.foes[0].mode = 'hunt';
   const before = hashState(s);
   const actions = combat(s, 0);
   ok('combat() proposes actions', Array.isArray(actions) && actions.length > 0, `${actions.length} actions`);
@@ -58,7 +58,7 @@ function delve(floor, room) {
   const walk = setVerb(setVerb(0, VERB.RIGHT, true), VERB.DOWN, true);
   for (let i = 0; i < 200; i++) step(peaceful, walk, []);   // no systems: the peaceful build
   ok('a build with no systems still runs', peaceful.tick === 200 && peaceful.hp === MAX_HP);
-  ok('and nothing hunts you in it', peaceful.foes.every((f) => !f.awake));
+  ok('and nothing hunts you in it', peaceful.foes.every((f) => f.mode === 'asleep'));
 
   // ... and it can still finish the loop: loot, carry, sell.
   const sell = createState(SEED);
@@ -101,8 +101,10 @@ function delve(floor, room) {
      hashState(a).toString(16));
 
   let fractional = 0;
-  for (const f of a.foes) if (!Number.isInteger(f.x) || !Number.isInteger(f.y)) fractional++;
-  ok('no float enters a foe position', fractional === 0);
+  const whole = (b) => [b.x, b.y, b.vx, b.vy].every(Number.isInteger);
+  for (const f of a.foes) if (!whole(f)) fractional++;
+  if (!whole(a)) fractional++;
+  ok('no float enters a position or a shove', fractional === 0);
 
   // Storage: walking the world and killing nothing must cost nothing.
   const s = delve(den.floor, den.room);
@@ -221,7 +223,7 @@ function delve(floor, room) {
   // A foe takes at most one hit per swing, however long the active window is.
   const k = delve(den.floor, den.room);
   const foe = k.foes[0];
-  foe.awake = true; foe.hp = 99;
+  foe.mode = 'hunt'; foe.hp = 99;
   foe.x = k.x + 12 * UNITS; foe.y = k.y; k.facing = 1;
   let hits = 0;
   for (let i = 0; i < SWING_TICKS; i++) {
@@ -240,7 +242,7 @@ function delve(floor, room) {
   const s = delve(den.floor, den.room);
   const f = s.foes[0];
   const { HALF: H0 } = await import('../sim/space.js');
-  f.awake = true; f.x = s.x + 2 * H0; f.y = s.y;      // touching, not inside — bodies cannot overlap now
+  f.mode = 'hunt'; f.x = s.x + 2 * H0; f.y = s.y;      // touching, not inside — bodies cannot overlap now
   let bites = 0;
   for (let i = 0; i < HURT_INVULN; i++) {
     for (const a of combat(s, 0)) { if (a.k === 'bite') bites++; applyAction(s, a); }
@@ -337,6 +339,7 @@ function delve(floor, room) {
 // --- bodies cannot overlap ----------------------------------------------------
 // Until now blocked() walked walls and barrels and nothing else, so a dog's
 // move was never tested against the player. That is why it walked INTO you.
+let runFrom;
 {
   const { HALF, TOUCH, touching, actorBodies, blocked, centreOf } = await import('../sim/space.js');
   const { roomTiles, floorCount, floorPlan, COLS: C, ROWS: R, T: TT } = await import('../core/gen.js');
@@ -348,7 +351,7 @@ function delve(floor, room) {
   // A straight run of clear floor from the player, in whichever cardinal
   // direction has one. A foe planted by guesswork ended up inside a wall and
   // "could not walk through the player" because it could not walk at all.
-  const runFrom = (s, tiles) => {
+  runFrom = (s, tiles) => {
     const { grid } = roomTiles(s.seed, s.site, s.floor, s.room);
     const bodies = solidBodies(s);
     const px = Math.floor(s.x / (TILE*UNITS)), py = Math.floor(s.y / (TILE*UNITS));
@@ -372,7 +375,7 @@ function delve(floor, room) {
     const run = runFrom(s, 3);
     ok('there is a clear run to test against', !!run, run ? `${run.dx},${run.dy}` : 'none from spawn');
     if (run) {
-      f.awake = false;                                // it stays put; no systems run
+      f.mode = 'asleep';                              // it stays put; no systems run
       f.x = run.x; f.y = run.y;
       const d0 = Math.abs(s.x - f.x) + Math.abs(s.y - f.y);
       for (let i = 0; i < 300; i++) step(s, setVerb(0, run.verb, true), []);
@@ -391,7 +394,7 @@ function delve(floor, room) {
       // Only this foe: a second, sleeping dog on the run once stopped the mover
       // two tiles short, and the gate passed without testing what it claims.
       s.foes = [f];
-      f.awake = true; f.x = run.x; f.y = run.y;
+      f.mode = 'hunt'; f.x = run.x; f.y = run.y;
       // A dog that reaches you bites every 45 ticks, and six bites is a dead
       // player: die() moves you to camp and every measurement below becomes
       // the distance from the camp spawn to a frozen foe. That read as
@@ -420,8 +423,8 @@ function delve(floor, room) {
     const a = s.foes[0];
     const run = runFrom(s, 7);
     const near = run ? { x: s.x + run.dx * 5 * TILE * UNITS, y: s.y + run.dy * 5 * TILE * UNITS } : { x: s.x - 5 * TILE * UNITS, y: s.y };
-    a.awake = true; a.x = near.x; a.y = near.y;
-    const b = { id: 'second', kind: 'dog', x: run ? run.x : a.x - 2 * TILE * UNITS, y: run ? run.y : s.y, hp: 6, awake: true, bitAt: -9999 };
+    a.mode = 'hunt'; a.x = near.x; a.y = near.y;
+    const b = { id: 'second', kind: 'dog', x: run ? run.x : a.x - 2 * TILE * UNITS, y: run ? run.y : s.y, hp: 6, mode: 'hunt', modeAt: 0, bitAt: -9999, vx: 0, vy: 0 };
     s.foes = [a, b];
     s.hp = 1000;                                       // two dogs kill a fixture in 180 ticks; see above
     const a0 = { x: a.x, y: a.y }, b0 = { x: b.x, y: b.y };
@@ -444,7 +447,7 @@ function delve(floor, room) {
     const at = (gap) => {
       const s = delve(den.floor, den.room);
       const f = s.foes[0];
-      f.awake = true; f.bitAt = -9999; s.hurtAt = -9999;
+      f.mode = 'hunt'; f.bitAt = -9999; s.hurtAt = -9999;
       f.x = s.x + gap; f.y = s.y;
       const acts = combat(s, 0);
       return { bit: acts.some((x) => x.k === 'bite'), moved: acts.some((x) => x.k === 'moveFoe'), s, f };
@@ -491,6 +494,160 @@ function delve(floor, room) {
     ok('arriving on a foe never leaves you inside it', checked > 0 && inside === 0, `${inside}/${checked} arrivals`);
     ok('a nudged foe still stands on floor', offFloor === 0, `${offFloor} off floor`);
     ok('and the nudge is deterministic', drift === 0, `${drift} differed on replay`);
+  }
+}
+
+// --- knockback: step 1 of plans/foe-behaviour.md -----------------------------
+// A hit shoves the foe along the swing; a bite shoves you. Asserted, not eyeballed.
+{
+  const { HALF, impulse, decay, KNOCK_DECAY, blocked, centreOf } = await import('../sim/space.js');
+  const { roomTiles: tilesOf, COLS: C, T: TT } = await import('../core/gen.js');
+  const den = denRoom();
+  const overlap = (a, b) => Math.abs(a.x - b.x) < 2 * HALF && Math.abs(a.y - b.y) < 2 * HALF;
+  const facingOf = (dx, dy) => dy < 0 ? 0 : dx > 0 ? 1 : dy > 0 ? 2 : 3;
+
+  // The pure arithmetic first: the geometric series really does sum to `knock`.
+  {
+    let v = impulse(KIND.sword.knock, 1), travelled = 0, ticks = 0;
+    while (v && ticks < 100) { travelled += v; v = decay(v); ticks++; }
+    ok('a shove travels about its knock distance', Math.abs(travelled / UNITS - KIND.sword.knock) <= 3,
+       `${(travelled / UNITS).toFixed(1)}px of ${KIND.sword.knock} in ${ticks} ticks`);
+    ok('and every tick of it is an integer', Number.isInteger(impulse(KIND.sword.knock, 3)) && Number.isInteger(decay(-1234)));
+    ok('a rooted foe takes no impulse at all', impulse(KIND.sword.knock, Infinity) === 0);
+  }
+
+  // One swing at a foe in the box, then watch. Returns how far along the
+  // swing the foe got at its furthest, and whether anything went wrong.
+  const swingAt = (weapon, weight) => {
+    const s = delve(den.floor, den.room);
+    s.hp = 1000;
+    const f = s.foes[0]; s.foes = [f];
+    const run = runFrom(s, 3);
+    if (!run) return null;
+    const saved = FOE.dog.weight; FOE.dog.weight = weight;   // L1 is data; restored below
+    s.equipped.weapon = weapon;
+    s.facing = facingOf(run.dx, run.dy);
+    // That close it is TOUCHING: it wakes on the first tick and would bite you
+    // during the windup, shoving you and walking after you. Its bite goes on
+    // cooldown for the whole fixture so what is measured is the blade's shove
+    // alone — from where the foe stood when the blow landed, not from here.
+    f.mode = 'hunt'; f.bitAt = s.tick + 120;
+    f.x = s.x + run.dx * (2 * HALF + UNITS); f.y = s.y + run.dy * (2 * HALF + UNITS);
+    const { grid } = tilesOf(s.seed, s.site, s.floor, s.room);
+    const px0 = s.x, py0 = s.y;
+    let x0 = null, y0 = null, peak = 0, inside = 0, inWall = 0, staggered = false;
+    step(s, setVerb(0, VERB.ATTACK, true), SYSTEMS);
+    for (let i = 0; i < 60; i++) {
+      if (x0 === null && f.hp < FOE.dog.hp) { x0 = f.x; y0 = f.y; }   // the tick it landed
+      step(s, 0, SYSTEMS);
+      if (!s.foes.length) break;
+      if (x0 !== null) peak = Math.max(peak, (f.x - x0) * run.dx + (f.y - y0) * run.dy);
+      if (overlap(s, f)) inside++;
+      if (blocked(grid, [], f.x, f.y)) inWall++;
+      if (f.mode === 'stagger') staggered = true;
+    }
+    FOE.dog.weight = saved;
+    return { peak, inside, inWall, staggered, playerMoved: s.x !== px0 || s.y !== py0, hit: f.hp < FOE.dog.hp };
+  };
+
+  const sword = swingAt(ref('sword'), 1);
+  const fists = swingAt(null, 1);
+  const heavy = swingAt(ref('sword'), 3);
+  const rooted = swingAt(ref('sword'), Infinity);
+  ok('the knockback fixture has room to shove into', !!sword, sword ? 'a clear run' : 'no clear run from spawn');
+  if (sword) {
+    ok('the swing lands', sword.hit && fists.hit && heavy.hit && rooted.hit);
+    ok('knockback moves the foe along the swing', sword.peak > 0 && sword.peak >= (KIND.sword.knock * UNITS) / 2,
+       `${(sword.peak / UNITS).toFixed(1)}px of ${KIND.sword.knock}`);
+    ok('and never through you or into masonry', sword.inside === 0 && sword.inWall === 0,
+       `${sword.inside} overlapping, ${sword.inWall} in wall`);
+    ok('a hit staggers the foe', sword.staggered);
+    ok('a sword shoves further than fists', sword.peak > fists.peak && fists.peak > 0,
+       `${(sword.peak / UNITS).toFixed(1)}px vs ${(fists.peak / UNITS).toFixed(1)}px`);
+    ok('a heavier foe shoves less', heavy.peak > 0 && heavy.peak < sword.peak,
+       `weight 3: ${(heavy.peak / UNITS).toFixed(1)}px`);
+    ok('a rooted foe does not move at all', rooted.peak === 0 && !rooted.staggered, `weight Infinity: ${rooted.peak}`);
+    ok('the swing itself does not move you', !sword.playerMoved);
+  }
+
+  // Knockback respects walls: a foe with masonry at its back stops at it.
+  {
+    const s = delve(den.floor, den.room);
+    s.hp = 1000;
+    const f = s.foes[0]; s.foes = [f];
+    const { grid } = tilesOf(s.seed, s.site, s.floor, s.room);
+    // Find: floor (you), floor (it), wall — in a row along some cardinal.
+    let spot = null;
+    for (let t = 0; t < grid.length && !spot; t++) {
+      const x = t % C, y = (t / C) | 0;
+      if (grid[t] !== TT.FLOOR) continue;
+      for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+        const fx = x + dx, fy = y + dy, wx = x + 2*dx, wy = y + 2*dy;
+        if (fx < 1 || fy < 1 || fx >= C-1 || wx < 0 || wy < 0) continue;
+        if (grid[fy*C + fx] === TT.FLOOR && grid[wy*C + wx] === TT.WALL) { spot = { t, dx, dy }; break; }
+      }
+    }
+    ok('there is a foe-against-a-wall spot to test', !!spot);
+    if (spot) {
+      const c = centreOf(spot.t);
+      s.x = c.x; s.y = c.y; s.facing = facingOf(spot.dx, spot.dy);
+      f.mode = 'hunt'; f.bitAt = s.tick + 120;
+      f.x = s.x + spot.dx * (2 * HALF + UNITS); f.y = s.y + spot.dy * (2 * HALF + UNITS);
+      let x0 = null, y0 = null, inWall = 0, peak = 0;
+      step(s, setVerb(0, VERB.ATTACK, true), SYSTEMS);
+      for (let i = 0; i < 40 && s.foes.length; i++) {
+        if (x0 === null && f.hp < FOE.dog.hp) { x0 = f.x; y0 = f.y; }
+        step(s, 0, SYSTEMS);
+        if (x0 !== null) peak = Math.max(peak, (f.x - x0) * spot.dx + (f.y - y0) * spot.dy);
+        if (blocked(grid, [], f.x, f.y)) inWall++;
+      }
+      ok('knockback respects walls', inWall === 0 && peak < KIND.sword.knock * UNITS,
+         `stopped after ${(peak / UNITS).toFixed(1)}px, ${inWall} ticks in masonry`);
+    }
+  }
+
+  // A staggered foe does not bite, and the stagger ends.
+  {
+    const s = delve(den.floor, den.room);
+    const f = s.foes[0]; s.foes = [f];
+    f.mode = 'stagger'; f.modeAt = s.tick; f.bitAt = -9999; s.hurtAt = -9999;
+    f.x = s.x + 2 * HALF; f.y = s.y;
+    const during = combat(s, 0);
+    ok('a staggered foe does not bite', !during.some((a) => a.k === 'bite'));
+    ok('or move', !during.some((a) => a.k === 'moveFoe'));
+    s.tick += FOE.dog.staggerTicks;
+    const after = combat(s, 0);
+    ok('and the stagger ends on time', after.some((a) => a.k === 'setMode' && a.mode === 'hunt'), `${FOE.dog.staggerTicks} ticks`);
+    for (const a of after) applyAction(s, a);
+    ok('after which it bites again', combat(s, 0).some((a) => a.k === 'bite'));
+  }
+
+  // Knockback runs both ways: a bite shoves you.
+  {
+    const s = delve(den.floor, den.room);
+    s.hp = 1000;
+    const f = s.foes[0]; s.foes = [f];
+    const run = runFrom(s, 4);
+    ok('the bite fixture has a run', !!run);
+    if (run) {
+      // You stand three tiles down the run; it stands flush beyond you; the
+      // shove sends you back the way you came, over floor that is known clear.
+      s.x += run.dx * 3 * TILE * UNITS; s.y += run.dy * 3 * TILE * UNITS;
+      f.mode = 'hunt'; f.bitAt = -9999; s.hurtAt = -9999;
+      f.x = s.x + run.dx * 2 * HALF; f.y = s.y + run.dy * 2 * HALF;
+      const x0 = s.x, y0 = s.y;
+      let peak = 0, bit = false;
+      for (let i = 0; i < 30; i++) {
+        const acts = combat(s, 0);
+        if (acts.some((a) => a.k === 'bite')) bit = true;
+        for (const a of acts) applyAction(s, a);
+        step(s, 0, []);                               // physics only: the shove plays out
+        peak = Math.max(peak, (x0 - s.x) * run.dx + (y0 - s.y) * run.dy);
+      }
+      ok('a bite shoves you back', bit && peak >= (FOE.dog.knock * UNITS) / 2,
+         `${(peak / UNITS).toFixed(1)}px of ${FOE.dog.knock}`);
+      ok('and the shove is worked off, not permanent', s.vx === 0 && s.vy === 0);
+    }
   }
 }
 

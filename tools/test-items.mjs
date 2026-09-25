@@ -744,7 +744,7 @@ const delve = (site = 0, floor = 0, room = null) => {
   const { applyAction } = await import('../sim/step.js');
   const { enterRoom } = await import('../sim/step.js');
   const d = delve(); enterRoom(d);
-  d.foes = [{ id: 'x', kind: 'dog', x: d.x, y: d.y, hp: 6, awake: true, bitAt: -9999 }];
+  d.foes = [{ id: 'x', kind: 'dog', x: d.x, y: d.y, hp: 6, mode: 'hunt', modeAt: 0, bitAt: -9999, vx: 0, vy: 0 }];
   for (let i = 0; i < 20 && !d.deaths; i++) { d.hurtAt = -9999; applyAction(d, { k: 'bite', id: 'x', n: 4 }); }
   ok('death empties every slot', d.deaths === 1 && SLOTS.every((k) => d.equipped[k] === null));
   ok('and the blade is on the floor where you fell', d.dropped.some((x) => x.kind === 'sword'));

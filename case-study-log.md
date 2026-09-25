@@ -1018,3 +1018,31 @@ history rather than erasing. The release step now judges `check.sh` by its own
 exit status (`./check.sh > log; rc=$?`), and the fix step joins the chain with
 `&&` like everything after it. The clever one-shot release was the mistake; two
 round trips would have cost forty seconds.
+
+---
+
+## 2026-09-25 — the first shove, and the first fixture it fooled
+
+**Lesson:** when a gate measures a displacement, anchor the measurement to the
+event, not to the fixture's setup. Everything between setup and event is
+somebody else's physics.
+
+**What.** Knockback went in as step 1 of the foe plan: `knock` on weapons,
+`weight` on foes, a velocity worked off through `slide()`, `stagger` as the
+first real value of a new `mode` field. The arithmetic gate passed at once —
+a sword's series sums to 23.5px of 24. The in-sim gate read 17.6px for the
+sword and 0.6px for fists, and “the swing does not move you” failed.
+
+**Why.** The fixture placed an *asleep* foe 11px away, inside the hitbox. But
+11px is already touching, so on the first tick it woke, bit, and shoved the
+player 3px/tick backwards while walking after them. By the time the blade
+landed at tick 5, both bodies had moved; the shove then travelled its full
+23.5px from *there*. The physics was never wrong. The ruler was in the wrong
+place — and the failing assertion about the player moving was the clue, not a
+second bug. A five-line tick trace settled it before any code was touched.
+
+**Outcome.** The fixtures record the foe's position on the tick its hp drops
+and measure from that, with the bite on cooldown so one thing is measured.
+Sword 23.5px, fists 7.5px, weight 3 at 7.5px, rooted at 0, stopped at 13.9px
+against masonry, a bite shoves you 11.5px of 12. Eighteen gates, all green,
+and the `slammed` flag from `carry()` is sitting there for backlog 12.

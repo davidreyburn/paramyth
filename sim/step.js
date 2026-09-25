@@ -10,7 +10,7 @@ import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
          haulValue, assessed, dropTile, tier, mostFragile, bestWeapon, equippedRefs,
          APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './interact.js';
-import { blocked, solidBodies, solidTiles, actorBodies, PLAYER_ID, HALF, centreOf } from './space.js';
+import { blocked, solidBodies, solidTiles, actorBodies, PLAYER_ID, HALF, centreOf, carry } from './space.js';
 import { hchance } from '../core/addr.js';
 import { fragilityOf } from '../core/items.js';
 import { foesOf, FOE } from '../core/foes.js';
@@ -119,7 +119,10 @@ export function enterRoom(s) {
     .filter((f) => !slain.has(f.id))
     .map((f) => {
       const p = centreOf(f.tile);
-      return { id: f.id, kind: f.kind, x: p.x, y: p.y, hp: FOE[f.kind].hp, awake: false, bitAt: -9999 };
+      // `mode` is the seed of the machine in plans/foe-behaviour.md. Today:
+      // asleep, hunt (the straight pursuit), stagger (shoved, helpless).
+      return { id: f.id, kind: f.kind, x: p.x, y: p.y, hp: FOE[f.kind].hp,
+               mode: 'asleep', modeAt: s.tick, bitAt: -9999, vx: 0, vy: 0 };
     });
 
   // You arrive where the stair or door puts you; that is a promise. A foe whose
@@ -158,6 +161,7 @@ function die(s) {
   s.hp = MAX_HP;
   s.hurtAt = -9999;
   s.swing = null;
+  s.vx = 0; s.vy = 0;
   s.deaths = (s.deaths || 0) + 1;
   s.site = 0; s.floor = CAMP; s.room = 0;
   const p = spawnIn(s.seed, s.site, s.floor, s.room);
@@ -179,7 +183,20 @@ export function applyAction(s, a) {
       s.say = { text: a.text, at: s.tick };
       break;
     case 'wake': {
-      const f = foe(a.id); if (f) f.awake = true;
+      const f = foe(a.id); if (f && f.mode === 'asleep') { f.mode = 'hunt'; f.modeAt = s.tick; }
+      break;
+    }
+    case 'setMode': {
+      const f = foe(a.id); if (f) { f.mode = a.mode; f.modeAt = s.tick; }
+      break;
+    }
+    // A shove: a velocity, not a teleport, worked off by carry() each tick.
+    // It staggers — the back-off you can FORCE — unless it moved nothing,
+    // which is what hitting a rooted thing feels like.
+    case 'shoveFoe': {
+      const f = foe(a.id); if (!f) break;
+      f.vx = a.vx; f.vy = a.vy;
+      if (a.vx || a.vy) { f.mode = 'stagger'; f.modeAt = s.tick; }
       break;
     }
     case 'moveFoe': {
@@ -190,7 +207,7 @@ export function applyAction(s, a) {
       const f = foe(a.id); if (!f) break;
       s.swing.hit.push(f.id);
       f.hp -= a.n;
-      f.awake = true;                       // hitting a sleeping dog wakes it
+      if (f.mode === 'asleep') { f.mode = 'hunt'; f.modeAt = s.tick; }   // hitting a sleeping dog wakes it
       if (f.hp <= 0) {
         s.slain.push(f.id);
         s.foes = s.foes.filter((x) => x.id !== f.id);
@@ -201,6 +218,7 @@ export function applyAction(s, a) {
       const f = foe(a.id); if (f) f.bitAt = s.tick;
       s.hp -= a.n;
       s.hurtAt = s.tick;
+      s.vx = a.vx || 0; s.vy = a.vy || 0;   // knockback runs both ways
       // Threat is denominated in cargo as well as health: a hit rolls against
       // the most fragile thing you carry, and a break DESTROYS it. It does not
       // go to the dropped list — there is nothing left to pick up.
@@ -371,6 +389,16 @@ export function step(s, frame, systems = []) {
   if (dx && !blocked(grid, walls, nx, s.y)) s.x = nx;
   const ny = s.y + dy * speed;
   if (dy && !blocked(grid, walls, s.x, ny)) s.y = ny;
+
+  // Shoves in flight, yours and theirs. This is world physics and not a
+  // system's decision: a build with no systems still finishes a shove that is
+  // already moving, the way it still lets a thrown thing land.
+  const mine = carry(grid, walls, s);
+  if (mine) { s.x = mine.x; s.y = mine.y; s.vx = mine.vx; s.vy = mine.vy; }
+  for (const f of s.foes) {
+    const c = carry(grid, [...solids, ...actorBodies(s, f.id)], f);
+    if (c) { f.x = c.x; f.y = c.y; f.vx = c.vx; f.vy = c.vy; }
+  }
 
   // Leaving the room. The border is solid except where a link opens it, so
   // crossing the bounds is only possible through a real doorway.
