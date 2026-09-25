@@ -11,6 +11,20 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **The first piece of our own art.** DJ's 20×20 sword, drawn in ASCII and
+  rendered to `assets/sheets/paramyth-20.png` in the pack's exact light tone, so
+  the stratum remap tints it like everything else. It is a third sheet in the
+  manifest — the swap point working as designed — and `items.sword` now points
+  at it instead of the decor sheet's spike cluster. `tools/icon-preview.html`
+  shows every item icon per era so a new one can be judged beside its neighbours.
+
+### Fixed
+
+- **The slab gate decoded sheets at hardcoded sizes.** Anything not named
+  `tiles` was read as 140×280, so the first sheet of our own art (160×20) was
+  decoded with the wrong stride and the gate passed on noise. It now reads each
+  PNG's IHDR, and a new gate refuses any cell that lies outside its sheet.
+
 - **Actors are solid to each other.** The player is blocked by every foe; each
   foe by the player and every other foe. Until now `blocked()` walked walls and
   barrels and nothing else, so a dog's move was never tested against you — which

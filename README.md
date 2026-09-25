@@ -49,6 +49,7 @@ With `npm start` running:
 | `/tools/atlas.html` | Floor topology by site and depth — the whole-shape view |
 | `/tools/tile-mapper.html` | Assign sheet cells to tile types, with a live lit room preview |
 | `/tools/tileset-sheet.html` | Contact sheet with grid coordinates (`?sheet=decor&scale=5`) |
+| `/tools/icon-preview.html` | Every item icon per stratum, drawn through the pack screen's path |
 | `/tools/pagecheck.html` | The browser gates |
 
 ## Gates

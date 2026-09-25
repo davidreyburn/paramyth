@@ -1,0 +1,54 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>icon preview</title>
+<style>
+  body { margin: 0; background: #0d0c0a; color: #b1afa8; font: 12px/1.4 ui-monospace, monospace; padding: 12px; }
+  canvas { image-rendering: pixelated; display: block; }
+  p { margin: 0 0 8px; color: #7b776f; }
+  #status.bad { color: #d9673f; white-space: pre-wrap; }
+</style></head><body>
+<p>Every item icon, drawn through the same toned-sheet path the pack screen uses, once per stratum. Rows are items, columns are eras. Lets a new icon be judged beside its neighbours before it ships.</p>
+<div id="status">loading…</div>
+<canvas id="c"></canvas>
+<script>
+// Fail LOUDLY. A blank page has cost this project three debugging sessions,
+// and the server gate refuses any tool page without an error path.
+const status = document.getElementById('status');
+const say = (m, bad) => { status.textContent = m; status.className = bad ? 'bad' : ''; };
+window.onerror = (m, src, line) => say(`Error: ${m}\n  at ${src}:${line}`, true);
+window.addEventListener('unhandledrejection', (e) => say(`Error: ${e.reason && e.reason.message || e.reason}`, true));
+if (location.protocol === 'file:') say('Opened from the file system. Run npm start and open http://localhost:3140/tools/icon-preview.html', true);
+</script>
+<script type="module">
+import { loadPack, tonedSheet } from '../render/tileset.js';
+import { TONES } from '../core/palette.js';
+
+const S = Number(new URLSearchParams(location.search).get('scale')) || 5;
+const pack = await loadPack('../assets/packs/onebit.json');
+if (!pack.ok) say(`Could not load sheet(s): ${pack.missing.join(', ')}`, true);
+else say(`${Object.keys(pack.items || {}).length} icons × ${Object.keys(TONES).length} strata`);
+const names = Object.keys(pack.items || {});
+const eras = Object.keys(TONES);
+const T = pack.tile, PLATE = T + 8, LABEL = 84, HEAD = 16;
+
+const c = document.getElementById('c');
+c.width = LABEL + eras.length * PLATE; c.height = HEAD + names.length * PLATE;
+c.style.width = c.width * S + 'px'; c.style.height = c.height * S + 'px';
+const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+x.fillStyle = '#0d0c0a'; x.fillRect(0, 0, c.width, c.height);
+x.font = '7px ui-monospace, monospace'; x.fillStyle = '#7b776f';
+eras.forEach((e, i) => x.fillText(e.slice(0, 8), LABEL + i * PLATE + 2, 10));
+
+names.forEach((name, r) => {
+  const y = HEAD + r * PLATE;
+  x.fillStyle = '#b1afa8'; x.fillText(name, 2, y + PLATE / 2 + 3);
+  const def = pack.items[name];
+  const [sh, gx, gy] = def.cells[0];
+  eras.forEach((era, i) => {
+    const px = LABEL + i * PLATE;
+    x.fillStyle = '#191714'; x.fillRect(px, y, PLATE, PLATE);        // the pack screen's plate
+    x.strokeStyle = '#332d26'; x.lineWidth = 1; x.strokeRect(px + .5, y + .5, PLATE - 1, PLATE - 1);
+    const sheet = tonedSheet(pack, sh, def.tone || TONES[era]);
+    if (sheet) x.drawImage(sheet, gx * T, gy * T, T, T, px + 4, y + 4, T, T);
+  });
+});
+window.__ready = true;
+</script></body></html>

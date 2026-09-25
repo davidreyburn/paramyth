@@ -190,8 +190,12 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
 {
   const { readFileSync } = await import('node:fs');
   const { inflateSync } = await import('node:zlib');
-  const decode = (rel, w, h) => {
+  // Width and height come from the file's own IHDR. They used to be hardcoded
+  // to the two reference sheets' sizes, which meant the first sheet of our OWN
+  // art (160x20) was decoded with the wrong stride and this gate passed on noise.
+  const decode = (rel) => {
     const d = readFileSync(new URL('../' + rel, import.meta.url));
+    const w = d.readUInt32BE(16), h = d.readUInt32BE(20);
     let i = 8; const parts = [];
     while (i < d.length) { const ln = d.readUInt32BE(i);
       if (d.slice(i+4, i+8).toString() === 'IDAT') parts.push(d.slice(i+8, i+8+ln)); i += 12 + ln; }
@@ -207,13 +211,22 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
           line[x]=(line[x]+(pa<=pb&&pa<=pc?a:pb<=pc?b:c))&255;} }
       line.copy(out, y*stride); prev = line;
     }
-    return { out, stride };
+    return { out, stride, w, h };
   };
   const sheets = {};
   for (const [k, u] of Object.entries(pack.sheets)) {
     const rel = decodeURIComponent(u).replace(/^\//, '');
-    sheets[k] = decode(rel, k === 'tiles' ? 440 : 140, 280);
+    sheets[k] = decode(rel);
   }
+  // A cell that lies outside its sheet reads as zeros — 'transparent', which the
+  // slab check would wave through. Refuse it instead.
+  const offSheet = [];
+  const cellsOf = (table) => Object.entries(table || {}).flatMap(([n, d]) => (d.cells || []).map((c) => [n, ...c]));
+  for (const [name, sh, gx, gy] of [...cellsOf(pack.tiles), ...cellsOf(pack.items)]) {
+    const { w, h } = sheets[sh];
+    if ((gx+1)*pack.tile > w || (gy+1)*pack.tile > h) offSheet.push(`${name} -> ${sh} ${gx},${gy} (sheet ${w}x${h})`);
+  }
+  ok('every cell lies inside its sheet', offSheet.length === 0, offSheet.join(' | ') || `${Object.keys(sheets).map((k) => `${k} ${sheets[k].w}x${sheets[k].h}`).join(', ')}`);
   const flat = [];
   const check = (name, sheet, gx, gy) => {
     const { out, stride } = sheets[sheet];
