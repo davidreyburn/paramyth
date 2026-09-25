@@ -114,7 +114,7 @@ know what is down there.
 | **Prybar** | Slow heavy swing, staggers | Opens sealed lids and doors; wedges a door shut behind you | 2 |
 | **Grapnel & line** | Yanks an enemy off balance or off a ledge | Crosses chasms, descends shafts, retrieves cargo across gaps | 3 |
 | **Delver's lantern** | Burns rot-flesh weakly; reveals Shade Beings | Light; makes inscriptions legible. Occupies a hand | 2 |
-| **Blasting charge** | Area damage and stagger; the panic button | Collapses a sealed wall, opens a shortcut home | 2 ea. |
+| **Blasting Cap** (B.Cap) | Area damage and a heavy shove; the panic button. *Built: set one tile ahead, 45-tick fuse, a 56px square that lingers 10 ticks, 8 damage, knock 48 — moves a Sentinel; 4 to you if you stand there* | Breaks rubble to floor. Walls and sealed doors want a heavier tool | 2 ea. |
 | **Hand-bell** | Repels the dead briefly | Lures a patrol off your route entirely | 1 |
 | **Ward chalk** | Draws a line the dead will not cross | Marks your path — the mapping tool | 1 ea. |
 | **Net** | Immobilizes one enemy | A sling: haul one object heavier than your limit | 2 |
@@ -123,7 +123,7 @@ know what is down there.
 The **net** deserves its note: a combat tool that directly raises carrying
 capacity. The two categories are not adjacent here, they are the same category.
 
-Consumables (charges, chalk) are the scrap sink at the low end, before depth
+Consumables (caps, chalk) are the scrap sink at the low end, before depth
 permits take over at the high end.
 
 ## Damage and the body

@@ -11,6 +11,7 @@ echo "── items"     && node tools/test-items.mjs
 echo "── provenance"&& node tools/test-provenance.mjs
 echo "── saves"     && node tools/test-save.mjs
 echo "── combat"    && node tools/test-combat.mjs
+echo "── tools"     && node tools/test-tools.mjs
 echo "── assets"    && node tools/test-pack.mjs
 
 if [ "$1" != "--fast" ]; then

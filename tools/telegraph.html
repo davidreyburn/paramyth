@@ -26,6 +26,7 @@ import { createState, spawnIn } from '../sim/state.js';
 import { enterRoom } from '../sim/step.js';
 import { floorPlan, floorCount } from '../core/gen.js';
 import { foesOf, FOE } from '../core/foes.js';
+import { blastOf } from '../core/items.js';
 
 const q = new URLSearchParams(location.search);
 const S = Number(q.get('scale')) || 4;
@@ -46,6 +47,9 @@ const modes = [
   ['dash',    (f, s) => { f.mode = 'lunge'; f.modeAt = s.tick - FOE[KIND].lungeWindup; f.aimX = s.x; f.aimY = s.y; }],
   ['recover', (f, s) => { f.mode = 'recover'; f.modeAt = s.tick; }],
   ['stagger', (f, s) => { f.mode = 'stagger'; f.modeAt = s.tick; }],
+  // And the cap, for the same reason: what the player has to read a blast from.
+  ['cap set', (f, s) => { f.mode = 'circle'; s.charges = [{ kind: 'bcap', key: 'k', site: s.site, floor: s.floor, room: s.room, x: s.x + 20 * 256, y: s.y, at: s.tick - 40 }]; }],
+  ['blast',   (f, s) => { f.mode = 'stagger'; f.modeAt = s.tick; const b = blastOf('bcap'); s.blasts = [{ x: s.x + 20 * 256, y: s.y, r: b.radius * 256, at: s.tick - 1, site: s.site, floor: s.floor, room: s.room, damage: b.damage, knock: b.knock, self: b.self, linger: b.linger, hit: [] }]; }],
 ];
 const row = document.getElementById('row');
 const CROP = 72;

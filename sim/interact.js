@@ -166,7 +166,7 @@ export function tier(bulk) {
 // every such change alters one of three list lengths — so validity is a string
 // compare and needs no invalidation calls. plans/review-2026-09-24.md.
 export function roomView(s) {
-  const stamp = `${s.site}|${s.floor}|${s.room}|${s.taken.length}|${s.opened.length}|${s.dropped.length}`;
+  const stamp = `${s.site}|${s.floor}|${s.room}|${s.taken.length}|${s.opened.length}|${s.dropped.length}|${s.broken.length}`;
   const v = s._view;
   if (v && v.stamp === stamp) return v;
 
@@ -191,11 +191,23 @@ export function roomView(s) {
     bodies.push({ cx: (tx * TILE + TILE / 2) * UNITS, cy: (ty * TILE + TILE / 2) * UNITS, f: f * UNITS, tile: c.tile });
   }
 
-  s._view = { stamp, taken, opened, visible, bodies };
+  // The grid, with what the caps have done to it. The generator's grid is
+  // pure and untouched; this is the one everything that walks or draws uses.
+  const pure = roomTiles(s.seed, s.site, s.floor, s.room).grid;
+  const here = `${s.site}:${s.floor}:${s.room}:`;
+  let grid = pure;
+  for (const k of s.broken) {
+    if (!k.startsWith(here)) continue;
+    if (grid === pure) grid = pure.slice();
+    grid[Number(k.slice(here.length))] = T.FLOOR;
+  }
+
+  s._view = { stamp, taken, opened, visible, bodies, grid };
   return s._view;
 }
 
 export const visible = (s) => roomView(s).visible;
+export const gridOf = (s) => roomView(s).grid;
 
 // Where a thing you let go of lands: the tile under you, or the nearest free
 // floor to it, searched in rings so the result is the same every replay.

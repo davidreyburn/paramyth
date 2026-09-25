@@ -9,9 +9,11 @@ import { tonedSheet, drawsFor, shadeTone, variantFor, glazeFor } from './tileset
 import { visible, prompt, containerItems, carriedBulk, tier,
          itemValue, assessed, readOut, marksFor, leadFor, placeLabel, atPlace, hitBox, APPRAISAL_FEE,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, STASH_ROWS,
-         BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
+         BULK_BUDGET, STASH_SLOTS, roomView } from '../sim/interact.js';
 import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
+import { blastOf } from '../core/items.js';
+import { liveBlasts, capsHere } from '../sim/blast.js';
 import { MAX_HP, swingPhase, saying, lampVec, surface } from '../sim/state.js';
 import { isContainer, labelOf, bulkOf, KIND, SLOTS } from '../core/items.js';
 
@@ -494,6 +496,34 @@ export function createRenderer(canvas, pack = null) {
     }
   }
 
+  // A set cap: a small ember square that blinks, faster as the fuse runs down.
+  // Keyed to the tick, so it draws the same twice. The blink IS the warning.
+  function drawCharges(s) {
+    for (const c of capsHere(s)) {
+      const def = blastOf(c.kind); if (!def) continue;
+      const age = s.tick - c.at, left = def.fuse - age;
+      const on = left <= 12 ? (age & 1) === 0 : ((age >> 3) & 1) === 0;
+      const x = Math.round(px(c.x)), y = Math.round(px(c.y));
+      ctx.fillStyle = P.void; ctx.fillRect(x - 2, y - 2, 5, 5);
+      ctx.fillStyle = on ? P.ember : P.lanternDeep; ctx.fillRect(x - 1, y - 1, 3, 3);
+    }
+  }
+
+  // The blast. Its box is drawn for exactly the ticks it hurts, like the
+  // swing: bright at the instant, then fading through the linger. What you
+  // see is the hitbox, and the hitbox is what you see.
+  function drawBlasts(s) {
+    for (const b of liveBlasts(s)) {
+      const age = s.tick - b.at;
+      const x0 = Math.round(px(b.x - b.r)), y0 = Math.round(px(b.y - b.r)), w = Math.round(px(2 * b.r));
+      const a = age < 2 ? 0.6 : Math.max(0.1, 0.36 - (age - 2) * 0.03);
+      ctx.fillStyle = `rgba(240,163,64,${a.toFixed(2)})`;
+      ctx.fillRect(x0, y0, w, w);
+      ctx.strokeStyle = age < 2 ? P.parchment : P.ember; ctx.lineWidth = 1;
+      ctx.strokeRect(x0 + 0.5, y0 + 0.5, w - 1, w - 1);
+    }
+  }
+
   // The swing. Only the ACTIVE frames draw, so what you see on the screen is
   // exactly the window in which the hitbox is live — no tell that lies.
   function drawSwing(s) {
@@ -573,11 +603,14 @@ export function createRenderer(canvas, pack = null) {
       const world = roomTiles(state.seed, state.site, state.floor, state.room);
       const tone = TONES[world.era.name] || TONES['Recent'];
       ctx.fillStyle = P.void; ctx.fillRect(0, 0, W, H);
-      drawRoom(world.grid, world.era, surface(state) ? SURFACE_LIFT : 1);
+      // The room view's grid, not the generator's: rubble a cap has broken is floor.
+      drawRoom(roomView(state).grid, world.era, surface(state) ? SURFACE_LIFT : 1);
       drawStations(state, tone);
       drawItems(state, tone);
+      drawCharges(state);
       drawFoes(state);
       drawSwing(state);
+      drawBlasts(state);
       drawPlayer(state);
       drawLight(state);
       // Over the light, because it is interface: a health bar you cannot read in

@@ -125,7 +125,12 @@ export function createState(seed) {
     carried: [],
     // The equipment row. Five labelled slots; what is in them is worn or
     // wielded and still counts against bulk.
-    equipped: { weapon: { kind: 'sword', key: 'issue:0:0:0' }, tool: null, armor: null, helm: null, accessory: null },
+    // The Company issues a blade and one Blasting Cap. The cap is how the
+    // first rubble you meet becomes content instead of a wall.
+    equipped: { weapon: { kind: 'sword', key: 'issue:0:0:0' }, tool: { kind: 'bcap', key: 'issue:0:0:1' }, armor: null, helm: null, accessory: null },
+    charges: [],       // caps set and fusing: { kind, key, site, floor, room, x, y, at }
+    blasts: [],        // detonations still lingering: { x, y, r, at, ..., hit: [] }
+    broken: [],        // rubble made floor, as `site:floor:room:tile` — the world changed, recorded
     deaths: 0,
     known: [],         // keys whose record has been read
     taken: [],         // keys of contents removed from the world
@@ -186,7 +191,11 @@ export function hashState(s) {
     mix(f.modeAt); mix(f.vx); mix(f.vy); mix(f.spin + 1); mix(f.aimX); mix(f.aimY);
     for (let i = 0; i < f.mode.length; i++) mix(f.mode.charCodeAt(i));
   }
-  roll(s.taken); roll(s.opened); roll(s.known); roll(s.slain);
+  roll(s.taken); roll(s.opened); roll(s.known); roll(s.slain); roll(s.broken);
+  mix(s.charges.length);
+  for (const c of s.charges) { for (let i = 0; i < c.key.length; i++) mix(c.key.charCodeAt(i)); mix(c.site); mix(c.floor); mix(c.room); mix(c.x); mix(c.y); mix(c.at); }
+  mix(s.blasts.length);
+  for (const b of s.blasts) { mix(b.x); mix(b.y); mix(b.r); mix(b.at); mix(b.site); mix(b.floor); mix(b.room); roll(b.hit); }
   mix(s.scrap);
   for (const k of Object.keys(s.stats).sort()) mix(s.stats[k]);
   mix(s.cur); mix(s.side); roll([s.screen, s.screenKey]);

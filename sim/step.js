@@ -3,13 +3,14 @@
 // same result, forever, on every device.
 
 import { VERB, hasVerb } from './frame.js';
-import { UNITS, spawnIn, MAX_HP, SWING_TICKS, swingPhase, lampStep } from './state.js';
+import { UNITS, spawnIn, MAX_HP, SWING_TICKS, swingPhase, lampStep, friendly } from './state.js';
+import { plant, fuseStep } from './blast.js';
 import { roomTiles, floorPlan, floorCount, CAMP, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
-import { isContainer, isPortable, isWeapon, bulkOf, SLOTS, slotOf } from '../core/items.js';
+import { isContainer, isPortable, isWeapon, bulkOf, SLOTS, slotOf, blastOf, KIND } from '../core/items.js';
 import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
          haulValue, assessed, dropTile, tier, mostFragile, bestWeapon, equippedRefs,
          APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
-         PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './interact.js';
+         PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, gridOf } from './interact.js';
 import { blocked, solidBodies, solidTiles, actorBodies, PLAYER_ID, HALF, centreOf, carry } from './space.js';
 import { hchance } from '../core/addr.js';
 import { fragilityOf } from '../core/items.js';
@@ -129,7 +130,7 @@ export function enterRoom(s) {
   // You arrive where the stair or door puts you; that is a promise. A foe whose
   // roster tile coincides is the one that moves — to the nearest free tile,
   // searched in rings so replay puts it in the same place.
-  const { grid } = roomTiles(s.seed, s.site, s.floor, s.room);
+  const grid = gridOf(s);
   const solids = solidBodies(s);
   for (const f of s.foes) {
     const others = [...solids, ...actorBodies(s, f.id)];
@@ -208,7 +209,7 @@ export function applyAction(s, a) {
     }
     case 'hurtFoe': {
       const f = foe(a.id); if (!f) break;
-      s.swing.hit.push(f.id);
+      if (s.swing) s.swing.hit.push(f.id);      // a blast hurts without a swing
       f.hp -= a.n;
       if (f.mode === 'asleep') { f.mode = 'circle'; f.modeAt = s.tick; }   // hitting a sleeping dog wakes it
       if (f.hp <= 0) {
@@ -217,7 +218,8 @@ export function applyAction(s, a) {
       }
       break;
     }
-    case 'bite': {
+    case 'bite':
+    case 'hurt': {                              // a blast is a bite with no biter
       s.hp -= a.n;
       s.hurtAt = s.tick;
       s.vx = a.vx || 0; s.vy = a.vy || 0;   // knockback runs both ways
@@ -363,7 +365,7 @@ export function step(s, frame, systems = []) {
   if (s.screen) { screenStep(s, frame); s.lastFrame = frame; s.tick++; return s; }
   const solids = solidBodies(s);
 
-  const grid = roomTiles(s.seed, s.site, s.floor, s.room).grid;
+  const grid = gridOf(s);
 
   const dx = (hasVerb(frame, VERB.RIGHT) ? 1 : 0) - (hasVerb(frame, VERB.LEFT) ? 1 : 0);
   const dy = (hasVerb(frame, VERB.DOWN) ? 1 : 0) - (hasVerb(frame, VERB.UP) ? 1 : 0);
@@ -401,6 +403,7 @@ export function step(s, frame, systems = []) {
     const c = carry(grid, [...solids, ...actorBodies(s, f.id)], f);
     if (c) { f.x = c.x; f.y = c.y; f.vx = c.vx; f.vy = c.vy; }
   }
+  fuseStep(s, (a) => applyAction(s, a));
 
   // Leaving the room. The border is solid except where a link opens it, so
   // crossing the bounds is only possible through a real doorway.
@@ -453,6 +456,21 @@ export function step(s, frame, systems = []) {
     // Everything in the pack. What is worn or wielded stays on you: the row is
     // not cargo, and dropping your blade while a dog closes is not surviving.
     for (let i = s.carried.length - 1; i >= 0; i--) putDown(s, i);
+  }
+
+  // The tool in your hand. A cap is set one tile ahead and the next one from
+  // the pack takes its place, so a pocketful is a pocketful. Not in camp: the
+  // Company frowns on that too, and the camp has rubble it is fond of.
+  if (hasVerb(frame, VERB.TOOL) && !hasVerb(s.lastFrame, VERB.TOOL)) {
+    const tool = s.equipped.tool;
+    if (!tool) applyAction(s, { k: 'say', text: 'Nothing in hand to use' });
+    else if (!blastOf(tool.kind)) applyAction(s, { k: 'say', text: `Nothing to do with a ${KIND[tool.kind].label} here` });
+    else if (friendly(s)) applyAction(s, { k: 'say', text: 'Not in camp \u2014 the Company frowns on that too' });
+    else {
+      plant(s, tool);
+      const i = s.carried.findIndex((r) => r.kind === tool.kind);
+      s.equipped.tool = i >= 0 ? s.carried.splice(i, 1)[0] : null;
+    }
   }
 
   // The pack, on its own button — Start on a pad, I on a keyboard. It toggles.

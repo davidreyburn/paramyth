@@ -115,7 +115,7 @@ const delve = (site = 0, floor = 0, room = null) => {
      `light<=8 laden<=16 overloaded<=${BULK_BUDGET}`);
 
   const s = delve();
-  s.equipped.weapon = null;
+  s.equipped.weapon = null; s.equipped.tool = null;
   s.carried = Array.from({ length: BULK_BUDGET }, (_, i) => ref('key', i));   // bulk 1 each
   ok('bulk sums from what is carried', carriedBulk(s) === BULK_BUDGET, `${carriedBulk(s)}`);
   s.equipped.weapon = ref('sword', 99);
@@ -481,9 +481,10 @@ const delve = (site = 0, floor = 0, room = null) => {
      s.scrap === 0 && !s.stash.length && s.carried.length === 0
        && s.equipped.weapon && s.equipped.weapon.kind === 'sword',
      `pack ${s.carried.length}, weapon ${s.equipped.weapon && s.equipped.weapon.kind}`);
-  ok('and the blade is already costing you bulk', carriedBulk(s) === 3, `${carriedBulk(s)}/20`);
-  ok('the other four slots start empty',
-     ['tool','armor','helm','accessory'].every((k) => s.equipped[k] === null));
+  // Issue: the blade (3) and one Blasting Cap (1).
+  ok('and the blade and the cap are already costing you bulk', carriedBulk(s) === 4, `${carriedBulk(s)}/20`);
+  ok('the other three slots start empty',
+     ['armor','helm','accessory'].every((k) => s.equipped[k] === null));
 
   const standAt = (st, state) => {
     state.x = ((st.tile % C) * TL + TL/2) * UNITS;

@@ -4,10 +4,14 @@
 <script type="module">
 const out = [];
 let fails = 0;
-const ok = (name, cond, detail='') => { out.push(`${cond?'  ok  ':'  FAIL'}  ${name}${detail?'  '+detail:''}`); if(!cond) fails++; };
+const render = () => { document.getElementById('out').textContent = out.join('\n') + `\n\n  ${done ? (fails? fails+' FAILED':'all page gates passed') : (fails ? fails + ' FAILED so far…' : 'running…')}\n`; };
+let done = false;
+// Rendered after EVERY gate, not only at the end: a gate that hangs then
+// leaves its predecessor on the page as the last thing seen, instead of
+// 'running…' forever with no clue where.
+const ok = (name, cond, detail='') => { out.push(`${cond?'  ok  ':'  FAIL'}  ${name}${detail?'  '+detail:''}`); if(!cond) fails++; render(); };
 
 window.addEventListener('error', e => { out.push(`  FAIL  uncaught: ${e.message} @ ${e.filename}:${e.lineno}`); fails++; render(); });
-const render = () => { document.getElementById('out').textContent = out.join('\n') + `\n\n  ${fails? fails+' FAILED':'all page gates passed'}\n`; };
 
 try {
   const { createState, hashState, spawnIn } = await import('../sim/state.js');
@@ -412,6 +416,23 @@ try {
       ok('and the telegraph is deterministic', shot() === recovering);
       f6.mode = 'circle';
 
+      // The cap and its blast draw where they are, for as long as they are.
+      const { blastOf } = await import('../core/items.js');
+      const cap = blastOf('bcap');
+      const plain = shot();
+      s6.charges = [{ kind: 'bcap', key: 'k', site: s6.site, floor: s6.floor, room: s6.room, x: s6.x + 20*256, y: s6.y + 20*256, at: s6.tick }];
+      const withCap = shot();
+      ok('a set cap draws', withCap !== plain);
+      s6.charges = [];
+      s6.blasts = [{ x: s6.x + 20*256, y: s6.y + 20*256, r: cap.radius*256, at: s6.tick, site: s6.site, floor: s6.floor, room: s6.room, damage: 8, knock: 48, self: 4, linger: cap.linger, hit: [] }];
+      const withBlast = shot();
+      ok('a blast draws its box', withBlast !== plain && withBlast !== withCap);
+      const ex = Math.round((s6.x + 20*256 + cap.radius*256 - 2*256)/256), ey = Math.round((s6.y + 20*256)/256);
+      const edge = ctx.getImageData(Math.max(0, Math.min(W-1, ex)), Math.max(0, Math.min(VIEW_H-1, ey)), 1, 1).data;
+      ok('and the box is bright out to its edge', edge[0] > 90, `rgb(${edge[0]},${edge[1]},${edge[2]}) at ${ex},${ey}`);
+      ok('and draws the same twice', shot() === withBlast);
+      s6.blasts = [];
+
       // The swing must be visible for exactly its active frames.
       s6.facing = 1;
       s6.swing = { at: s6.tick, dir: 1, hit: [] };
@@ -526,5 +547,6 @@ try {
   out.push(`  FAIL  threw: ${err && err.stack ? err.stack.split('\n').slice(0,3).join(' | ') : err}`);
   fails++;
 }
+done = true;
 render();
 </script></body></html>

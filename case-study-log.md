@@ -1046,3 +1046,28 @@ and measure from that, with the bite on cooldown so one thing is measured.
 Sword 23.5px, fists 7.5px, weight 3 at 7.5px, rooted at 0, stopped at 13.9px
 against masonry, a bite shoves you 11.5px of 12. Eighteen gates, all green,
 and the `slammed` flag from `carry()` is sitting there for backlog 12.
+
+---
+
+## 2026-09-25 — the cap, and a page that said “running…”
+
+**Lesson:** a tool that reports nothing until the end reports nothing when it
+breaks. Render progress as you go, and a hang names its own location.
+
+**What.** The Blasting Cap went in: item, fuse, a square blast that lingers and
+is drawn for exactly the ticks it hurts, rubble to floor as a line of delta per
+tile. Nine headless suites green on the first full run after the fixtures were
+corrected. The browser page, though, sat at “running…” with no output at all,
+through a 90-second virtual budget.
+
+**Why.** A `const bx` in the new blast gate collided with one the swing gate
+had declared in the same block. That is a *syntax* error, so the module never
+ran a line — no gate, no catch, no window error, nothing to render. The page
+only wrote its results at the very end, so it had no way to say so. Chrome's
+console had the answer in one line; the page did not.
+
+**Outcome.** `ok()` now renders after every gate, so the last line on the page
+is always the last gate that ran. And the cap's fixtures taught two smaller
+things worth keeping: a held button is one press (the helper now releases
+between presses), and a 28px square around a rubble tile usually catches a
+second one — which is the tool working, not the gate failing.

@@ -11,6 +11,22 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **The Blasting Cap** — `B.Cap` on the glass — the first tool. In the TOOL
+  slot; the tool button (K / pad 3) sets it one tile ahead, or at your feet when
+  the tile ahead is solid, and the next cap in your pack takes the slot. A
+  45-tick fuse (it blinks, faster at the end), then a **56px square that lingers
+  ten ticks** and is drawn for exactly those ticks, like the swing: what you see
+  is the hitbox. Rubble in it becomes floor — the first thing in the game that
+  changes the map, recorded as one line of delta per tile while the generator
+  stays pure. It hurts each body in it once (8; you 4 if you stand there) and
+  shoves with knock 48: the heavy impact that moves a Sentinel. The Worker is
+  issued one; more lie in the shallows at 2 scrap. Own icon in the project
+  sheet, which now builds from `assets/sheets/paramyth-20.txt` by
+  `tools/build-sheet.mjs`. A ninth gate suite, `tools/test-tools.mjs`.
+- `sim/blast.js` (L3): fuses and blasts are world physics beside `carry()`;
+  `roomView(s).grid` is now the grid everything walks and draws, with breaks
+  applied; `hurt` joins `bite` in apply as a bite with no biter.
+
 - **The Broken Sentinel (`S`).** The second foe, and the proof that the machine
   is a template: a policy table in `core/foes.js`, no new branch in
   `systems/combat/` (a gate reads the source and checks it names no kind). It

@@ -23,6 +23,12 @@ export const KIND = {
   // killing with. There is no equip slot — you swing with the best blade you are
   // carrying, so arming yourself is paid for out of the haul, every run.
   sword:   { label: 'sword',   bulk: 3, value: 14, fragility: 0, damage: 3, reach: 22, wide: 15, knock: 24, slot: 'weapon' },
+  // The Blasting Cap — B.Cap on the glass — the first tool. Set it and step
+  // back: a short fuse, then a square of hurt that lingers, breaks rubble to
+  // floor, and shoves hard enough to move what a sword cannot. Its numbers
+  // live here because a tool is data; sim/blast.js is the one reader.
+  bcap:    { label: 'B.Cap',   bulk: 1, value: 2, fragility: 0, slot: 'tool',
+             blast: { fuse: 45, linger: 10, radius: 28, damage: 8, knock: 48, self: 4 } },
 
   key:     { label: 'key',     bulk: 1, value:  3, fragility: 0 },
   gem:     { label: 'gem',     bulk: 1, value: 12, fragility: 1 },
@@ -61,6 +67,8 @@ export const damageOf     = (k) => (KIND[k] && KIND[k].damage) || 0;
 export const reachOf      = (k) => (KIND[k] && KIND[k].reach) || 0;
 export const wideOf       = (k) => (KIND[k] && KIND[k].wide) || 0;
 export const knockOf      = (k) => (KIND[k] && KIND[k].knock) || 0;
+export const blastOf      = (k) => (KIND[k] && KIND[k].blast) || null;
+export const isTool       = (k) => !!(KIND[k] && KIND[k].slot === 'tool');
 export const fragilityOf  = (k) => (KIND[k] && KIND[k].fragility) || 0;
 export const isPortable  = (k) => !!(KIND[k] && KIND[k].bulk > 0 && !KIND[k].container);
 export const bulkOf      = (k) => (KIND[k] && KIND[k].bulk) || 0;
@@ -77,9 +85,9 @@ export function verbFor(kind) {
 // Placement weights. Containers cluster near the surface; loose valuables and
 // the dead lie deeper — the same depth-is-era gradient the world already has.
 const TABLES = [
-  { upTo: 1,  w: [['chest',2],['pot',4],['barrel',3],['bones',1],['trinket',2],['table',2],['chair',2]] },
-  { upTo: 3,  w: [['chest',3],['pot',4],['urn',3],['barrel',3],['bones',3],['trinket',3],['key',1],['gem',1],['sword',1],['table',1],['chair',1]] },
-  { upTo: 8,  w: [['chest',3],['urn',4],['pot',2],['bones',4],['gem',2],['crystal',2],['trinket',2],['key',2],['sword',1]] },
+  { upTo: 1,  w: [['chest',2],['pot',4],['barrel',3],['bones',1],['trinket',2],['table',2],['chair',2],['bcap',2]] },
+  { upTo: 3,  w: [['chest',3],['pot',4],['urn',3],['barrel',3],['bones',3],['trinket',3],['key',1],['gem',1],['sword',1],['table',1],['chair',1],['bcap',2]] },
+  { upTo: 8,  w: [['chest',3],['urn',4],['pot',2],['bones',4],['gem',2],['crystal',2],['trinket',2],['key',2],['sword',1],['bcap',1]] },
   { upTo: 99, w: [['urn',3],['bones',4],['crystal',4],['gem',3],['trinket',2],['key',1]] },
 ];
 
