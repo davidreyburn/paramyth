@@ -110,9 +110,9 @@ export function createState(seed) {
     lastFrame: 0,
     moves: 0,          // room transitions, so the HUD can show progress
     scrap: 0,          // the only currency
-    // Stats. Keen is the eye, Lore is the education; a Worker starts able to
-    // see that a thing is marked but not to read what the marks say.
-    stats: { might: 1, finesse: 1, vigor: 1, lore: 0, keen: 1, bearing: 1 },
+    // Stats. Insight is the eye, Lore is the education; a Worker starts able
+    // to see that a thing is marked but not to read what the marks say.
+    stats: { might: 1, swift: 1, vigor: 1, lore: 0, insight: 1, charm: 1 },
     // The body. Health is small and legible and does not regenerate in the
     // field, per design/combat-and-tools.md. `hurtAt` is the tick of the last
     // hit taken, which is the whole invulnerability rule.

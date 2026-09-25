@@ -41,7 +41,7 @@ export const readOut = (s, key) => describe(chainFor(s, key), s.stats);
 
 // An appraised record is read TO you, so it is read in full. That is what the
 // fee buys, and it is why a low-Keen character can still follow a thread.
-const READ_ALL = { keen: 9, lore: 9 };
+const READ_ALL = { insight: 9, lore: 9 };
 
 // The payoff: a legible mark names a person, and that person lies somewhere
 // real. Null when this character cannot read far enough to get a name — which

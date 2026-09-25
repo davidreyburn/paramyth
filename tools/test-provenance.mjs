@@ -82,17 +82,17 @@ const eraAt = (floor) => ERAS.indexOf(eraFor(absDepth(floor)));
 {
   const c = chainOf(SEED, '0:6:2:5', eraAt(6), absDepth(6));
   const m = marksOf(c);
-  const blind = readMarks(m, { keen: 0, lore: 0 }).filter((x) => x.legible).length;
-  const adept = readMarks(m, { keen: 3, lore: 3 }).filter((x) => x.legible).length;
+  const blind = readMarks(m, { insight: 0, lore: 0 }).filter((x) => x.legible).length;
+  const adept = readMarks(m, { insight: 3, lore: 3 }).filter((x) => x.legible).length;
   ok('a stat of zero reads nothing', blind === 0, `${blind}/${m.length}`);
   ok('a trained eye reads everything', adept === m.length, `${adept}/${m.length}`);
   ok('perception is monotonic in the stat', adept >= blind);
 
   ok('an unreadable thing still shows that it is marked',
-     describe(c, { keen: 0, lore: 0 }).includes('marks'), describe(c, { keen: 0, lore: 0 }));
+     describe(c, { insight: 0, lore: 0 }).includes('marks'), describe(c, { insight: 0, lore: 0 }));
 
   // Lore and Keen must not substitute for one another.
-  const loreOnly = readMarks(m, { keen: 0, lore: 3 }).filter((x) => x.legible);
+  const loreOnly = readMarks(m, { insight: 0, lore: 3 }).filter((x) => x.legible);
   ok('Lore does not read what Keen is for', loreOnly.every((x) => x.read === 'lore'),
      loreOnly.map((x) => x.read).join(','));
 }
@@ -241,8 +241,8 @@ const eraAt = (floor) => ERAS.indexOf(eraFor(absDepth(floor)));
       const key = `0:${f}:${i % 6}:${i}`;
       const chain = chainOf(SEED, key, eraAt(f), absDepth(f));
       total++;
-      if (!leadOf(chain, { keen: 0, lore: 0 })) blind++;
-      if (leadOf(chain, { keen: 9, lore: 9 })) seen++;
+      if (!leadOf(chain, { insight: 0, lore: 0 })) blind++;
+      if (leadOf(chain, { insight: 9, lore: 9 })) seen++;
     }
   ok('an untrained eye follows nothing', blind === total, `${blind}/${total}`);
   ok('a trained one finds leads', seen > total * 0.2, `${seen}/${total} items name somewhere`);
@@ -251,7 +251,7 @@ const eraAt = (floor) => ERAS.indexOf(eraFor(absDepth(floor)));
   const withLead = [];
   for (let i = 0; i < 400 && withLead.length < 1; i++) {
     const key = `0:2:${i % 6}:${i}`;
-    if (leadOf(chainOf(SEED, key, eraAt(2), absDepth(2)), { keen: 9, lore: 9 })) withLead.push(key);
+    if (leadOf(chainOf(SEED, key, eraAt(2), absDepth(2)), { insight: 9, lore: 9 })) withLead.push(key);
   }
   ok('there is such an item to test with', withLead.length === 1, withLead[0]);
   if (withLead.length) {

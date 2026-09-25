@@ -11,6 +11,9 @@ entire.** See `plans/roadmap.md`.
 
 ### Changed
 
+- **Three stats renamed** (DJ): Finesse → **Swift**, Keen → **Insight**, Bearing →
+  **Charm**. Every mark the eye finds is read by Insight now. An old save keeps
+  its numbers under the new names (`migrate` in `app/save.js`, gated).
 - **`sim/interact.js` is four files.** It had grown to six questions in one
   place. Now `room.js` (what is here: the view, the grid with breaks, reach,
   drop, stairs, stations), `carry.js` (the load and the hands: bulk, tiers,

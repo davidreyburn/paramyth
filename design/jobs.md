@@ -27,7 +27,7 @@ world teach what the jobs mean before one is taken. The first Stone Knight you
 meet is an argument for becoming one.
 
 **It gives the stat block a second destination.** `design/combat-and-tools.md`
-sends Lore, Keen and Bearing into `viewFor` — they buy *perception*. Jobs give
+sends Lore, Insight and Charm into `viewFor` — they buy *perception*. Jobs give
 them somewhere else to go: **qualification**. Stats are continuous and earned;
 jobs are discrete and gate **verbs**. A Sun Priest can carry consecrated flame; a
 Cave Wretch reads the deep. That keeps the two axes from competing — one changes

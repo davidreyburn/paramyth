@@ -60,8 +60,17 @@ export function summarize(save) {
 // overwrites what it has, and the room's live roster is rebuilt — it is delta
 // too, but rebuilding is what enterRoom is for and it keeps `foes` honest if a
 // save predates a foe kind.
+// Three stats were renamed on 2026-09-25 (Finesse → Swift, Keen → Insight,
+// Bearing → Charm). A run in progress keeps its numbers under the new names.
+const RENAMED = { finesse: 'swift', keen: 'insight', bearing: 'charm' };
+export function migrate(d) {
+  if (d && d.stats) for (const [old, now] of Object.entries(RENAMED))
+    if (old in d.stats) { if (!(now in d.stats)) d.stats[now] = d.stats[old]; delete d.stats[old]; }
+  return d;
+}
+
 export function restore(save) {
-  const d = save.delta;
+  const d = migrate(save.delta);
   const s = createState(d.seed >>> 0);
   Object.assign(s, d);
   enterRoom(s);

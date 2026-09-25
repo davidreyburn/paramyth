@@ -36,7 +36,7 @@ That third one is the fairness rule and it needs stating as a constraint:
 > will not tell you the answer.**
 
 Bulk, material and condition are free. *That marks are present* is free or very
-cheap. What the marks **say** costs — Keen, Lore, or an appraiser's fee.
+cheap. What the marks **say** costs — Insight, Lore, or an appraiser's fee.
 
 So a scrapper in a dark room holding a corroded buckle knows: it weighs almost
 nothing, it is bronze, and it carries four marks, one of which is unusual. That
@@ -65,12 +65,12 @@ The appraiser is the pressure valve on the whole loop.
 
 | | Cost | Time | Reveals | Cost you don't see |
 |---|---|---|---|---|
-| **Keen / Lore** | stat investment | none | Marks, per your tier | — |
+| **Insight / Lore** | stat investment | none | Marks, per your tier | — |
 | **Camp appraiser** | small fee | a day | One item's record | **Reports to the Guild** |
 | **Guild scholar** | large fee | several days | Full record, attested | Reports, and files a claim |
 | **Ashmark reader** | mid fee | a day | Full record, unattested | Tells someone else too |
 
-Appraisal is how a build without Keen stays viable, and the fee is a continuous
+Appraisal is how a build without Insight stays viable, and the fee is a continuous
 scrap sink that scales with how much you find. The reporting clause is what
 keeps perceptive builds worth having: **they buy privacy, not knowledge.** A
 Guild that knows what you pulled out of a tomb is a Guild that can send someone
@@ -145,7 +145,7 @@ second triage a real decision and gives the economy an early sink.
 
 Six axes, only one of which is a number going up.
 
-1. **Stats** — Might, Finesse, Vigor, Lore, Keen, Bearing
+1. **Stats** — Might, Swift, Vigor, Lore, Insight, Charm
 2. **Gear** — armor, tools, and eventually sacred arms
 3. **Map knowledge** — shortcuts and extraction points. *The largest, and free to store*
 4. **Scripts** — what you can read without paying
@@ -168,7 +168,7 @@ does, and deciding is the game.
 - **Identification too cheap** → everything gets appraised, triage collapses to
   a queue. Dial: fee, and the reporting consequence.
 - **Tells too weak** → carrying decisions feel arbitrary. Dial: mark visibility
-  at low Keen. This is the most likely way the slice fails.
+  at low Insight. This is the most likely way the slice fails.
 - **Routes long and safe** → extraction becomes commute. Dial: noise, patrols,
   and making the laden walk genuinely different from the empty one.
 - **Sinks too shallow** → wealth accumulates, decisions stop mattering. Dial:

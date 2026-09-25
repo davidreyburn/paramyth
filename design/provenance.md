@@ -17,7 +17,7 @@ view     = redact(record, actor)       what this character can perceive.
 
 A forger does not alter history — they alter the record. An appraiser does not
 discover truth — they add authority to a claim. A buyer pays for the *record*.
-And a character with enough Keen or Lore reads closer to the *truth*, which
+And a character with enough Insight or Lore reads closer to the *truth*, which
 means they can detect that a seam exists.
 
 That detection is not a judgement call and there is no judge model in the loop:
@@ -60,14 +60,14 @@ things at once: the perception gating, the item art, and the deduction.
 
 | Mark | Evidence of | Read with |
 |---|---|---|
-| Maker's mark, foundry stamp | `made` | Keen |
+| Maker's mark, foundry stamp | `made` | Insight |
 | Inscription | `consecrated`, `gave`, `interred` | Lore + the right script |
-| Wear pattern, grip polish | `carried`, long `owned` | Keen |
-| Staining, patina | `bled-on`, `killed-with` | Keen + Lore |
-| Grave-dirt, mineral accretion | `interred`, and for how long | Keen |
-| Repair, re-hafting, mismatched fittings | `repaired` — and a second owner | Keen or craft |
+| Wear pattern, grip polish | `carried`, long `owned` | Insight |
+| Staining, patina | `bled-on`, `killed-with` | Insight + Lore |
+| Grave-dirt, mineral accretion | `interred`, and for how long | Insight |
+| Repair, re-hafting, mismatched fittings | `repaired` — and a second owner | Insight or craft |
 | Heraldry, livery | `owned` by a house | Lore |
-| Filed-off mark, scoured panel | `defaced` — someone hid something | Keen, high |
+| Filed-off mark, scoured panel | `defaced` — someone hid something | Insight, high |
 
 **Provenance renders.** The item sprite is composed from its marks, so a player
 reads age, abuse, and sometimes ownership off the silhouette before identifying
@@ -113,7 +113,7 @@ When `record ≠ truth`, a **seam** exists.
   ownership. The grave-dirt is from the wrong stratum.
 - **Well above** — the character reads what the record conceals.
 
-Keen finds physical seams; Lore finds historical ones — a claim that cannot be
+Insight finds physical seams; Lore finds historical ones — a claim that cannot be
 true because the named house was extinct by that era. The two catch different
 forgeries, which is a reason to build for one or the other, or to pay someone
 who did.
@@ -134,7 +134,7 @@ possessionsOf(actorId) → the set of item addresses whose chains name them
 **This is the treasure map, and it is the answer to how a player uncovers
 troves, graves and storehouses.**
 
-You recover a signet ring. Keen reads the heraldry; Lore names the house; the
+You recover a signet ring. Insight reads the heraldry; Lore names the house; the
 chain's `interred` event names a place you have never been. That place exists,
 at that address, with the rest of that person's grave goods still in it —
 because the same function that generated the ring generated them.
@@ -175,11 +175,11 @@ whose possessions are all reachable without leaving the region.*
 
 | | Low | Mid | High |
 |---|---|---|---|
-| **Keen** | Condition, rough age | Marks located and named | Seams; concealed and filed-off marks |
+| **Insight** | Condition, rough age | Marks located and named | Seams; concealed and filed-off marks |
 | **Lore** | — | Inscriptions in known scripts; houses | Era contradictions; unattested claims |
-| **Bearing** | — | What a buyer will believe | What the *dead* remember of it |
+| **Charm** | — | What a buyer will believe | What the *dead* remember of it |
 
-Bearing's high tier is the strange one and it should stay strange: carrying a
+Charm's high tier is the strange one and it should stay strange: carrying a
 dead man's goods changes how his kind respond to you. That is a combat and
 dialogue effect derived from provenance, and it is the cheapest possible bridge
 between the salvage layer and the encounter layer.

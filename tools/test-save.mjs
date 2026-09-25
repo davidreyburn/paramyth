@@ -126,5 +126,18 @@ const delve = () => {
   throwing = false;
 }
 
+// --- three stats renamed, 2026-09-25 ------------------------------------------
+{
+  const { migrate } = await import('../app/save.js');
+  const { createState: fresh } = await import('../sim/state.js');
+  const st = fresh(SEED).stats;
+  ok('the stats are Might, Swift, Vigor, Lore, Insight, Charm', ['might', 'swift', 'vigor', 'lore', 'insight', 'charm'].every((k) => k in st));
+  ok('and none of the old names remain', !('finesse' in st) && !('keen' in st) && !('bearing' in st));
+  const old = { seed: SEED, stats: { might: 2, finesse: 3, vigor: 1, lore: 4, keen: 5, bearing: 6 } };
+  const d = migrate(JSON.parse(JSON.stringify(old)));
+  ok('an old save keeps its numbers under the new names', d.stats.swift === 3 && d.stats.insight === 5 && d.stats.charm === 6 && !('keen' in d.stats),
+     JSON.stringify(d.stats));
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all save gates passed\n');
 process.exit(failures ? 1 : 0);

@@ -29,14 +29,14 @@ need.
 | Stat | Combat | Loop |
 |---|---|---|
 | **Might** | Heavy-weapon damage, stagger, shield stability | **Raises the bulk budget.** Forces lids, doors, sealed vaults |
-| **Finesse** | Attack speed, dodge frames, light weapons | Traps, locks, pickpocketing bandits |
+| **Swift** | Attack speed, dodge frames, light weapons | Traps, locks, pickpocketing bandits |
 | **Vigor** | Health, stamina, bleed resistance | Corruption resistance, encumbrance tolerance |
 | **Lore** | Ritual tools, wards, rot-banes | **Reads scripts and inscriptions unaided** |
-| **Keen** | Reads enemy tells, spots ambush | **Sees maker's marks, wear, grave-dirt — provenance without an appraiser** |
-| **Bearing** | How the dead react; sacred tools | Haggling, faction standing, talking a Pilgrim down |
+| **Insight** | Reads enemy tells, spots ambush | **Sees maker's marks, wear, grave-dirt — provenance without an appraiser** |
+| **Charm** | How the dead react; sacred tools | Haggling, faction standing, talking a Pilgrim down |
 
-The structural point: **Lore, Keen and Bearing feed `viewFor`.** They don't add
-damage, they add *visibility* — a high-Keen scrapper and a high-Might one pick
+The structural point: **Lore, Insight and Charm feed `viewFor`.** They don't add
+damage, they add *visibility* — a high-Insight scrapper and a high-Might one pick
 up the same buckle and read different amounts of it. That's the build-gated
 provenance design expressed as a stat block rather than bolted on beside one.
 And Might raising the bulk budget is what keeps a combat stat honest: the
@@ -157,7 +157,7 @@ avoided entirely by a player paying attention.
 | **Red Hand Bandit** | Tactical, ranged, breaks when the leader falls — and loots corpses | Take the leader, or pay them |
 | **Broken Sentinel** | Enormous damage, slow, blocks a route rather than chasing. *Built (0.7.x): stirs at 3 tiles, walks at 120, strikes from 28px after a 24-tick wind-up, weight 6 — only a heavy impact weapon moves it* | Walk around it. Almost always the answer |
 | **Infected Appendage** | Small, erratic, fouls cargo | Probe-pole, or ignore |
-| **Rot-Touched Pilgrim** | Intelligent, infects by touch, and talks to you | Bearing. Dialogue is a real option |
+| **Rot-Touched Pilgrim** | Intelligent, infects by touch, and talks to you | Charm. Dialogue is a real option |
 | **War Child** | Silent, fast, terrifying; rarely fought and never fairly | Light and distance. Do not fight this |
 | **Barrow Warden** | Seals passages, calls Sentinels; the Act I wall | Not a fight — a route problem |
 

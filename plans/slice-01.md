@@ -33,7 +33,7 @@ not serve answering it.
 - Amendment table exists and is **empty** — the schema ships, nothing writes to
   it but `inherit`
 
-**Stats** — two only: **Might** (bulk budget) and **Keen** (mark visibility).
+**Stats** — two only: **Might** (bulk budget) and **Insight** (mark visibility).
 The others are stubs returning a constant. Two stats is enough to prove the
 perception gating; six is enough to slow the slice down.
 
@@ -124,7 +124,7 @@ Not by opinion. Put it in front of players and watch four things:
    nobody says "that ring with the filed-off mark," provenance is decoration.
 
 If triage is not fun, the dials in order: **bulk budget** (base 20 is a guess and
-should be tuned first), **mark visibility at low Keen**, **appraisal fee**, then
+should be tuned first), **mark visibility at low Insight**, **appraisal fee**, then
 **price variance between known and unknown items**. Card changes only after the
 dials — the same discipline as the TCG's "balance dials before card surgery."
 

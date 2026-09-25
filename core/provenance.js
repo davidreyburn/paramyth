@@ -24,24 +24,24 @@ export const ACTS = [
 
 // Each act leaves physical evidence, or none. This table is the whole bridge
 // between history and what you can actually look at.
-//   read: which sense finds it — 'keen' is the eye, 'lore' is the education
+//   read: which sense finds it — 'insight' is the eye, 'lore' is the education
 const EVIDENCE = {
-  'made':        { mark: "maker's mark",   read: 'keen', tier: 1, worth: 0.10 },
-  'owned':       { mark: 'grip polish',    read: 'keen', tier: 1, worth: 0.10 },
-  'carried':     { mark: 'wear',           read: 'keen', tier: 1, worth: 0.05 },
+  'made':        { mark: "maker's mark",   read: 'insight', tier: 1, worth: 0.10 },
+  'owned':       { mark: 'grip polish',    read: 'insight', tier: 1, worth: 0.10 },
+  'carried':     { mark: 'wear',           read: 'insight', tier: 1, worth: 0.05 },
   'gave':        { mark: 'inscription',    read: 'lore', tier: 1, worth: 0.35 },
   'sold':        { mark: null,             read: null,   tier: 0, worth: 0.00 },
   'stole':       { mark: null,             read: null,   tier: 0, worth: 0.00 },
   'lost':        { mark: null,             read: null,   tier: 0, worth: 0.00 },
-  'hid':         { mark: 'concealment wax', read: 'keen', tier: 2, worth: 0.20 },
-  'bled-on':     { mark: 'staining',       read: 'keen', tier: 1, worth: 0.15 },
-  'killed-with': { mark: 'notching',       read: 'keen', tier: 2, worth: 0.30 },
-  'killed-by':   { mark: 'a deep score',   read: 'keen', tier: 2, worth: 0.25 },
-  'repaired':    { mark: 'mismatched fittings', read: 'keen', tier: 1, worth: -0.22 },
-  'defaced':     { mark: 'a scoured panel', read: 'keen', tier: 3, worth: -0.50 },
+  'hid':         { mark: 'concealment wax', read: 'insight', tier: 2, worth: 0.20 },
+  'bled-on':     { mark: 'staining',       read: 'insight', tier: 1, worth: 0.15 },
+  'killed-with': { mark: 'notching',       read: 'insight', tier: 2, worth: 0.30 },
+  'killed-by':   { mark: 'a deep score',   read: 'insight', tier: 2, worth: 0.25 },
+  'repaired':    { mark: 'mismatched fittings', read: 'insight', tier: 1, worth: -0.22 },
+  'defaced':     { mark: 'a scoured panel', read: 'insight', tier: 3, worth: -0.50 },
   'consecrated': { mark: 'a rite-cut',     read: 'lore', tier: 2, worth: 0.50 },
-  'interred':    { mark: 'grave-dirt',     read: 'keen', tier: 1, worth: 0.20 },
-  'buried-with': { mark: 'shroud fibre',   read: 'keen', tier: 2, worth: 0.30 },
+  'interred':    { mark: 'grave-dirt',     read: 'insight', tier: 1, worth: 0.20 },
+  'buried-with': { mark: 'shroud fibre',   read: 'insight', tier: 2, worth: 0.30 },
 };
 
 export const evidenceFor = (act) => EVIDENCE[act];
@@ -297,7 +297,7 @@ export function marksOf(chain) {
 
 export function readMarks(marks, stats) {
   return marks.map((m) => {
-    const stat = m.read === 'lore' ? (stats.lore || 0) : (stats.keen || 0);
+    const stat = m.read === 'lore' ? (stats.lore || 0) : (stats.insight || 0);
     return { ...m, legible: stat >= m.tier };
   });
 }

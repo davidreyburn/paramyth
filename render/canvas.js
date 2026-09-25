@@ -379,8 +379,8 @@ export function createRenderer(canvas, pack = null) {
     const wielding = s.equipped.weapon ? labelOf(s.equipped.weapon.kind) : 'fists';
     const worn = SLOTS.filter((k) => k !== 'weapon' && s.equipped[k]).map((k) => labelOf(s.equipped[k].kind));
     const left = [
-      ['might', s.stats.might], ['finesse', s.stats.finesse], ['vigor', s.stats.vigor],
-      ['lore', s.stats.lore], ['keen', s.stats.keen], ['bearing', s.stats.bearing],
+      ['might', s.stats.might], ['swift', s.stats.swift], ['vigor', s.stats.vigor],
+      ['lore', s.stats.lore], ['insight', s.stats.insight], ['charm', s.stats.charm],
     ];
     const right = [
       ['health', `${s.hp}/${MAX_HP}`], ['scrap', s.scrap],

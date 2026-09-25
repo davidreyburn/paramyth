@@ -221,7 +221,7 @@ try {
       const { keyOf } = await import('../sim/room.js');
       s3.carried = ['gem','bones','key','crystal','trinket']
         .map((kind, i) => ({ kind, key: keyOf(s3, 90 + i) }));
-      s3.stats = { ...s3.stats, keen: 2, lore: 1 };
+      s3.stats = { ...s3.stats, insight: 2, lore: 1 };
       s3.side = 1; s3.cur = 0;
       r.draw(s3, [{text:'screen'}]);
 

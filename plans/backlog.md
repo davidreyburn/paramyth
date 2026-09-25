@@ -64,7 +64,7 @@ mostly UI over machinery that already runs.
 > You are three rooms deep wearing a lanceman's buckle when something that used
 > to be a lanceman puts its head up. It does not want you. It wants the buckle.
 
-**Rests on:** Bearing's high tier — *"what the dead remember of it"* — plus the
+**Rests on:** Charm's high tier — *"what the dead remember of it"* — plus the
 inversion. What you carry decides what hunts you.
 
 **Why:** it stops encounters being a parallel system bolted onto salvage and
@@ -190,7 +190,7 @@ game is built to ask. It is also the case that justifies the entire jobs system
 ## 9. Below, the Names Stop Working
 
 > The chain resolves. Nine events, clean arithmetic, a full record. Lore has
-> nothing whatever to say about it. Bearing answers immediately.
+> nothing whatever to say about it. Charm answers immediately.
 
 **Rests on:** open question 4 in `design/provenance.md`, and the era-3 name
 table that already exists in `core/provenance.js` — `Θal`, `Nine-of-Stone`,
@@ -206,7 +206,7 @@ rooms. What breaks is **interpretation**:
   contradictions — and there is no scholarship about things that were never
   people. The stat you invested in most stops answering exactly where the
   material is richest.
-- **Bearing answers.** Its high tier is already defined as *what the dead
+- **Charm answers.** Its high tier is already defined as *what the dead
   remember of it*, and these are still, in some sense, present.
 
 So it is an **inversion of the perception hierarchy**, delivered entirely
@@ -214,7 +214,7 @@ through `viewFor`: no new system, a name table and a rule that flips which stat
 reads at depth. Depth stops being a larger number and becomes a change in kind.
 
 **Why it is worth the risk:** it makes the deepest strata frightening through
-*epistemology* rather than through damage numbers, and it gives Bearing — the
+*epistemology* rather than through damage numbers, and it gives Charm — the
 stat with no job in the salvage loop — the best job in the game.
 
 **Status:** confirmed (DJ, 2026-09-22), on the second telling. The first pitch
