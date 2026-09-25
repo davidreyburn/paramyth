@@ -11,6 +11,17 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **The dog learns to hunt** — step 2 of `plans/foe-behaviour.md`. Straight pursuit
+  and the bite cooldown are gone; a foe runs a five-mode machine: `asleep`,
+  `circle` (orbits you at two tiles, never bites), `lunge` (a 12-tick **crouch**
+  with the aim fixed, then a dash at where you *were* — not homing, so it can be
+  sidestepped), `recover` (backs off, cannot bite: the window you swing into),
+  `stagger`. The cycle is the cooldown. Circle time is jittered per foe so a
+  pack does not lunge as one. In a one-wide passage — judged by probing a tile
+  to either side — it comes straight on, so a doorway is a place to fight, not
+  to hide. Steering uses an octagonal norm: no square root, no float. The
+  machine is a template; the dog is its first policy table. 14 new gates.
+
 - **Knockback, both ways** — step 1 of `plans/foe-behaviour.md`. A hit shoves the
   foe along the swing: the weapon's `knock` (sword 24px, fists 8px — a distance,
   not a force) divided by the foe's `weight` (dog 1; a rooted thing at Infinity

@@ -73,6 +73,19 @@ export const TOUCH = 2 * UNITS;
 export const touching = (ax, ay, bx, by) =>
   Math.abs(ax - bx) < 2 * HALF + TOUCH && Math.abs(ay - by) < 2 * HALF + TOUCH;
 
+// Length and direction without a square root. The octagonal norm
+// max + 0.41*min is within 4% of Euclid everywhere and stays in integers,
+// which is what lets a foe steer round you and replay hold on every device.
+export const octLen = (dx, dy) => {
+  const ax = Math.abs(dx), ay = Math.abs(dy);
+  return Math.max(ax, ay) + ((Math.min(ax, ay) * 53) >> 7);
+};
+export function steer(dx, dy, speed) {
+  const len = octLen(dx, dy);
+  if (!len) return [0, 0];
+  return [((dx * speed) / len) | 0, ((dy * speed) / len) | 0];
+}
+
 // Knockback. A `knock` is a DISTANCE in px: how far a shove carries a body of
 // weight 1 with nothing in the way. The velocity that produces it decays by
 // KNOCK_DECAY each tick, so the total travel is the geometric series

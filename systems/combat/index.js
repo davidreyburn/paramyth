@@ -11,9 +11,9 @@
 
 import { VERB, hasVerb } from '../../sim/frame.js';
 import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, PLAYER_WEIGHT, swingPhase, friendly } from '../../sim/state.js';
-import { blocked, solidBodies, actorBodies, touching, tileOf, HALF, impulse } from '../../sim/space.js';
-import { roomTiles, TILE, COLS } from '../../core/gen.js';
-import { FOE } from '../../core/foes.js';
+import { slide, blocked, solidBodies, actorBodies, touching, tileOf, HALF, impulse, steer, octLen } from '../../sim/space.js';
+import { roomTiles, TILE } from '../../core/gen.js';
+import { FOE, circleFor } from '../../core/foes.js';
 import { weaponOf, hitBox, inHitBox, FACE } from '../../sim/interact.js';
 
 // The swing's timing and its phase function live in L3 beside the delta field
@@ -57,47 +57,91 @@ export function combat(s, frame) {
   }
 
   // --- the dogs ------------------------------------------------------------
+  // The machine from plans/foe-behaviour.md. Read the mode, propose what happens
+  // next; apply writes it. Circle, crouch, strike, back off, prepare.
   const [px, py] = tileOf(s.x, s.y);
+  const grace = s.tick - s.hurtAt < HURT_INVULN;
   for (const f of s.foes) {
     const def = FOE[f.kind];
     if (!def) continue;
+    const age = s.tick - f.modeAt;
+    const setMode = (mode, extra) => out.push({ k: 'setMode', id: f.id, mode, ...extra });
 
-    const [fx, fy] = tileOf(f.x, f.y);
-    const near = Math.max(Math.abs(fx - px), Math.abs(fy - py));
     if (f.mode === 'asleep') {
-      if (near <= def.wake) out.push({ k: 'wake', id: f.id });
+      const [fx, fy] = tileOf(f.x, f.y);
+      if (Math.max(Math.abs(fx - px), Math.abs(fy - py)) <= def.wake) out.push({ k: 'wake', id: f.id });
       continue;                                    // an asleep dog does nothing else
     }
     // Shoved and helpless: no step, no bite, until the stagger runs out.
     if (f.mode === 'stagger') {
-      if (s.tick - f.modeAt >= def.staggerTicks) out.push({ k: 'setMode', id: f.id, mode: 'hunt' });
+      if (age >= def.staggerTicks) setMode('circle');
       continue;
     }
 
-    // Pursuit, one axis at a time so it slides along walls instead of sticking.
-    // Integer steps only: a foe position is never fractional, and a gate says so.
-    // Walls, barrels, the player, and every OTHER foe. A dog stops at you now
+    // Walls, barrels, the player, and every OTHER foe. A dog stops at you
     // instead of standing inside you, and a pack cannot stack into one dog.
     const walls = [...bodies, ...actorBodies(s, f.id)];
-    const dx = Math.sign(s.x - f.x), dy = Math.sign(s.y - f.y);
-    const step = def.speed;
-    let nx = f.x, ny = f.y;
-    if (dx && !blocked(grid, walls, nx + dx * step, ny, nx, ny)) nx += dx * step;
-    if (dy && !blocked(grid, walls, nx, ny + dy * step, nx, ny)) ny += dy * step;
-    if (nx !== f.x || ny !== f.y) out.push({ k: 'moveFoe', id: f.id, x: nx, y: ny });
+    const rx = s.x - f.x, ry = s.y - f.y;          // foe -> player
+    const go = (mx, my) => slide(grid, walls, f.x, f.y, mx, my);
+    const moved = (to) => to.x !== f.x || to.y !== f.y;
 
-    // Contact is TOUCHING — bodies cannot overlap any more, so an overlap test
-    // here would never fire. It costs you health and, more expensively, cargo:
-    // the fragility roll is what makes a fight cost the haul and not just the bar.
-    const ready = s.tick - (f.bitAt || -9999) >= def.bite;
-    const grace = s.tick - s.hurtAt < HURT_INVULN;
-    if (touching(s.x, s.y, nx, ny) && ready && !grace) {
-      // The bite shoves you too, along the axis it mostly came from — one
-      // axis, so a diagonal contact is not a longer throw than a square one.
-      const ax = s.x - nx, ay = s.y - ny;
-      const imp = impulse(def.knock || 0, PLAYER_WEIGHT);
-      const [vx, vy] = Math.abs(ax) >= Math.abs(ay) ? [Math.sign(ax) * imp, 0] : [0, Math.sign(ay) * imp];
-      out.push({ k: 'bite', id: f.id, n: def.damage, vx, vy });
+    if (f.mode === 'circle') {
+      // Commit. The aim is where you are NOW; the dash will not follow you.
+      if (age >= circleFor(def, s.seed, f.id, f.modeAt)) { setMode('lunge', { aimX: s.x, aimY: s.y }); continue; }
+      // A tangent step by `spin`, plus a radial correction toward orbit radius.
+      const dist = octLen(rx, ry), want = def.orbit * UNITS;
+      const radial = dist > want + 4 * UNITS ? 1 : dist < want - 4 * UNITS ? -1 : 0;
+      const tangent = (spin) => steer(-ry * spin + rx * radial, rx * spin + ry * radial, def.speed);
+      // A circle needs room to the side. Probe a whole tile along each tangent
+      // rather than judging by whether a step moved: a wall lets a fraction of
+      // a diagonal step through, and a dog judging by that crept forever in a
+      // corridor without ever deciding it was in one.
+      const room = (spin) => { const [tx, ty] = steer(-ry * spin, rx * spin, TILE * UNITS); return !blocked(grid, walls, f.x + tx, f.y + ty, f.x, f.y); };
+      let to, spin = 0;
+      if (room(f.spin)) to = go(...tangent(f.spin));
+      // No room that way round? Try the other, and keep that habit.
+      else if (room(-f.spin)) { to = go(...tangent(-f.spin)); spin = -f.spin; }
+      // No room either side: come straight on, one axis at a time — which is
+      // the old dog, and ONLY in the one place the design wants a player to
+      // make a stand.
+      else {
+        const sx = Math.sign(rx) * def.speed, sy = Math.sign(ry) * def.speed;
+        to = go(sx, 0); if (!moved(to)) to = go(0, sy);
+      }
+      if (!to) continue;
+      if (moved(to)) out.push({ k: 'moveFoe', id: f.id, x: to.x, y: to.y, ...(spin ? { spin } : {}) });
+      continue;
+    }
+
+    if (f.mode === 'lunge') {
+      // The crouch: still, aim fixed. This is the window in which you step.
+      if (age < def.lungeWindup) continue;
+      const tx = f.aimX - f.x, ty = f.aimY - f.y;
+      const left = octLen(tx, ty);
+      const [mx, my] = left <= def.lungeSpeed ? [tx, ty] : steer(tx, ty, def.lungeSpeed);
+      const to = go(mx, my);
+      if (moved(to)) out.push({ k: 'moveFoe', id: f.id, x: to.x, y: to.y });
+      // Contact is TOUCHING, not overlap: bodies cannot overlap any more. It
+      // costs health and, more expensively, cargo — and it shoves you, along
+      // the axis it mostly came from, one axis so a diagonal is not a longer
+      // throw than a square one.
+      const contact = touching(s.x, s.y, to.x, to.y);
+      if (contact && !grace) {
+        const ax = s.x - to.x, ay = s.y - to.y;
+        const imp = impulse(def.knock || 0, PLAYER_WEIGHT);
+        const [vx, vy] = Math.abs(ax) >= Math.abs(ay) ? [Math.sign(ax) * imp, 0] : [0, Math.sign(ay) * imp];
+        out.push({ k: 'bite', id: f.id, n: def.damage, vx, vy });
+      }
+      // The dash ends on contact, on arrival, against a wall, or on the clock.
+      if (contact || left <= def.lungeSpeed || !moved(to) || age >= def.lungeTicks) setMode('recover');
+      continue;
+    }
+
+    if (f.mode === 'recover') {
+      // Back off toward orbit. Cannot bite. This is the window you swing into.
+      if (age >= def.recoverTicks) { setMode('circle'); continue; }
+      const to = go(...steer(-rx, -ry, def.speed));
+      if (moved(to)) out.push({ k: 'moveFoe', id: f.id, x: to.x, y: to.y });
     }
   }
 

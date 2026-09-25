@@ -47,7 +47,7 @@ function delve(floor, room) {
   // A system PROPOSES. It must not touch the delta, or apply is not the only
   // writer and every guarantee downstream of that is decoration.
   const s = delve(den.floor, den.room);
-  s.foes[0].mode = 'hunt';
+  s.foes[0].mode = 'circle';
   const before = hashState(s);
   const actions = combat(s, 0);
   ok('combat() proposes actions', Array.isArray(actions) && actions.length > 0, `${actions.length} actions`);
@@ -223,7 +223,7 @@ function delve(floor, room) {
   // A foe takes at most one hit per swing, however long the active window is.
   const k = delve(den.floor, den.room);
   const foe = k.foes[0];
-  foe.mode = 'hunt'; foe.hp = 99;
+  foe.mode = 'stagger'; foe.modeAt = k.tick; foe.hp = 99;   // held still: a target, not a fight
   foe.x = k.x + 12 * UNITS; foe.y = k.y; k.facing = 1;
   let hits = 0;
   for (let i = 0; i < SWING_TICKS; i++) {
@@ -242,7 +242,8 @@ function delve(floor, room) {
   const s = delve(den.floor, den.room);
   const f = s.foes[0];
   const { HALF: H0 } = await import('../sim/space.js');
-  f.mode = 'hunt'; f.x = s.x + 2 * H0; f.y = s.y;      // touching, not inside — bodies cannot overlap now
+  f.mode = 'lunge'; f.modeAt = s.tick - FOE.dog.lungeWindup; f.aimX = s.x; f.aimY = s.y;
+  f.x = s.x + 2 * H0; f.y = s.y;      // touching, not inside — bodies cannot overlap now
   let bites = 0;
   for (let i = 0; i < HURT_INVULN; i++) {
     for (const a of combat(s, 0)) { if (a.k === 'bite') bites++; applyAction(s, a); }
@@ -394,26 +395,29 @@ let runFrom;
       // Only this foe: a second, sleeping dog on the run once stopped the mover
       // two tiles short, and the gate passed without testing what it claims.
       s.foes = [f];
-      f.mode = 'hunt'; f.x = run.x; f.y = run.y;
+      f.mode = 'circle'; f.modeAt = s.tick; f.x = run.x; f.y = run.y;
       // A dog that reaches you bites every 45 ticks, and six bites is a dead
       // player: die() moves you to camp and every measurement below becomes
       // the distance from the camp spawn to a frozen foe. That read as
       // "50.3px" twice and was blamed on geometry. So: the run is as long as
       // arrival needs and no longer, and surviving it is asserted.
       s.hp = 1000;
-      let overlapped = 0, moved = false;
+      // A hunter circles and lunges rather than walking in, so the run is
+      // long enough for at least one lunge to land, and what is asserted is
+      // that contact happened and overlap never did.
+      let overlapped = 0, moved = false, contacts = 0, minGap = Infinity;
       const fx0 = f.x, fy0 = f.y;
-      for (let i = 0; i < 160; i++) {
+      for (let i = 0; i < 400; i++) {
         for (const a of combat(s, 0)) applyAction(s, a);
         if (f.x !== fx0 || f.y !== fy0) moved = true;
         if (overlap(s, f)) overlapped++;
+        if (touching(s.x, s.y, f.x, f.y)) contacts++;
+        minGap = Math.min(minGap, Math.max(Math.abs(s.x - f.x), Math.abs(s.y - f.y)));
         s.tick++;
       }
       ok('the fixture survived to be measured', !s.deaths && s.floor === den.floor, `deaths ${s.deaths || 0}, floor ${s.floor}`);
-      const gap = Math.max(Math.abs(s.x - f.x), Math.abs(s.y - f.y));
-      const arrived = gap < 2 * HALF + TOUCH + FOE.dog.speed;
-      ok('a foe cannot walk through the player', moved && overlapped === 0 && gap >= 2 * HALF && arrived,
-         `${overlapped} overlapping ticks; it closed to ${(gap / UNITS).toFixed(1)}px and stopped there`);
+      ok('a foe cannot walk through the player', moved && overlapped === 0 && minGap >= 2 * HALF && contacts > 0,
+         `${overlapped} overlapping ticks; ${contacts} ticks of contact; never nearer than ${(minGap / UNITS).toFixed(1)}px`);
     } else ok('a foe cannot walk through the player', false, 'no clear run from spawn');
   }
 
@@ -423,8 +427,8 @@ let runFrom;
     const a = s.foes[0];
     const run = runFrom(s, 7);
     const near = run ? { x: s.x + run.dx * 5 * TILE * UNITS, y: s.y + run.dy * 5 * TILE * UNITS } : { x: s.x - 5 * TILE * UNITS, y: s.y };
-    a.mode = 'hunt'; a.x = near.x; a.y = near.y;
-    const b = { id: 'second', kind: 'dog', x: run ? run.x : a.x - 2 * TILE * UNITS, y: run ? run.y : s.y, hp: 6, mode: 'hunt', modeAt: 0, bitAt: -9999, vx: 0, vy: 0 };
+    a.mode = 'circle'; a.modeAt = s.tick; a.x = near.x; a.y = near.y;
+    const b = { id: 'second', kind: 'dog', x: run ? run.x : a.x - 2 * TILE * UNITS, y: run ? run.y : s.y, hp: 6, mode: 'circle', modeAt: s.tick, spin: -1, aimX: 0, aimY: 0, vx: 0, vy: 0 };
     s.foes = [a, b];
     s.hp = 1000;                                       // two dogs kill a fixture in 180 ticks; see above
     const a0 = { x: a.x, y: a.y }, b0 = { x: b.x, y: b.y };
@@ -447,7 +451,7 @@ let runFrom;
     const at = (gap) => {
       const s = delve(den.floor, den.room);
       const f = s.foes[0];
-      f.mode = 'hunt'; f.bitAt = -9999; s.hurtAt = -9999;
+      f.mode = 'lunge'; f.modeAt = s.tick - FOE.dog.lungeWindup; f.aimX = s.x; f.aimY = s.y; s.hurtAt = -9999;
       f.x = s.x + gap; f.y = s.y;
       const acts = combat(s, 0);
       return { bit: acts.some((x) => x.k === 'bite'), moved: acts.some((x) => x.k === 'moveFoe'), s, f };
@@ -455,7 +459,7 @@ let runFrom;
     const flush = at(2 * HALF);
     ok('a foe flush against you bites', flush.bit);
     ok('and does not step into you to do it', !flush.moved, flush.moved ? 'it moved' : 'held its ground');
-    const far = at(2 * HALF + TOUCH + FOE.dog.speed + 1);
+    const far = at(2 * HALF + TOUCH + FOE.dog.lungeSpeed + 1);
     ok('a foe a step and a margin away does not bite yet', !far.bit);
     ok('but it does close the gap', far.moved);
     ok('touching is a hard boundary, not a fuzzy one',
@@ -531,7 +535,7 @@ let runFrom;
     // during the windup, shoving you and walking after you. Its bite goes on
     // cooldown for the whole fixture so what is measured is the blade's shove
     // alone — from where the foe stood when the blow landed, not from here.
-    f.mode = 'hunt'; f.bitAt = s.tick + 120;
+    f.mode = 'stagger'; f.modeAt = s.tick;   // held still: a target dummy, not a fight
     f.x = s.x + run.dx * (2 * HALF + UNITS); f.y = s.y + run.dy * (2 * HALF + UNITS);
     const { grid } = tilesOf(s.seed, s.site, s.floor, s.room);
     const px0 = s.x, py0 = s.y;
@@ -541,10 +545,11 @@ let runFrom;
       if (x0 === null && f.hp < FOE.dog.hp) { x0 = f.x; y0 = f.y; }   // the tick it landed
       step(s, 0, SYSTEMS);
       if (!s.foes.length) break;
-      if (x0 !== null) peak = Math.max(peak, (f.x - x0) * run.dx + (f.y - y0) * run.dy);
+      // Only while it is DOWN: once it is up again it moves on its own account.
+      if (x0 !== null && f.mode === 'stagger') peak = Math.max(peak, (f.x - x0) * run.dx + (f.y - y0) * run.dy);
       if (overlap(s, f)) inside++;
       if (blocked(grid, [], f.x, f.y)) inWall++;
-      if (f.mode === 'stagger') staggered = true;
+      if (i > FOE.dog.staggerTicks && f.mode === 'stagger') staggered = true;   // still down after the FIRST stagger would have ended: the hit renewed it
     }
     FOE.dog.weight = saved;
     return { peak, inside, inWall, staggered, playerMoved: s.x !== px0 || s.y !== py0, hit: f.hp < FOE.dog.hp };
@@ -591,7 +596,7 @@ let runFrom;
     if (spot) {
       const c = centreOf(spot.t);
       s.x = c.x; s.y = c.y; s.facing = facingOf(spot.dx, spot.dy);
-      f.mode = 'hunt'; f.bitAt = s.tick + 120;
+      f.mode = 'stagger'; f.modeAt = s.tick;
       f.x = s.x + spot.dx * (2 * HALF + UNITS); f.y = s.y + spot.dy * (2 * HALF + UNITS);
       let x0 = null, y0 = null, inWall = 0, peak = 0;
       step(s, setVerb(0, VERB.ATTACK, true), SYSTEMS);
@@ -610,16 +615,16 @@ let runFrom;
   {
     const s = delve(den.floor, den.room);
     const f = s.foes[0]; s.foes = [f];
-    f.mode = 'stagger'; f.modeAt = s.tick; f.bitAt = -9999; s.hurtAt = -9999;
+    f.mode = 'stagger'; f.modeAt = s.tick; s.hurtAt = -9999;
     f.x = s.x + 2 * HALF; f.y = s.y;
     const during = combat(s, 0);
     ok('a staggered foe does not bite', !during.some((a) => a.k === 'bite'));
     ok('or move', !during.some((a) => a.k === 'moveFoe'));
     s.tick += FOE.dog.staggerTicks;
     const after = combat(s, 0);
-    ok('and the stagger ends on time', after.some((a) => a.k === 'setMode' && a.mode === 'hunt'), `${FOE.dog.staggerTicks} ticks`);
+    ok('and the stagger ends on time', after.some((a) => a.k === 'setMode' && a.mode === 'circle'), `${FOE.dog.staggerTicks} ticks`);
     for (const a of after) applyAction(s, a);
-    ok('after which it bites again', combat(s, 0).some((a) => a.k === 'bite'));
+    ok('into circling, not a bite', f.mode === 'circle' && !combat(s, 0).some((a) => a.k === 'bite'));
   }
 
   // Knockback runs both ways: a bite shoves you.
@@ -633,7 +638,7 @@ let runFrom;
       // You stand three tiles down the run; it stands flush beyond you; the
       // shove sends you back the way you came, over floor that is known clear.
       s.x += run.dx * 3 * TILE * UNITS; s.y += run.dy * 3 * TILE * UNITS;
-      f.mode = 'hunt'; f.bitAt = -9999; s.hurtAt = -9999;
+      f.mode = 'lunge'; f.modeAt = s.tick - FOE.dog.lungeWindup; f.aimX = s.x; f.aimY = s.y; s.hurtAt = -9999;
       f.x = s.x + run.dx * 2 * HALF; f.y = s.y + run.dy * 2 * HALF;
       const x0 = s.x, y0 = s.y;
       let peak = 0, bit = false;
@@ -647,6 +652,171 @@ let runFrom;
       ok('a bite shoves you back', bit && peak >= (FOE.dog.knock * UNITS) / 2,
          `${(peak / UNITS).toFixed(1)}px of ${FOE.dog.knock}`);
       ok('and the shove is worked off, not permanent', s.vx === 0 && s.vy === 0);
+    }
+  }
+}
+
+// --- the machine: step 2 of plans/foe-behaviour.md ---------------------------
+// Circle, crouch, strike, back off. Asserted, not eyeballed.
+{
+  const { HALF, TOUCH, touching, octLen, blocked, solidBodies, centreOf } = await import('../sim/space.js');
+  const { roomTiles: tilesOf, floorPlan: planOf, floorCount: countOf, COLS: C, ROWS: R, T: TT } = await import('../core/gen.js');
+  const { circleFor } = await import('../core/foes.js');
+  const den = denRoom();
+  const overlap = (a, b) => Math.abs(a.x - b.x) < 2 * HALF && Math.abs(a.y - b.y) < 2 * HALF;
+  const dog = FOE.dog;
+
+  // A room with room in it: the run is used to place the dog at orbit range.
+  const arena = (tiles = 3) => {
+    const s = delve(den.floor, den.room);
+    s.hp = 1000;
+    const f = s.foes[0]; s.foes = [f];
+    const run = runFrom(s, tiles);
+    return { s, f, run };
+  };
+
+  // Circling keeps its distance — and circles. Its circle is made endless so
+  // the gate sees the mode alone.
+  {
+    const { s, f, run } = arena(3);
+    ok('the machine fixture has a run', !!run);
+    if (run) {
+      const saved = dog.circleTicks; dog.circleTicks = [100000, 100000];
+      f.mode = 'circle'; f.modeAt = s.tick; f.x = run.x; f.y = run.y;
+      let contact = 0, quadrants = new Set(), lunged = false, ticksOut = 0, ticksIn = 0;
+      for (let i = 0; i < 400; i++) {
+        for (const a of combat(s, 0)) { if (a.k === 'setMode' && a.mode === 'lunge') lunged = true; applyAction(s, a); }
+        s.tick++;
+        if (touching(s.x, s.y, f.x, f.y)) contact++;
+        const d = octLen(f.x - s.x, f.y - s.y);
+        if (i > 100) { if (d > (dog.orbit + 14) * UNITS) ticksOut++; if (d < (dog.orbit - 14) * UNITS) ticksIn++; }
+        quadrants.add((f.x >= s.x ? 'E' : 'W') + (f.y >= s.y ? 'S' : 'N'));
+      }
+      dog.circleTicks = saved;
+      ok('circling keeps its distance', contact === 0 && !lunged, `${contact} ticks of contact`);
+      ok('and holds near orbit once it settles', ticksOut + ticksIn < 90, `${ticksOut} far, ${ticksIn} near, of 300`);
+      ok('and actually goes round', quadrants.size >= 3, [...quadrants].join(' '));
+    }
+  }
+
+  // A lunge closes the gap: from orbit range, contact within the lunge.
+  {
+    const { s, f, run } = arena(3);
+    if (run) {
+      f.mode = 'lunge'; f.modeAt = s.tick; f.aimX = s.x; f.aimY = s.y;
+      f.x = s.x + run.dx * dog.orbit * UNITS; f.y = s.y + run.dy * dog.orbit * UNITS;
+      let bitAt = -1, stillDuringCrouch = true;
+      const x0 = f.x, y0 = f.y;
+      for (let i = 0; i < dog.lungeTicks + 5 && bitAt < 0; i++) {
+        for (const a of combat(s, 0)) { if (a.k === 'bite') bitAt = i; applyAction(s, a); }
+        if (i < dog.lungeWindup && (f.x !== x0 || f.y !== y0)) stillDuringCrouch = false;
+        s.tick++;
+      }
+      ok('a lunge crouches first', stillDuringCrouch, `${dog.lungeWindup} still ticks`);
+      ok('then closes the gap', bitAt >= 0 && bitAt < dog.lungeTicks, bitAt >= 0 ? `bit at tick ${bitAt}` : 'never bit');
+      ok('and the bite ends the dash', f.mode === 'recover');
+    }
+  }
+
+  // A lunge can be sidestepped: it goes where you WERE.
+  {
+    const { s, f, run } = arena(3);
+    if (run) {
+      const { grid } = tilesOf(s.seed, s.site, s.floor, s.room);
+      // A clear tile beside you, perpendicular to the run.
+      const [tx, ty] = [Math.floor(s.x / (TILE*UNITS)), Math.floor(s.y / (TILE*UNITS))];
+      const perp = [[run.dy, run.dx], [-run.dy, -run.dx]].find(([ox, oy]) =>
+        grid[(ty + oy) * C + (tx + ox)] === TT.FLOOR && !blocked(grid, solidBodies(s), s.x + ox * TILE * UNITS, s.y + oy * TILE * UNITS));
+      ok('there is a tile to step aside to', !!perp);
+      if (perp) {
+        const verb = perp[0] > 0 ? VERB.RIGHT : perp[0] < 0 ? VERB.LEFT : perp[1] > 0 ? VERB.DOWN : VERB.UP;
+        f.mode = 'lunge'; f.modeAt = s.tick; f.aimX = s.x; f.aimY = s.y;
+        f.x = s.x + run.dx * dog.orbit * UNITS; f.y = s.y + run.dy * dog.orbit * UNITS;
+        let bites = 0;
+        for (let i = 0; i < dog.lungeTicks + dog.recoverTicks; i++) {
+          const frame = i < dog.lungeWindup + 6 ? setVerb(0, verb, true) : 0;   // step aside, then stand
+          const before = s.hp;
+          step(s, frame, SYSTEMS);
+          if (s.hp < before) bites++;
+        }
+        ok('a lunge can be sidestepped', bites === 0, `${bites} bites; aim was fixed at the crouch`);
+      }
+    }
+  }
+
+  // Recovery is a window: after a bite, no second bite for at least recoverTicks.
+  {
+    const { s, f } = arena(1);
+    f.mode = 'lunge'; f.modeAt = s.tick - dog.lungeWindup; f.aimX = s.x; f.aimY = s.y;
+    f.x = s.x + 2 * HALF; f.y = s.y;
+    s.hurtAt = -9999;
+    const bites = [];
+    for (let i = 0; i < 300; i++) {
+      const before = s.hp;
+      step(s, 0, SYSTEMS);
+      if (s.hp < before) bites.push(i);
+    }
+    ok('a flush lunge bites at once', bites[0] === 0, `first bite tick ${bites[0]}`);
+    ok('recovery is a window', bites.length < 2 || bites[1] - bites[0] >= dog.recoverTicks,
+       bites.length > 1 ? `next bite ${bites[1] - bites[0]} ticks later` : 'no second bite in 300 ticks');
+  }
+
+  // A corridor forces the direct approach: in a one-wide passage the dog still
+  // reaches you, so a doorway is a place to fight and not a place to hide.
+  {
+    // Find a straight one-wide passage: three floor tiles in a row with solid
+    // tiles on both sides of each. Anywhere in the world will do.
+    let spot = null;
+    outer: for (let site = 0; site < 24; site++)
+      for (let fl = 0; fl < countOf(SEED, site); fl++)
+        for (const room of planOf(SEED, site, fl).cells) {
+          const { grid } = tilesOf(SEED, site, fl, room);
+          for (let y = 2; y < R - 2; y++) for (let x = 2; x < C - 4; x++) {
+            const solidAt = (xx, yy) => solidTile(grid[yy * C + xx]);
+            const row = [0, 1, 2, 3].every((k) => grid[y * C + x + k] === TT.FLOOR && solidAt(x + k, y - 1) && solidAt(x + k, y + 1));
+            if (row) { spot = { site, floor: fl, room, x, y, dx: 1, dy: 0 }; break outer; }
+            const col = [0, 1, 2, 3].every((k) => grid[(y + k) * C + x] === TT.FLOOR && solidAt(x - 1, y + k) && solidAt(x + 1, y + k));
+            if (col) { spot = { site, floor: fl, room, x, y, dx: 0, dy: 1 }; break outer; }
+          }
+        }
+    ok('the world has a one-wide passage to test in', !!spot, spot ? `site ${spot.site} floor ${spot.floor} room ${spot.room}` : 'none in 24 sites');
+    if (spot) {
+      const s = createState(SEED);
+      s.site = spot.site; s.floor = spot.floor; s.room = spot.room; s.hp = 1000;
+      const a = centreOf(spot.y * C + spot.x), b = centreOf((spot.y + 3 * spot.dy) * C + spot.x + 3 * spot.dx);
+      s.x = a.x; s.y = a.y;
+      const saved = dog.circleTicks; dog.circleTicks = [100000, 100000];   // circling only: no lunge to cheat with
+      s.foes = [{ id: 'corridor', kind: 'dog', x: b.x, y: b.y, hp: 6, mode: 'circle', modeAt: 0, spin: 1, aimX: 0, aimY: 0, vx: 0, vy: 0 }];
+      const f = s.foes[0];
+      let reached = -1;
+      for (let i = 0; i < 200 && reached < 0; i++) {
+        for (const act of combat(s, 0)) applyAction(s, act);
+        s.tick++;
+        if (touching(s.x, s.y, f.x, f.y)) reached = i;
+      }
+      dog.circleTicks = saved;
+      ok('a corridor forces the direct approach', reached >= 0, reached >= 0 ? `reached you in ${reached} ticks` : 'never arrived');
+    }
+  }
+
+  // A pack does not lunge in unison.
+  {
+    const { s, f, run } = arena(3);
+    if (run) {
+      const g = { id: 'second', kind: 'dog', x: 0, y: 0, hp: 6, mode: 'circle', modeAt: s.tick, spin: -1, aimX: 0, aimY: 0, vx: 0, vy: 0 };
+      f.mode = 'circle'; f.modeAt = s.tick; f.x = run.x; f.y = run.y;
+      g.x = s.x + run.dx * 2 * TILE * UNITS + run.dy * TILE * UNITS; g.y = s.y + run.dy * 2 * TILE * UNITS + run.dx * TILE * UNITS;
+      s.foes = [f, g];
+      ok('two dogs that woke together circle for different times',
+         circleFor(dog, s.seed, f.id, f.modeAt) !== circleFor(dog, s.seed, g.id, g.modeAt),
+         `${circleFor(dog, s.seed, f.id, f.modeAt)} vs ${circleFor(dog, s.seed, g.id, g.modeAt)} ticks`);
+      const first = {};
+      for (let i = 0; i < 200; i++) {
+        for (const a of combat(s, 0)) { if (a.k === 'setMode' && a.mode === 'lunge' && !(a.id in first)) first[a.id] = i; applyAction(s, a); }
+        s.tick++;
+      }
+      ok('a pack does not lunge in unison', first[f.id] !== undefined && first[g.id] !== undefined && first[f.id] !== first[g.id],
+         `lunged at ${first[f.id]} and ${first[g.id]}`);
     }
   }
 }

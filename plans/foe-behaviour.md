@@ -199,7 +199,7 @@ Tuned at the table, not here. Integer, in the units the code already uses.
 1. ✓ (2026-09-25) **Knockback. Smaller, self-contained, immediately satisfying, and
    `stagger` is the first mode — so it seeds the `mode` field the machine needs.
    One commit.
-2. **The machine.** Replace pursuit-and-cooldown with the five modes. Corridor
+2. ✓ (2026-09-25) **The machine.** Replace pursuit-and-cooldown with the five modes. Corridor
    fallback in the same commit, because a dog that stalls against a wall is a
    regression from today.
 3. **The telegraph.** Rendering per mode. Small, but it is what makes the
@@ -210,6 +210,24 @@ Tuned at the table, not here. Integer, in the units the code already uses.
 One MINOR release — *0.7.0, the dog learns to hunt* — in five commits. The
 `interact.js` split from the review could ride along, since this touches
 `weaponOf` and `hitBox`, but it is optional and should not gate the release.
+
+## Status after step 2 (2026-09-25)
+
+- All five modes are live; `hunt` is gone, so is the `bite` cooldown and
+  `bitAt`. The record carries `mode, modeAt, spin, aimX, aimY, vx, vy`.
+- **Added a crouch:** `lungeWindup` (12 ticks) at the start of a lunge, dog
+  still, aim already fixed. Without it a sidestep was arithmetically
+  impossible at these speeds (contact needs 12px of lateral clearance; the
+  dash covers the gap in 11 ticks; a light player moves 1.1px/tick). The gate
+  “a lunge can be sidestepped” only passes because of it, and step 3 draws it.
+- **Corridor test changed:** not “could not take the tangent step for a few
+  ticks” (a wall lets a fraction of a diagonal step through, and the dog crept
+  forever without deciding) but **probe a whole tile along each tangent**. No
+  room either side → straight on. Stateless, and it is a real test of room.
+- `circleFor()` and `spinOf()` live in `core/foes.js` as pure derivations of
+  the table — policy, not behaviour.
+- For step 4: from orbit range the bite lands at tick 29 of a 30-tick lunge.
+  One step back makes a lunge fall short, which is a dodge, but it is tight.
 
 ## Status after step 1 (2026-09-25)
 

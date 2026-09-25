@@ -6,7 +6,7 @@
 //   "Encounters are rare, and most are avoidable."
 //   "Threat is denominated in cargo as well as health."
 
-import { h, hi, hchance } from './addr.js';
+import { h, hi, hrange, hchance } from './addr.js';
 import { roomTiles, absDepth, COLS, ROWS, T } from './gen.js';
 
 // The speed column is the whole design, so it is worth stating plainly here
@@ -31,10 +31,18 @@ export const FOE = {
     glyph: 'D',
     hp: 6,
     damage: 2,
-    speed: 255,
+    speed: 255,       // circling and backing off
     foot: 5,          // collision half-extent in pixels, as items use
     wake: 5,          // tiles: how near you must be before it notices
-    bite: 45,         // ticks between bites, so contact is not a shredder
+    // The machine's policy: circle, crouch, strike, back off. The machine
+    // itself is systems/combat/; these numbers are what make it a DOG. The
+    // bite cooldown is gone — the cycle is the cooldown.
+    orbit: 40,               // px: two tiles out, close enough to threaten
+    circleTicks: [45, 90],   // jittered per foe, so a pack does not lunge as one
+    lungeWindup: 12,         // the crouch: still, aim fixed. The sidestep window.
+    lungeSpeed: 408,         // 1.6x its walk, faster than a light player, for the dash only
+    lungeTicks: 30,          // windup plus about three tiles of dash
+    recoverTicks: 30,        // half a second of open window
     // Knockback, both ways. `weight` divides what a hit does to it — a dog is
     // the reference weight, a Sentinel will be heavy, a Warden rooted at
     // Infinity. `knock` is how far its own bite carries you, in px.
@@ -45,6 +53,17 @@ export const FOE = {
 };
 
 export const foeAt = (kind) => FOE[kind];
+
+// Per-foe jitter, derived and never stored: a string id folded to a number.
+const idNum = (id) => { let k = 0; for (let i = 0; i < id.length; i++) k = (Math.imul(k, 31) + id.charCodeAt(i)) | 0; return k; };
+// Which way round it circles. Fixed per foe so it reads as a habit.
+export const spinOf = (seed, id) => (hi(2, seed, idNum(id), 0xd010) ? 1 : -1);
+// How long THIS circle lasts, from the tick it began. Two dogs that woke on the
+// same tick get different answers, which is the whole point of the jitter.
+export function circleFor(def, seed, id, modeAt) {
+  const [lo, hi_] = def.circleTicks;
+  return hrange(lo, hi_, seed, idNum(id), modeAt, 0xd011);
+}
 
 // How often a room holds anything at all. Rare near the surface and commoner
 // with depth, because depth is era and the recent strata have been walked over

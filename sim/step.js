@@ -13,7 +13,7 @@ import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
 import { blocked, solidBodies, solidTiles, actorBodies, PLAYER_ID, HALF, centreOf, carry } from './space.js';
 import { hchance } from '../core/addr.js';
 import { fragilityOf } from '../core/items.js';
-import { foesOf, FOE } from '../core/foes.js';
+import { foesOf, FOE, spinOf } from '../core/foes.js';
 import { STATION } from '../core/camp.js';
 // NOTE: nothing here imports `systems/`. L3 must not read L4 — the tick loop in
 // app/main.js owns the system list and hands it down, which is what makes
@@ -119,10 +119,11 @@ export function enterRoom(s) {
     .filter((f) => !slain.has(f.id))
     .map((f) => {
       const p = centreOf(f.tile);
-      // `mode` is the seed of the machine in plans/foe-behaviour.md. Today:
-      // asleep, hunt (the straight pursuit), stagger (shoved, helpless).
+      // The machine's state, per plans/foe-behaviour.md: asleep, circle,
+      // lunge, recover, stagger. `aim` is where a lunge is going; `spin` is
+      // which way round it circles. All delta, all hashed.
       return { id: f.id, kind: f.kind, x: p.x, y: p.y, hp: FOE[f.kind].hp,
-               mode: 'asleep', modeAt: s.tick, bitAt: -9999, vx: 0, vy: 0 };
+               mode: 'asleep', modeAt: s.tick, spin: spinOf(s.seed, f.id), aimX: 0, aimY: 0, vx: 0, vy: 0 };
     });
 
   // You arrive where the stair or door puts you; that is a promise. A foe whose
@@ -183,11 +184,13 @@ export function applyAction(s, a) {
       s.say = { text: a.text, at: s.tick };
       break;
     case 'wake': {
-      const f = foe(a.id); if (f && f.mode === 'asleep') { f.mode = 'hunt'; f.modeAt = s.tick; }
+      const f = foe(a.id); if (f && f.mode === 'asleep') { f.mode = 'circle'; f.modeAt = s.tick; }
       break;
     }
     case 'setMode': {
-      const f = foe(a.id); if (f) { f.mode = a.mode; f.modeAt = s.tick; }
+      const f = foe(a.id); if (!f) break;
+      f.mode = a.mode; f.modeAt = s.tick;
+      if (a.mode === 'lunge') { f.aimX = a.aimX; f.aimY = a.aimY; }   // fixed at the decision: not homing
       break;
     }
     // A shove: a velocity, not a teleport, worked off by carry() each tick.
@@ -200,14 +203,14 @@ export function applyAction(s, a) {
       break;
     }
     case 'moveFoe': {
-      const f = foe(a.id); if (f) { f.x = a.x; f.y = a.y; }
+      const f = foe(a.id); if (f) { f.x = a.x; f.y = a.y; if (a.spin) f.spin = a.spin; }
       break;
     }
     case 'hurtFoe': {
       const f = foe(a.id); if (!f) break;
       s.swing.hit.push(f.id);
       f.hp -= a.n;
-      if (f.mode === 'asleep') { f.mode = 'hunt'; f.modeAt = s.tick; }   // hitting a sleeping dog wakes it
+      if (f.mode === 'asleep') { f.mode = 'circle'; f.modeAt = s.tick; }   // hitting a sleeping dog wakes it
       if (f.hp <= 0) {
         s.slain.push(f.id);
         s.foes = s.foes.filter((x) => x.id !== f.id);
@@ -215,7 +218,6 @@ export function applyAction(s, a) {
       break;
     }
     case 'bite': {
-      const f = foe(a.id); if (f) f.bitAt = s.tick;
       s.hp -= a.n;
       s.hurtAt = s.tick;
       s.vx = a.vx || 0; s.vy = a.vy || 0;   // knockback runs both ways

@@ -182,8 +182,8 @@ export function hashState(s) {
   mix(s.foes.length);
   for (const f of s.foes) {
     for (let i = 0; i < f.id.length; i++) mix(f.id.charCodeAt(i));
-    mix(f.x); mix(f.y); mix(f.hp); mix(f.bitAt < 0 ? 0 : f.bitAt);
-    mix(f.modeAt); mix(f.vx); mix(f.vy);
+    mix(f.x); mix(f.y); mix(f.hp);
+    mix(f.modeAt); mix(f.vx); mix(f.vy); mix(f.spin + 1); mix(f.aimX); mix(f.aimY);
     for (let i = 0; i < f.mode.length; i++) mix(f.mode.charCodeAt(i));
   }
   roll(s.taken); roll(s.opened); roll(s.known); roll(s.slain);

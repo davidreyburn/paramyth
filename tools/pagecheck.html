@@ -393,7 +393,7 @@ try {
       const before = ctx.getImageData(0, 0, W, VIEW_H).data.join(',');
 
       // Put a dog right next to the player, awake, and confirm the pixels move.
-      s6.foes[0].x = s6.x + 24*256; s6.foes[0].y = s6.y; s6.foes[0].mode = 'hunt';
+      s6.foes[0].x = s6.x + 24*256; s6.foes[0].y = s6.y; s6.foes[0].mode = 'circle';
       r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]);
       ok('a dog draws where it stands', before !== ctx.getImageData(0,0,W,VIEW_H).data.join(','));
 
