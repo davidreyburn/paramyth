@@ -5,9 +5,9 @@
 import { VERB, hasVerb } from './frame.js';
 import { UNITS, spawnIn, MAX_HP, SWING_TICKS, swingPhase, lampStep } from './state.js';
 import { roomTiles, floorPlan, floorCount, CAMP, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
-import { isContainer, isPortable, isWeapon, bulkOf } from '../core/items.js';
+import { isContainer, isPortable, isWeapon, bulkOf, SLOTS, slotOf } from '../core/items.js';
 import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
-         haulValue, assessed, dropTile, tier, mostFragile, bestWeapon,
+         haulValue, assessed, dropTile, tier, mostFragile, bestWeapon, equippedRefs,
          APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './interact.js';
 import { blocked, solidBodies, solidTiles, HALF, centreOf } from './space.js';
@@ -78,12 +78,16 @@ function enterFloor(s, floor) {
 //
 // This is the half of container transfer that was missing, and it is the same
 // list the corpse run will need — built once, per design/world-shape.md.
-export function putDown(s, i) {
-  const ref = s.carried[i];
+export function putDownRef(s, ref) {
   if (!ref) return false;
   const tile = dropTile(s);
   if (tile < 0) return false;
   s.dropped.push({ kind: ref.kind, key: ref.key, site: s.site, floor: s.floor, room: s.room, tile });
+  return true;
+}
+export function putDown(s, i) {
+  const ref = s.carried[i];
+  if (!ref || !putDownRef(s, ref)) return false;
   s.carried.splice(i, 1);
   return true;
 }
@@ -125,6 +129,10 @@ export function enterRoom(s) {
 function die(s) {
   while (s.carried.length && putDown(s, 0));
   s.carried.length = 0;
+  for (const slot of SLOTS) {
+    if (s.equipped[slot]) putDownRef(s, s.equipped[slot]);
+    s.equipped[slot] = null;
+  }
   s.hp = MAX_HP;
   s.hurtAt = -9999;
   s.swing = null;
@@ -190,19 +198,31 @@ function screenStep(s, frame) {
   const press = (v) => hasVerb(frame, v) && !hasVerb(s.lastFrame, v);
   const isStash = s.screen === 'stash';
   const isAppraiser = s.screen === 'appraiser';
+  const isPack = s.screen === 'pack';
+  const isStatus = s.screen === 'status';
   const cont = s.screen === 'container' ? containerItems(s, s.screenKey)
              : isStash ? s.stash
              : [];
   const twoSided = s.screen === 'container' || isStash;
-  if (!twoSided) s.side = 1;
 
-  if (press(VERB.CANCEL) || press(VERB.DODGE) || press(VERB.MAP) || press(VERB.INVENTORY)) {
+  if (press(VERB.CANCEL) || press(VERB.DODGE) || press(VERB.INVENTORY)) {
     s.screen = ''; s.screenKey = ''; s.cur = 0; s.side = 0; return;
   }
+  // Tab flips between the two pages of the menu; elsewhere it still closes.
+  if (press(VERB.MAP)) {
+    if (isPack) { s.screen = 'status'; return; }
+    if (isStatus) { s.screen = 'pack'; s.cur = 0; s.side = 1; return; }
+    s.screen = ''; s.screenKey = ''; s.cur = 0; s.side = 0; return;
+  }
+  if (isStatus) return;                            // nothing to move on that page
+
+  // Side 2 is the equipment row. Only the pack screen has one.
+  if (!twoSided && s.side !== 2) s.side = 1;
+  if (!isPack && s.side === 2) s.side = 1;
 
   const leftCols = isStash ? STASH_COLS : CONT_COLS;
-  const list = () => (s.side === 0 ? cont : s.carried);
-  const cols = () => (s.side === 0 ? leftCols : PACK_COLS);
+  const list = () => (s.side === 0 ? cont : s.side === 2 ? SLOTS : s.carried);
+  const cols = () => (s.side === 0 ? leftCols : s.side === 2 ? SLOTS.length : PACK_COLS);
 
   if (press(VERB.LEFT)) {
     if (s.side === 1 && twoSided && s.cur % PACK_COLS === 0) { s.side = 0; s.cur = 0; }
@@ -213,9 +233,34 @@ function screenStep(s, frame) {
     if (s.side === 0 && twoSided && (s.cur % leftCols === leftCols - 1 || s.cur >= n - 1)) { s.side = 1; s.cur = 0; }
     else s.cur = Math.min(Math.max(0, n - 1), s.cur + 1);
   }
-  if (press(VERB.UP))   s.cur = Math.max(0, s.cur - cols());
-  if (press(VERB.DOWN)) s.cur = Math.min(Math.max(0, list().length - 1), s.cur + cols());
+  if (press(VERB.UP)) {
+    // Off the top of the pack grid is the equipment row.
+    if (s.side === 1 && isPack && s.cur < PACK_COLS) { s.side = 2; s.cur = Math.min(s.cur, SLOTS.length - 1); }
+    else s.cur = Math.max(0, s.cur - cols());
+  }
+  if (press(VERB.DOWN)) {
+    if (s.side === 2) { s.side = 1; s.cur = Math.min(s.cur, Math.max(0, s.carried.length - 1)); }
+    else s.cur = Math.min(Math.max(0, list().length - 1), s.cur + cols());
+  }
   s.cur = Math.min(s.cur, Math.max(0, list().length - 1));
+
+  // Equip and unequip. A slot swap puts the old piece back where the new one
+  // came from, so equipping never loses anything and never changes bulk.
+  if (isPack && press(VERB.INTERACT)) {
+    if (s.side === 1 && s.carried[s.cur] && slotOf(s.carried[s.cur].kind)) {
+      const ref = s.carried[s.cur], slot = slotOf(ref.kind);
+      const old = s.equipped[slot];
+      s.equipped[slot] = ref;
+      if (old) s.carried[s.cur] = old; else s.carried.splice(s.cur, 1);
+      s.cur = Math.min(s.cur, Math.max(0, s.carried.length - 1));
+      return;
+    }
+    if (s.side === 2) {
+      const slot = SLOTS[s.cur], ref = s.equipped[slot];
+      if (ref) { s.equipped[slot] = null; s.carried.push(ref); }
+      return;
+    }
+  }
 
   const take = (it) => {
     if (carriedBulk(s) + bulkOf(it.kind) > BULK_BUDGET) return false;
@@ -351,9 +396,9 @@ export function step(s, frame, systems = []) {
   // survive, and dropping your only blade while a dog runs you down is the
   // opposite of surviving. Death still takes everything, per the design.
   if (hasVerb(frame, VERB.DROP) && !hasVerb(s.lastFrame, VERB.DROP) && s.carried.length) {
-    const keep = bestWeapon(s);
-    for (let i = s.carried.length - 1; i >= 0; i--)
-      if (s.carried[i] !== keep) putDown(s, i);
+    // Everything in the pack. What is worn or wielded stays on you: the row is
+    // not cargo, and dropping your blade while a dog closes is not surviving.
+    for (let i = s.carried.length - 1; i >= 0; i--) putDown(s, i);
   }
 
   // The pack, on its own button — Start on a pad, I on a keyboard. It toggles.

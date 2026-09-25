@@ -241,6 +241,24 @@ menu.
 
 ---
 
+## 11. Measure It on the Retroid
+
+> The brief begins "minimal and resource efficient first." Everything about that
+> claim is asserted from a desktop.
+
+**Rests on:** nothing — it is a measurement, not a feature. Chrome on the
+Retroid over LAN already works; the missing steps are Spike 2 from
+`plans/build-approach.md` (the Capacitor APK, and whether the Gamepad API
+survives the Android System WebView) and a `perf` gate that records frame time
+and a thirty-minute battery figure on the device rather than a desktop.
+
+**Why it is here and not on the roadmap:** DJ, 2026-09-24 — later. The light pass
+is 12,800 square roots a frame in JavaScript, which is almost certainly fine on
+a Snapdragon 8 Gen 2 and "almost certainly" is the least-verified claim in the
+repo. One afternoon, whenever it is picked up.
+
+**Status:** backlog (DJ, 2026-09-24).
+
 ## Runners-up
 
 *DJ: "all worthy of backlog adds."*

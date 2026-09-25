@@ -118,7 +118,11 @@ export function createState(seed) {
     // delve that begins by hunting for a weapon is a tutorial, not an opening.
     // The blade still costs three of your twenty bulk, so the decision it poses
     // is whether to put it DOWN — which is the more interesting question anyway.
-    carried: [{ kind: 'sword', key: 'issue:0:0:0' }],
+    carried: [],
+    // The equipment row. Five labelled slots; what is in them is worn or
+    // wielded and still counts against bulk.
+    equipped: { weapon: { kind: 'sword', key: 'issue:0:0:0' }, tool: null, armor: null, helm: null, accessory: null },
+    deaths: 0,
     known: [],         // keys whose record has been read
     taken: [],         // keys of contents removed from the world
     dropped: [],       // what you put back down, and where it lies
@@ -130,6 +134,17 @@ export function createState(seed) {
   };
 }
 
+// Fields beginning `_` are TRANSIENT: derived from the delta, never hashed,
+// never saved, rebuilt on demand. `_view` is the first. A save is every field
+// that does not begin with an underscore, which is what makes the schema
+// explicit without listing it twice.
+export const isTransient = (k) => k.startsWith('_');
+export function toDelta(s) {
+  const out = {};
+  for (const k of Object.keys(s)) if (!isTransient(k)) out[k] = s[k];
+  return out;
+}
+
 export function hashState(s) {
   let h = 0x811c9dc5;
   const mix = (v) => { v = v >>> 0; for (let i = 0; i < 4; i++) { h ^= (v >>> (i*8)) & 0xff; h = Math.imul(h, 0x01000193); } };
@@ -139,6 +154,12 @@ export function hashState(s) {
   const roll = (arr) => { mix(arr.length); for (const v of arr) for (let i = 0; i < v.length; i++) mix(v.charCodeAt(i)); };
   const rollRefs = (arr) => { mix(arr.length); for (const r of arr) { for (let i = 0; i < r.kind.length; i++) mix(r.kind.charCodeAt(i)); for (let i = 0; i < r.key.length; i++) mix(r.key.charCodeAt(i)); } };
   rollRefs(s.carried); rollRefs(s.stash);
+  for (const slot of ['weapon','tool','armor','helm','accessory']) {
+    const r = s.equipped[slot];
+    mix(r ? 1 : 0);
+    if (r) { for (let i = 0; i < r.kind.length; i++) mix(r.kind.charCodeAt(i)); for (let i = 0; i < r.key.length; i++) mix(r.key.charCodeAt(i)); }
+  }
+  mix(s.deaths || 0);
   // A dropped thing is a ref plus a position, and the position is part of the
   // state: replay has to put it back on the same tile.
   mix(s.dropped.length);

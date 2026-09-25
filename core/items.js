@@ -22,7 +22,7 @@ export const KIND = {
   // chain, and an appraiser will read you the history of the thing you have been
   // killing with. There is no equip slot — you swing with the best blade you are
   // carrying, so arming yourself is paid for out of the haul, every run.
-  sword:   { label: 'sword',   bulk: 3, value: 14, fragility: 0, damage: 3, reach: 22, wide: 15 },
+  sword:   { label: 'sword',   bulk: 3, value: 14, fragility: 0, damage: 3, reach: 22, wide: 15, slot: 'weapon' },
 
   key:     { label: 'key',     bulk: 1, value:  3, fragility: 0 },
   gem:     { label: 'gem',     bulk: 1, value: 12, fragility: 1 },
@@ -49,6 +49,12 @@ export const isSolidItem = (k) => !!(KIND[k] && KIND[k].solid);
 
 export const isContainer = (k) => !!(KIND[k] && KIND[k].container);
 export const isWeapon     = (k) => !!(KIND[k] && KIND[k].damage > 0);
+
+// The equipment row: five labelled slots above the pack. What sits in a slot is
+// worn or wielded rather than hauled, but it still counts against bulk — armor,
+// tools and haul draw from one budget (design/combat-and-tools.md).
+export const SLOTS = ['weapon', 'tool', 'armor', 'helm', 'accessory'];
+export const slotOf = (k) => (KIND[k] && KIND[k].slot) || null;
 export const damageOf     = (k) => (KIND[k] && KIND[k].damage) || 0;
 export const reachOf      = (k) => (KIND[k] && KIND[k].reach) || 0;
 export const wideOf       = (k) => (KIND[k] && KIND[k].wide) || 0;

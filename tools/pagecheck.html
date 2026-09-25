@@ -242,6 +242,32 @@ try {
     }
   }
 
+  // The three new surfaces draw: the equipment row above the pack, the status
+  // page, and the title screen.
+  {
+    const ink = (x, y, w, h, thr = 60) => {
+      const d = ctx.getImageData(x, y, w, h).data; let n = 0;
+      for (let i = 0; i < d.length; i += 4) if (Math.max(d[i], d[i+1], d[i+2]) > thr) n++;
+      return n;
+    };
+    const p = delve(); p.screen = 'pack'; p.side = 2; p.cur = 0;
+    r.draw(p, [{text:'x'}]);
+    ok('the equipment row draws above the pack', ink(200, 68, 240, 38) > 150, `${ink(200, 68, 240, 38)} px in the row band`);
+    ok('the pack grid still draws below it', ink(200, 106, 240, 120) > 300, `${ink(200, 106, 240, 120)} px`);
+
+    const st = delve(); st.screen = 'status';
+    r.draw(st, [{text:'x'}]);
+    ok('the status page draws', ink(170, 72, 300, 176) > 400, `${ink(170, 72, 300, 176)} px`);
+
+    r.title({ cur: 1, confirm: -1, note: '', slots: [
+      { save: null, summary: null, bad: false },
+      { save: {}, summary: { scrap: 47, deaths: 2, moves: 312, where: 'in camp' }, bad: false },
+      { save: {}, summary: null, bad: true },
+    ]});
+    ok('the title screen draws three slots', ink(160, 118, 320, 90) > 500, `${ink(160, 118, 320, 90)} px`);
+    ok('and the title itself', ink(0, 50, W, 20, 120) > 40, `${ink(0, 50, W, 20, 120)} bright px`);
+  }
+
   const inp = createInput();
   ok('input layer constructs and samples an int', typeof inp.sample()==='number', `pad=${inp.pad}`);
 
@@ -329,8 +355,11 @@ try {
       s5.carried = [{ kind: 'gem', key }];
       s5.screen = 'pack'; s5.side = 1; s5.cur = 0;
       r.draw(s5, [{text:'lead'}]);
-      // The panel starts at y=96; the three readout lines sit above it.
-      const band = ctx.getImageData(0, 88, W, 10).data;
+      // The pack page sits at y=68 now (the equipment row lives above the
+      // grid), so the three readout lines fall between y=40 and y=70. Sample
+      // that whole band rather than a hardcoded row, so a layout nudge does
+      // not silently move the text out from under the gate again.
+      const band = ctx.getImageData(0, 40, W, 30).data;
       let ink = 0;
       for (let i = 0; i < band.length; i += 4) if (Math.max(band[i], band[i+1], band[i+2]) > 90) ink++;
       ok('the lead line is drawn above the pack', ink > 40, `${ink} text px`);

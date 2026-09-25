@@ -11,8 +11,8 @@
 
 import { UNITS } from './state.js';
 import { isSolid, COLS, ROWS, TILE } from '../core/gen.js';
-import { visible } from './interact.js';
-import { footOf, isSolidItem } from '../core/items.js';
+import { roomView } from './interact.js';
+import { isSolidItem } from '../core/items.js';
 
 // The half-extent of a walking body, in subpixel units. Player and foe share it:
 // two things that move through the same doorways should measure the same.
@@ -54,26 +54,12 @@ export const inBounds = (tx, ty) => tx >= 0 && ty >= 0 && tx < COLS && ty < ROWS
 // What you walk around, as boxes. Taken items stop blocking, so this is derived
 // from the delta and never cached. It lives here rather than in `step.js`
 // because a foe has to walk around the same barrels the player does.
-export function solidBodies(s) {
-  const out = [];
-  for (const c of visible(s)) {
-    const f = footOf(c.kind);
-    if (!f) continue;
-    const tx = c.tile % COLS, ty = (c.tile / COLS) | 0;
-    out.push({
-      cx: (tx * TILE + TILE / 2) * UNITS,
-      cy: (ty * TILE + TILE / 2) * UNITS,
-      f: f * UNITS,
-      tile: c.tile,
-    });
-  }
-  return out;
-}
+export const solidBodies = (s) => roomView(s).bodies;
 
 // The generator still reasons in whole tiles, which is deliberately stricter
 // than collision: being conservative about sealing a way out is correct.
 export function solidTiles(s) {
   const out = new Set();
-  for (const c of visible(s)) if (isSolidItem(c.kind)) out.add(c.tile);
+  for (const c of roomView(s).visible) if (isSolidItem(c.kind)) out.add(c.tile);
   return out;
 }

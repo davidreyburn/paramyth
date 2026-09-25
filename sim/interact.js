@@ -7,8 +7,8 @@ import { contentsOf, insideOf, roomTiles, ERAS, eraFor, absDepth,
 import { chainOf, marksOf, readMarks, worthMultiplier, describe,
          leadOf, placeLabel, possessionsOf, occupantOf } from '../core/provenance.js';
 import { campStations, STATION } from '../core/camp.js';
-import { KIND, UNARMED, isContainer, isPortable, isWeapon, damageOf, reachOf, wideOf,
-         fragilityOf, bulkOf, valueOf, verbFor } from '../core/items.js';
+import { KIND, UNARMED, SLOTS, slotOf, isContainer, isPortable, isWeapon, damageOf, reachOf, wideOf,
+         fragilityOf, footOf, bulkOf, valueOf, verbFor } from '../core/items.js';
 import { UNITS } from './state.js';
 
 export const BULK_BUDGET = 20;
@@ -22,7 +22,13 @@ export const keyOf = (s, slot, idx) =>
   idx === undefined ? `${s.site}:${s.floor}:${s.room}:${slot}`
                     : `${s.site}:${s.floor}:${s.room}:${slot}.${idx}`;
 
-export const carriedBulk = (s) => s.carried.reduce((n, r) => n + bulkOf(r.kind), 0);
+// What you are wearing and wielding, as a list, for anything that walks it.
+export const equippedRefs = (s) => SLOTS.map((k) => s.equipped[k]).filter(Boolean);
+
+// Bulk counts the pack AND the row: armor, tools and haul draw from one budget.
+export const carriedBulk = (s) =>
+  s.carried.reduce((n, r) => n + bulkOf(r.kind), 0) +
+  equippedRefs(s).reduce((n, r) => n + bulkOf(r.kind), 0);
 
 // --- provenance, as the game sees it ---------------------------------------
 // The key IS the address, so a chain is computable from a reference alone.
@@ -98,12 +104,8 @@ export const occupantHere = (s) =>
 // inventory, no new state — and because a weapon is an ordinary carried item it
 // is paid for out of the bulk budget like everything else, every single run.
 export function bestWeapon(s) {
-  let best = null;
-  for (const ref of s.carried) {
-    if (!isWeapon(ref.kind)) continue;
-    if (!best || damageOf(ref.kind) > damageOf(best.kind)) best = ref;
-  }
-  return best;
+  const w = s.equipped.weapon;
+  return w && isWeapon(w.kind) ? w : null;
 }
 
 // What a hit puts at risk. The most fragile thing you carry goes first, which
@@ -155,30 +157,51 @@ export function tier(bulk) {
   return 'overloaded';
 }
 
-// Everything in this room that still exists: placed contents that have not been
-// taken, plus whatever an opened container spilled.
-export function visible(s) {
-  const out = [];
-  const taken = new Set(s.taken), opened = new Set(s.opened);
+// ONE VIEW PER TICK. What is in this room — the things still lying here, and
+// the boxes you walk around — computed once and cached on a transient field.
+//
+// It used to be rebuilt five times a tick, each time turning `taken` and
+// `opened` (lists that grow for the life of a save) into fresh Sets. The cache
+// is valid while nothing that changes the room's contents has changed, and
+// every such change alters one of three list lengths — so validity is a string
+// compare and needs no invalidation calls. plans/review-2026-09-24.md.
+export function roomView(s) {
+  const stamp = `${s.site}|${s.floor}|${s.room}|${s.taken.length}|${s.opened.length}|${s.dropped.length}`;
+  const v = s._view;
+  if (v && v.stamp === stamp) return v;
 
+  const taken = new Set(s.taken), opened = new Set(s.opened);
+  const visible = [];
   for (const c of contentsOf(s.seed, s.site, s.floor, s.room)) {
     const k = keyOf(s, c.slot);
-    if (!taken.has(k)) out.push({ ...c, key: k, open: opened.has(k) });
+    if (!taken.has(k)) visible.push({ ...c, key: k, open: opened.has(k) });
   }
   // And what you put down. A dropped thing keeps its own address, so its whole
   // history follows it across the world — which is what `inherit` will need
   // when a corpse starts writing provenance of its own.
   for (const d of s.dropped)
     if (d.site === s.site && d.floor === s.floor && d.room === s.room)
-      out.push({ slot: -1, tile: d.tile, kind: d.kind, key: d.key, dropped: true });
-  return out;
+      visible.push({ slot: -1, tile: d.tile, kind: d.kind, key: d.key, dropped: true });
+
+  const bodies = [];
+  for (const c of visible) {
+    const f = footOf(c.kind);
+    if (!f) continue;
+    const tx = c.tile % COLS, ty = (c.tile / COLS) | 0;
+    bodies.push({ cx: (tx * TILE + TILE / 2) * UNITS, cy: (ty * TILE + TILE / 2) * UNITS, f: f * UNITS, tile: c.tile });
+  }
+
+  s._view = { stamp, taken, opened, visible, bodies };
+  return s._view;
 }
+
+export const visible = (s) => roomView(s).visible;
 
 // Where a thing you let go of lands: the tile under you, or the nearest free
 // floor to it, searched in rings so the result is the same every replay.
 export function dropTile(s) {
   const { grid } = roomTiles(s.seed, s.site, s.floor, s.room);
-  const used = new Set(visible(s).map((c) => c.tile));
+  const used = new Set(roomView(s).visible.map((c) => c.tile));
   const tx = Math.floor(s.x / (TILE * UNITS)), ty = Math.floor(s.y / (TILE * UNITS));
   const free = (x, y) => {
     if (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1) return false;
@@ -198,7 +221,7 @@ export function dropTile(s) {
 // them across the floor made an opened chest look like it had done nothing.
 export function containerItems(s, key) {
   const slot = Number(String(key).split(':')[3]);
-  const taken = new Set(s.taken);
+  const { taken } = roomView(s);
   return insideOf(s.seed, s.site, s.floor, s.room, slot)
     .map((it) => ({ ...it, key: keyOf(s, it.slot, it.idx) }))
     .filter((it) => !taken.has(it.key));

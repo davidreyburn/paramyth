@@ -4,7 +4,7 @@
 
 import { contentsOf, insideOf, roomTiles, floorPlan, floorCount, COLS, ROWS, TILE, T, solidTile } from '../core/gen.js';
 import { KIND, isContainer, isPortable, isSolidItem, footOf, bulkOf, verbFor } from '../core/items.js';
-import { createState, spawnIn, UNITS } from '../sim/state.js';
+import { createState, spawnIn, toDelta, UNITS } from '../sim/state.js';
 import { step, solidTiles, solidBodies } from '../sim/step.js';
 import { VERB, setVerb } from '../sim/frame.js';
 import { visible, reachable, prompt, carriedBulk, tier, keyOf, containerItems,
@@ -115,8 +115,12 @@ const delve = (site = 0, floor = 0, room = null) => {
      `light<=8 laden<=16 overloaded<=${BULK_BUDGET}`);
 
   const s = delve();
+  s.equipped.weapon = null;
   s.carried = Array.from({ length: BULK_BUDGET }, (_, i) => ref('key', i));   // bulk 1 each
   ok('bulk sums from what is carried', carriedBulk(s) === BULK_BUDGET, `${carriedBulk(s)}`);
+  s.equipped.weapon = ref('sword', 99);
+  ok('and what is worn or wielded counts on top of it', carriedBulk(s) === BULK_BUDGET + 3,
+     `${carriedBulk(s)} with the blade in the row`);
 
   // Walk the world for a real portable rather than hoping the start room has
   // one -- a gate that skips itself proves nothing.
@@ -159,10 +163,11 @@ const delve = (site = 0, floor = 0, room = null) => {
 // --- the world does not grow ------------------------------------------------
 {
   const s = delve();
-  const base = JSON.stringify(s).length;
+  const size = () => JSON.stringify(toDelta(s)).length;   // the save, not the object
+  const base = size();
   for (const c of visible(s)) { s.taken.push(c.key); }
   ok('taking is recorded, generation is not',
-     JSON.stringify(s).length - base < 400, `+${JSON.stringify(s).length - base} bytes for ${s.taken.length} takes`);
+     size() - base < 400, `+${size() - base} bytes for ${s.taken.length} takes`);
 }
 
 // --- containers and the transfer screen ------------------------------------
@@ -194,14 +199,20 @@ const delve = (site = 0, floor = 0, room = null) => {
   ok('take-all empties the container', containerItems(s, s.screenKey).length === 0);
 
   // Every documented way out must work, from both screens.
-  for (const [name, verb] of [['CANCEL (Esc)', VERB.CANCEL], ['DODGE (B)', VERB.DODGE], ['MAP (Tab)', VERB.MAP]]) {
-    for (const which of ['container', 'pack']) {
+  for (const [name, verb] of [['CANCEL (Esc)', VERB.CANCEL], ['DODGE (B)', VERB.DODGE]]) {
+    for (const which of ['container', 'pack', 'status']) {
       const t = delve();
       t.screen = which; t.screenKey = which === 'container' ? c.key : '';
       step(t, 0);
       step(t, setVerb(0, verb, true));
       ok(`${name} closes the ${which} screen`, t.screen === '', t.screen || 'closed');
     }
+  }
+  {
+    const t = delve();
+    t.screen = 'container'; t.screenKey = c.key;
+    step(t, 0); step(t, setVerb(0, VERB.MAP, true));
+    ok('MAP (Tab) closes a container', t.screen === '', t.screen || 'closed');
   }
   step(s, 0);
   step(s, setVerb(0, VERB.CANCEL, true));
@@ -467,9 +478,12 @@ const delve = (site = 0, floor = 0, room = null) => {
   // You start ARMED and otherwise empty-handed: no scrap, no stash, no salvage,
   // and three of your twenty bulk already spent on the blade.
   ok('you start with a blade and nothing else',
-     s.scrap === 0 && !s.stash.length && s.carried.length === 1 && s.carried[0].kind === 'sword',
-     s.carried.map((r) => r.kind).join(','));
+     s.scrap === 0 && !s.stash.length && s.carried.length === 0
+       && s.equipped.weapon && s.equipped.weapon.kind === 'sword',
+     `pack ${s.carried.length}, weapon ${s.equipped.weapon && s.equipped.weapon.kind}`);
   ok('and the blade is already costing you bulk', carriedBulk(s) === 3, `${carriedBulk(s)}/20`);
+  ok('the other four slots start empty',
+     ['tool','armor','helm','accessory'].every((k) => s.equipped[k] === null));
 
   const standAt = (st, state) => {
     state.x = ((st.tile % C) * TL + TL/2) * UNITS;
@@ -648,11 +662,12 @@ const delve = (site = 0, floor = 0, room = null) => {
   // The world still does not grow. A drop is a delta entry, not a placement.
   {
     const s = delve();
-    const base = JSON.stringify(s).length;
+    const size = () => JSON.stringify(toDelta(s)).length;
+    const base = size();
     s.carried = refs('gem', 'bones');
     press(s, VERB.DROP);
     ok('putting things down is recorded in bytes, not in rooms',
-       JSON.stringify(s).length - base < 300, `+${JSON.stringify(s).length - base} bytes for 2`);
+       size() - base < 300, `+${size() - base} bytes for 2`);
   }
 
   // Determinism: the tile a thing lands on is arithmetic, not a coin toss.
@@ -669,6 +684,105 @@ const delve = (site = 0, floor = 0, room = null) => {
     const { grid } = roomTiles(SEED, s.site, s.floor, s.room);
     ok('a free tile exists to drop onto in a normal room', dropTile(s) >= 0, `${dropTile(s)}`);
   }
+}
+
+// --- the equipment row ------------------------------------------------------
+{
+  const { SLOTS, slotOf } = await import('../core/items.js');
+  const open = () => { const s = delve(); s.screen = 'pack'; s.side = 1; s.cur = 0; return s; };
+  const tap = (s, v) => { step(s, 0); step(s, setVerb(0, v, true)); };
+
+  ok('the row has five labelled slots', SLOTS.join(',') === 'weapon,tool,armor,helm,accessory');
+  ok('a sword belongs in the weapon slot', slotOf('sword') === 'weapon');
+  ok('a gem belongs in no slot', slotOf('gem') === null);
+
+  // Equip from the pack: the old piece takes the new one's place. Bulk is
+  // unchanged, because the row counts too.
+  const s = open();
+  s.carried = [ref('sword', 7), ref('gem', 1)];
+  const b0 = carriedBulk(s);
+  tap(s, VERB.INTERACT);
+  ok('A on a weapon in the pack equips it', s.equipped.weapon && s.equipped.weapon.key === '0:0:0:7',
+     s.equipped.weapon && s.equipped.weapon.key);
+  ok('the blade it replaced comes back into the pack, same place',
+     s.carried[0] && s.carried[0].key === 'issue:0:0:0' && s.carried.length === 2,
+     s.carried.map((r) => r.key).join(' '));
+  ok('a swap never changes bulk', carriedBulk(s) === b0, `${b0} -> ${carriedBulk(s)}`);
+
+  // A non-slot item on A still goes to the floor, as before.
+  s.cur = 1;
+  const down0 = s.dropped.length;
+  tap(s, VERB.INTERACT);
+  ok('A on a gem still puts it down', s.dropped.length === down0 + 1 && !s.carried.some((r) => r.kind === 'gem'));
+
+  // Up off the top of the grid lands on the row; down comes back.
+  const n = open();
+  n.carried = refs('gem', 'key');
+  n.cur = 1;
+  tap(n, VERB.UP);
+  ok('UP from the top row of the pack reaches the equipment row', n.side === 2, `side ${n.side}`);
+  ok('and the cursor lands on a real slot', n.cur >= 0 && n.cur < SLOTS.length, `cur ${n.cur}`);
+  tap(n, VERB.DOWN);
+  ok('DOWN from the row returns to the pack', n.side === 1, `side ${n.side}`);
+
+  // Unequip: the piece goes into the pack.
+  const u = open();
+  tap(u, VERB.UP); u.cur = 0;                    // weapon slot
+  const b1 = carriedBulk(u);
+  tap(u, VERB.INTERACT);
+  ok('A on the weapon slot unequips it', u.equipped.weapon === null && u.carried.some((r) => r.kind === 'sword'));
+  ok('unequipping does not change bulk either', carriedBulk(u) === b1);
+  ok('you are now swinging fists', !bestWeapon(u));
+
+  // The row exists on the pack page only.
+  const c2 = delve();
+  c2.screen = 'container'; c2.screenKey = visible(c2).find((x) => isContainer(x.kind)).key; c2.side = 2;
+  step(c2, 0);
+  ok('the container screen has no equipment row', c2.side !== 2, `side ${c2.side}`);
+
+  // Death takes the row as well as the pack.
+  const { applyAction } = await import('../sim/step.js');
+  const { enterRoom } = await import('../sim/step.js');
+  const d = delve(); enterRoom(d);
+  d.foes = [{ id: 'x', kind: 'dog', x: d.x, y: d.y, hp: 6, awake: true, bitAt: -9999 }];
+  for (let i = 0; i < 20 && !d.deaths; i++) { d.hurtAt = -9999; applyAction(d, { k: 'bite', id: 'x', n: 4 }); }
+  ok('death empties every slot', d.deaths === 1 && SLOTS.every((k) => d.equipped[k] === null));
+  ok('and the blade is on the floor where you fell', d.dropped.some((x) => x.kind === 'sword'));
+}
+
+// --- the status page --------------------------------------------------------
+{
+  const s = delve(); s.screen = 'pack'; s.side = 1;
+  step(s, 0); step(s, setVerb(0, VERB.MAP, true));
+  ok('Tab on the pack page turns to status', s.screen === 'status', s.screen);
+
+  const h0 = hashState(s);
+  for (const v of [VERB.INTERACT, VERB.UP, VERB.DOWN, VERB.LEFT, VERB.RIGHT, VERB.TOOL, VERB.DROP]) {
+    step(s, 0); step(s, setVerb(0, v, true));
+  }
+  ok('the status page is read, not operated', s.screen === 'status' && s.carried.length === 0 && s.dropped.length === 0,
+     `screen ${s.screen}, dropped ${s.dropped.length}`);
+  step(s, 0); step(s, setVerb(0, VERB.MAP, true));
+  ok('Tab on status turns back to the pack', s.screen === 'pack' && s.side === 1, `${s.screen} side ${s.side}`);
+  step(s, 0); step(s, setVerb(0, VERB.INVENTORY, true));
+  ok('Start closes it from either page', s.screen === '');
+}
+
+// --- one view per tick ------------------------------------------------------
+{
+  const s = delve();
+  const { roomView } = await import('../sim/interact.js');
+  const a = roomView(s), b = roomView(s);
+  ok('the room view is computed once and reused', a === b);
+  ok('the cache never reaches the save', !('_view' in toDelta(s)) && '_view' in s);
+  const h0 = hashState(s);
+  roomView(s); visible(s);
+  ok('reading the view does not change the state hash', hashState(s) === h0);
+  const first = visible(s)[0];
+  s.taken.push(first.key);
+  ok('taking something invalidates it', roomView(s) !== a && !visible(s).some((c) => c.key === first.key));
+  s.dropped.push({ kind: 'gem', key: 'z:0:0:0', site: s.site, floor: s.floor, room: s.room, tile: 40 });
+  ok('putting something down invalidates it too', visible(s).some((c) => c.key === 'z:0:0:0'));
 }
 
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all item gates passed\n');

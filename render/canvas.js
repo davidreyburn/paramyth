@@ -13,7 +13,7 @@ import { visible, prompt, containerItems, carriedBulk, tier,
 import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
 import { MAX_HP, swingPhase, saying, lampVec, surface } from '../sim/state.js';
-import { isContainer, labelOf, bulkOf, KIND } from '../core/items.js';
+import { isContainer, labelOf, bulkOf, KIND, SLOTS } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
 // The HUD strip, and how much of it a line of 8px text needs. HUD_LINES is
@@ -262,7 +262,11 @@ export function createRenderer(canvas, pack = null) {
     const packW = PACK_COLS * CELL + PAD * 2;
     const total = two ? contW + 12 + packW : packW;
     const x0 = Math.round((W - total) / 2);
-    const y0 = 96;
+    const isPack = s.screen === 'pack';
+    if (s.screen === 'status') { drawStatus(s, tone); return; }
+    // The pack page carries the equipment row above the grid, so it sits higher.
+    const ROW_H = isPack ? 38 : 0;
+    const y0 = isPack ? 68 : 96;
 
     if (two) {
       const title = isStash
@@ -272,7 +276,27 @@ export function createRenderer(canvas, pack = null) {
     }
     const px = two ? x0 + contW + 12 : x0;
     const bulk = carriedBulk(s);
-    drawPanel(px, y0, PACK_COLS, PACK_ROWS,
+
+    // The equipment row: five labelled slots, worn or wielded, above the pack.
+    if (isPack) {
+      const pitch = Math.floor(packW / SLOTS.length);
+      const rx = px + Math.floor((packW - pitch * SLOTS.length) / 2);
+      ctx.fillStyle = 'rgba(12,11,9,0.97)';
+      ctx.fillRect(px, y0, packW, ROW_H);
+      ctx.strokeStyle = '#3d372f'; ctx.lineWidth = 1;
+      ctx.strokeRect(px + 0.5, y0 + 0.5, packW - 1, ROW_H - 1);
+      ctx.font = '8px ui-monospace, monospace'; ctx.textBaseline = 'top'; ctx.textAlign = 'center';
+      const LABEL = { weapon: 'WEAP', tool: 'TOOL', armor: 'ARMR', helm: 'HELM', accessory: 'ACCS' };
+      for (const [i, slot] of SLOTS.entries()) {
+        const cx = rx + i * pitch + (pitch >> 1);
+        ctx.fillStyle = s.side === 2 && s.cur === i ? P.lantern : '#6b6357';
+        ctx.fillText(LABEL[slot], cx, y0 + 3);
+        drawCell(cx - (PLATE >> 1), y0 + 13, s.equipped[slot], i, tone, s.side === 2 && s.cur === i);
+      }
+      ctx.textAlign = 'start';
+    }
+
+    drawPanel(px, y0 + ROW_H, PACK_COLS, PACK_ROWS,
       isAppraiser ? `APPRAISER \u00b7 you have ${s.scrap} scrap`
                   : `PACK \u00b7 ${bulk}/${BULK_BUDGET} ${tier(bulk).toUpperCase()}`,
       s.carried, tone, s.side === 1 ? s.cur : -1);
@@ -284,12 +308,17 @@ export function createRenderer(canvas, pack = null) {
                : isAppraiser  ? `A appraise (${APPRAISAL_FEE} scrap)   \u00b7   Esc / B close`
                : two          ? (s.side === 0 ? 'A take   \u00b7   Y take all   \u00b7   Esc / B close'
                                               : 'A put down   \u00b7   Y put all down   \u00b7   Esc / B close')
-                              : 'A put down   \u00b7   Y put all down   \u00b7   G drop everything   \u00b7   Esc close';
-    ctx.fillText(hint, W / 2, y0 + PACK_ROWS * CELL + PAD * 2 + TITLE + 10);
+               : s.side === 2 ? 'A unequip   \u00b7   \u2193 pack   \u00b7   Tab status   \u00b7   Esc close'
+                              : 'A equip / put down   \u00b7   Y put all down   \u00b7   \u2191 gear   \u00b7   Tab status   \u00b7   Esc close';
+    ctx.fillText(hint, W / 2, y0 + ROW_H + PACK_ROWS * CELL + PAD * 2 + TITLE + 10);
 
     // What the cursor is on: its name, its weight, its price, and as much of
     // its history as this character can actually read.
-    const under = s.side === 0 ? cont[s.cur] : s.carried[s.cur];
+    const under = s.side === 0 ? cont[s.cur] : s.side === 2 ? s.equipped[SLOTS[s.cur]] : s.carried[s.cur];
+    if (s.side === 2 && !under) {
+      ctx.fillStyle = '#6b6357';
+      ctx.fillText(`${SLOTS[s.cur]} \u2014 empty`, W / 2, y0 - 26);
+    }
     if (under && under.kind) {
       const val = itemValue(s, under);
       const know = assessed(s, under.key);
@@ -309,6 +338,95 @@ export function createRenderer(canvas, pack = null) {
                      W / 2, y0 - 4);
       }
     }
+    ctx.textAlign = 'start';
+  }
+
+  // The other page of the menu: who you are and what state you are in. No
+  // cursor, nothing to move — it is read, not operated.
+  function drawStatus(s, tone) {
+    const w = 300, hgt = 176;
+    const x = Math.round((W - w) / 2), y = 72;
+    ctx.fillStyle = 'rgba(12,11,9,0.97)';
+    ctx.fillRect(x, y, w, hgt);
+    ctx.strokeStyle = '#3d372f'; ctx.lineWidth = 1;
+    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, hgt - 1);
+    ctx.font = '8px ui-monospace, monospace';
+    ctx.textBaseline = 'top'; ctx.textAlign = 'start';
+
+    ctx.fillStyle = P.parchment;
+    ctx.fillText('WORKER', x + PAD, y + 6);
+    ctx.fillStyle = '#6b6357';
+    ctx.fillText('the Company\u2019s, for now', x + PAD + 48, y + 6);
+
+    const bulk = carriedBulk(s);
+    const wielding = s.equipped.weapon ? labelOf(s.equipped.weapon.kind) : 'fists';
+    const worn = SLOTS.filter((k) => k !== 'weapon' && s.equipped[k]).map((k) => labelOf(s.equipped[k].kind));
+    const left = [
+      ['might', s.stats.might], ['finesse', s.stats.finesse], ['vigor', s.stats.vigor],
+      ['lore', s.stats.lore], ['keen', s.stats.keen], ['bearing', s.stats.bearing],
+    ];
+    const right = [
+      ['health', `${s.hp}/${MAX_HP}`], ['scrap', s.scrap],
+      ['bulk', `${bulk}/${BULK_BUDGET} ${tier(bulk)}`], ['deaths', s.deaths || 0],
+      ['rooms', s.moves], ['records read', s.known.length],
+    ];
+    const col = (rows, cx) => rows.forEach(([k, v], i) => {
+      ctx.fillStyle = '#6b6357'; ctx.fillText(k.toUpperCase(), cx, y + 26 + i * 12);
+      ctx.fillStyle = P.bone;    ctx.fillText(String(v), cx + 78, y + 26 + i * 12);
+    });
+    col(left, x + PAD);
+    col(right, x + PAD + 140);
+
+    ctx.fillStyle = '#6b6357';
+    ctx.fillText('WIELDING', x + PAD, y + 108);
+    ctx.fillStyle = P.bone; ctx.fillText(wielding, x + PAD + 78, y + 108);
+    ctx.fillStyle = '#6b6357';
+    ctx.fillText('WEARING', x + PAD, y + 120);
+    ctx.fillStyle = P.bone; ctx.fillText(worn.length ? worn.join(', ') : 'nothing', x + PAD + 78, y + 120);
+
+    ctx.fillStyle = '#4a443c';
+    ctx.fillText('Keen is the eye. Lore is the education. Neither moves yet.', x + PAD, y + 140);
+
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#6b6357';
+    ctx.fillText('Tab pack   \u00b7   Esc / B close', W / 2, y + hgt + 10);
+    ctx.textAlign = 'start';
+  }
+
+  // The front door: three save files, or a fresh world in an empty one.
+  function drawTitle(t) {
+    ctx.fillStyle = P.void; ctx.fillRect(0, 0, W, H);
+    ctx.font = 'bold 15px ui-monospace, monospace';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+    ctx.fillStyle = P.parchment;
+    ctx.fillText('P A R A M Y T H', W / 2, 54);
+    ctx.font = '8px ui-monospace, monospace';
+    ctx.fillStyle = '#6b6357';
+    ctx.fillText('a salvage game in the Barrowlands', W / 2, 76);
+
+    const w = 320, rowH = 30, x = Math.round((W - w) / 2), y0 = 118;
+    for (const [i, slot] of t.slots.entries()) {
+      const y = y0 + i * rowH, sel = i === t.cur;
+      ctx.fillStyle = sel ? '#1e1b17' : '#121110';
+      ctx.fillRect(x, y, w, rowH - 4);
+      ctx.strokeStyle = sel ? P.lantern : '#2b2824'; ctx.lineWidth = 1;
+      ctx.strokeRect(x + 0.5, y + 0.5, w - 1, rowH - 5);
+      ctx.textAlign = 'start';
+      ctx.fillStyle = sel ? P.parchment : '#8a7f70';
+      ctx.fillText(`${sel ? '\u25b8' : ' '} SLOT ${i + 1}`, x + 8, y + 5);
+      ctx.fillStyle = slot.bad ? '#b5553f' : slot.summary ? P.bone : '#5b5348';
+      const line = t.confirm === i ? 'press X again to delete \u00b7 any other key keeps it'
+                 : slot.bad ? 'an older save \u2014 cannot be opened; delete it'
+                 : slot.summary
+                   ? `${slot.summary.scrap} scrap \u00b7 ${slot.summary.deaths} deaths \u00b7 ${slot.summary.moves} rooms \u00b7 ${slot.summary.where}`
+                   : '\u2014 empty \u2014 a new world';
+      ctx.fillText(line, x + 8, y + 15);
+    }
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#6b6357';
+    ctx.fillText('A play   \u00b7   X delete   \u00b7   \u2191\u2193 choose', W / 2, y0 + t.slots.length * rowH + 8);
+    ctx.fillStyle = '#4a443c';
+    ctx.fillText(t.note || '', W / 2, y0 + t.slots.length * rowH + 22);
     ctx.textAlign = 'start';
   }
 
@@ -418,6 +536,7 @@ export function createRenderer(canvas, pack = null) {
     // For gates: the light buffers, so band count can be measured on the light
     // and not on the composite, where tile brightness confounds it.
     get lightBuffers() { return { warm: warmBuf, dark: darkBuf, w: LW, h: LH }; },
+    title(t) { drawTitle(t); },
     draw(state, hud) {
       const world = roomTiles(state.seed, state.site, state.floor, state.room);
       const tone = TONES[world.era.name] || TONES['Recent'];

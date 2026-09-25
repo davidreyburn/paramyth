@@ -945,3 +945,49 @@ tiers exists. `record = truth ⊕ amendments` has no amendments, so forgery,
 attestation and effacement have nowhere to live. And the actor graph does not
 invert — `possessionsOf` is unbuilt, so a maker's mark cannot lead you to a
 trove. That inversion is the thing the game is actually about, and it is next.
+
+---
+
+## 2026-09-24 — 0.6.0: saves, the front door, the row, the page
+
+**Lesson:** change the delta's shape *before* the first save format exists, or
+the first save format is obsolete on arrival.
+
+**What.** Three save files behind a title screen; an equipment row of five
+labelled slots; a status page; and `roomView`, the per-tick cache the review
+asked for.
+
+**Why this order.** DJ's list had saves first. But the equipment row and the
+view cache both reshape the delta — one adds `equipped`, the other adds a field
+that must *not* be saved. Shipping saves first would have meant a `SCHEMA` bump
+within the hour. So the reshaping went first, and the save serialiser was
+written against the final shape.
+
+**The transient convention fell out of the cache.** `_view` had to be excluded
+from the hash and from the save, and the cleanest rule was the general one:
+anything beginning `_` is derived. `toDelta(s)` is one line because of it, and
+two size gates that had been measuring `JSON.stringify(s)` started measuring the
+save instead — which is what they always meant.
+
+**Where the gates earned their keep.** Eleven fixtures failed, and every one was
+right: the sword had moved from the pack to the row, and every test that put a
+blade in `carried` or counted the pack's bulk was now describing a different
+game. The fist-box comparison failed *twice* — once for the state I had nulled
+the weapon on, and again for the second state the gate measured that I had
+not. A gate that builds two fixtures needs both updated, and the failure names
+which.
+
+**A compile error that was not mine, and was.** `Identifier 'hashState' has
+already been declared` — the items suite already imported it on its own line,
+added during the 0.5 work I had pulled that morning, and I added it again to
+the first import. Reading the top of a file before appending to it would have
+cost four seconds.
+
+**The title-confirm rule was rewritten in review.** The first draft's "cancel a
+pending delete" condition was three clauses long and wrong in one of them.
+"Any other key keeps it" is the rule the screen prints; `frame & ~last` is the
+bits that rose this tick, and that is the whole test.
+
+**Not done:** the blasting charge and the Field, both agreed, both next.
+`interact.js` is still five questions in one file — the split is planned for
+when the charge lands, since it touches the same functions.

@@ -9,6 +9,48 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+## [0.6.0] — 2026-09-24
+
+The game can be put down and picked up again. Three save files, a front door,
+an equipment row, and a page that says who you are.
+
+### Added
+
+- **Saves.** Three slots in `localStorage`. A save is the delta — every field of
+  the state that does not begin with an underscore — a few hundred bytes, not
+  the frame log. Written at natural checkpoints: a room crossed, a screen closed,
+  a sale, a death, and on leaving the tab. A `SCHEMA` number changes only when
+  the delta's shape does; an older save is shown as such and can be deleted, and
+  is never silently reinterpreted.
+- **A title screen.** Choose one of three files or delete one. An empty slot is
+  a fresh world with its own seed.
+- **The equipment row.** Five labelled slots above the pack — weapon, tool,
+  armor, helm, accessory. What sits in a slot is worn or wielded and still
+  counts against bulk. `A` on a weapon in the pack equips it and the old blade
+  takes its place; `A` on a slot unequips. You swing what is in the slot.
+- **A status page.** Tab from the pack. Stats, health, scrap, bulk, deaths,
+  rooms, records read, what you wield and wear. Read, not operated.
+- `roomView(s)` — what is in the room, computed **once per tick** and cached on
+  a transient `_view` field. It was rebuilt five times a tick, each time turning
+  ever-growing lists into fresh Sets.
+- **Transient fields.** Anything beginning `_` is derived: never hashed, never
+  saved, rebuilt on demand. `toDelta(s)` is the save serialiser and the gates
+  measure size with it.
+- `plans/review-2026-09-24.md` — a full pass against the brief, with the
+  recommendations on `interact.js`, seed sweeps, `pagecheck.html` and the docs
+  ratio. Backlog entry 11: measure it on the Retroid.
+
+### Changed
+
+- You start with the sword **equipped**, not in the pack. Drop-load jettisons
+  the pack whole and leaves the row alone. Death empties both.
+- Tab flips between the pack and status pages while the menu is open; it still
+  closes a container.
+
+### Fixed
+
+- Nothing on disk survived a page reload. Now it does.
+
 ### Changed
 
 - **Objects keep their own colour; architecture keeps the region's.** Any pack

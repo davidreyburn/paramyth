@@ -163,6 +163,7 @@ function delve(floor, room) {
   // Being disarmed is a bad position, not a dead stop.
   const bare = delve(den.floor, den.room);
   bare.carried = [];
+  bare.equipped.weapon = null;                 // the row is where the blade lives now
   step(bare, setVerb(0, VERB.ATTACK, true), [combat]);
   ok('empty hands still swing', !!bare.swing && !bare.say);
   ok('and they are fists', weaponOf(bare).label === UNARMED.label, weaponOf(bare).label);
@@ -171,7 +172,7 @@ function delve(floor, room) {
   // blade's arc in both dimensions, or "unarmed" is just a weaker sword.
   const armedBox = (() => { const t = delve(den.floor, den.room); t.facing = 1;
     t.swing = { at: t.tick, dir: 1, hit: [] }; return hitBox(t); })();
-  const fistBox = (() => { const t = delve(den.floor, den.room); t.carried = []; t.facing = 1;
+  const fistBox = (() => { const t = delve(den.floor, den.room); t.carried = []; t.equipped.weapon = null; t.facing = 1;
     t.swing = { at: t.tick, dir: 1, hit: [] }; return hitBox(t); })();
   const dim = (b) => [(b.x1 - b.x0) / UNITS, (b.y1 - b.y0) / UNITS];
   const [aw, ah] = dim(armedBox), [fw, fh] = dim(fistBox);
@@ -286,7 +287,8 @@ function delve(floor, room) {
   const runs = [4, 19].map((bulk) => {
     const s = delve(den.floor, den.room);
     s.foes = [];
-    s.carried = [ref('sword', 9), ...Array.from({ length: bulk - 3 }, (_, i) => ref('key', i))];
+    // The issued blade is already in the row at bulk 3; keys make up the rest.
+    s.carried = Array.from({ length: bulk - 3 }, (_, i) => ref('key', i));
     const x0 = s.x;
     for (let i = 0; i < 60; i++) step(s, setVerb(0, VERB.RIGHT, true), SYSTEMS);
     return { bulk: carriedBulk(s), moved: s.x - x0 };
@@ -300,7 +302,7 @@ function delve(floor, room) {
 {
   const den = denRoom();
   const s = delve(den.floor, den.room);
-  s.carried = [ref('sword', 9), ref('gem', 1), ref('bones', 2)];
+  s.carried = [ref('gem', 1), ref('bones', 2)];    // the blade is in the row
   s.stash = [ref('crystal', 3)];
   const where = { floor: s.floor, room: s.room };
 
@@ -324,11 +326,11 @@ function delve(floor, room) {
 {
   const den = denRoom();
   const s = delve(den.floor, den.room);
-  s.carried = [ref('sword', 9), ref('gem', 1), ref('bones', 2)];
+  s.carried = [ref('gem', 1), ref('bones', 2)];
   step(s, setVerb(0, VERB.DROP, true), SYSTEMS);
-  ok('drop-load jettisons the cargo', s.dropped.length === 2, `${s.dropped.length} down`);
-  ok('and leaves you armed', s.carried.length === 1 && s.carried[0].kind === 'sword',
-     s.carried.map((r) => r.kind).join(','));
+  ok('drop-load jettisons the cargo', s.dropped.length === 2 && s.carried.length === 0, `${s.dropped.length} down`);
+  ok('and leaves you armed — the row is not cargo', !!bestWeapon(s) && bestWeapon(s).kind === 'sword',
+     bestWeapon(s) ? bestWeapon(s).kind : 'fists');
 }
 
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all combat gates passed\n');
