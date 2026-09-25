@@ -11,7 +11,7 @@
 
 import { VERB, hasVerb } from '../../sim/frame.js';
 import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, swingPhase, friendly } from '../../sim/state.js';
-import { blocked, solidBodies, tileOf, HALF } from '../../sim/space.js';
+import { blocked, solidBodies, actorBodies, touching, tileOf, HALF } from '../../sim/space.js';
 import { roomTiles, TILE, COLS } from '../../core/gen.js';
 import { FOE } from '../../core/foes.js';
 import { weaponOf, hitBox, inHitBox } from '../../sim/interact.js';
@@ -65,19 +65,22 @@ export function combat(s, frame) {
 
     // Pursuit, one axis at a time so it slides along walls instead of sticking.
     // Integer steps only: a foe position is never fractional, and a gate says so.
+    // Walls, barrels, the player, and every OTHER foe. A dog stops at you now
+    // instead of standing inside you, and a pack cannot stack into one dog.
+    const walls = [...bodies, ...actorBodies(s, f.id)];
     const dx = Math.sign(s.x - f.x), dy = Math.sign(s.y - f.y);
     const step = def.speed;
     let nx = f.x, ny = f.y;
-    if (dx && !blocked(grid, bodies, nx + dx * step, ny)) nx += dx * step;
-    if (dy && !blocked(grid, bodies, nx, ny + dy * step)) ny += dy * step;
+    if (dx && !blocked(grid, walls, nx + dx * step, ny)) nx += dx * step;
+    if (dy && !blocked(grid, walls, nx, ny + dy * step)) ny += dy * step;
     if (nx !== f.x || ny !== f.y) out.push({ k: 'moveFoe', id: f.id, x: nx, y: ny });
 
-    // Contact. Touching costs you health and, more expensively, cargo — the
-    // fragility roll is what makes a fight cost the haul and not just the bar.
-    const touching = Math.abs(s.x - nx) < HALF * 2 && Math.abs(s.y - ny) < HALF * 2;
+    // Contact is TOUCHING — bodies cannot overlap any more, so an overlap test
+    // here would never fire. It costs you health and, more expensively, cargo:
+    // the fragility roll is what makes a fight cost the haul and not just the bar.
     const ready = s.tick - (f.bitAt || -9999) >= def.bite;
     const grace = s.tick - s.hurtAt < HURT_INVULN;
-    if (touching && ready && !grace) out.push({ k: 'bite', id: f.id, n: def.damage });
+    if (touching(s.x, s.y, nx, ny) && ready && !grace) out.push({ k: 'bite', id: f.id, n: def.damage });
   }
 
   return out;

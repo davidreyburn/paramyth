@@ -10,7 +10,7 @@ import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
          haulValue, assessed, dropTile, tier, mostFragile, bestWeapon, equippedRefs,
          APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
          PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './interact.js';
-import { blocked, solidBodies, solidTiles, HALF, centreOf } from './space.js';
+import { blocked, solidBodies, solidTiles, actorBodies, PLAYER_ID, HALF, centreOf } from './space.js';
 import { hchance } from '../core/addr.js';
 import { fragilityOf } from '../core/items.js';
 import { foesOf, FOE } from '../core/foes.js';
@@ -121,6 +121,28 @@ export function enterRoom(s) {
       const p = centreOf(f.tile);
       return { id: f.id, kind: f.kind, x: p.x, y: p.y, hp: FOE[f.kind].hp, awake: false, bitAt: -9999 };
     });
+
+  // You arrive where the stair or door puts you; that is a promise. A foe whose
+  // roster tile coincides is the one that moves — to the nearest free tile,
+  // searched in rings so replay puts it in the same place.
+  const { grid } = roomTiles(s.seed, s.site, s.floor, s.room);
+  const solids = solidBodies(s);
+  for (const f of s.foes) {
+    const others = [...solids, ...actorBodies(s, f.id)];
+    if (!blocked(grid, others, f.x, f.y)) continue;
+    const tx = Math.floor(f.x / (TILE*UNITS)), ty = Math.floor(f.y / (TILE*UNITS));
+    let moved = false;
+    for (let r = 1; r < Math.max(COLS, ROWS) && !moved; r++)
+      for (let ddy = -r; ddy <= r && !moved; ddy++)
+        for (let ddx = -r; ddx <= r && !moved; ddx++) {
+          if (Math.max(Math.abs(ddx), Math.abs(ddy)) !== r) continue;
+          const x = tx + ddx, y = ty + ddy;
+          if (x < 1 || y < 1 || x >= COLS-1 || y >= ROWS-1) continue;
+          const p = centreOf(y * COLS + x);
+          if (grid[y*COLS + x] !== T.FLOOR || blocked(grid, others, p.x, p.y)) continue;
+          f.x = p.x; f.y = p.y; moved = true;
+        }
+  }
 }
 
 // Everything you drop when you die, including the blade. `putDown` refuses when
@@ -343,10 +365,12 @@ export function step(s, frame, systems = []) {
   // round after it. That lag is the whole effect.
   s.lampDir = lampStep(s.lampDir, s.facing);
 
+  // Walls, barrels, and whatever is hunting you — all in one list.
+  const walls = [...solids, ...actorBodies(s, PLAYER_ID)];
   const nx = s.x + dx * speed;
-  if (dx && !blocked(grid, solids, nx, s.y)) s.x = nx;
+  if (dx && !blocked(grid, walls, nx, s.y)) s.x = nx;
   const ny = s.y + dy * speed;
-  if (dy && !blocked(grid, solids, s.x, ny)) s.y = ny;
+  if (dy && !blocked(grid, walls, s.x, ny)) s.y = ny;
 
   // Leaving the room. The border is solid except where a link opens it, so
   // crossing the bounds is only possible through a real doorway.

@@ -44,6 +44,26 @@ export function slide(grid, bodies, x, y, dx, dy) {
   return { x: nx, y: ny };
 }
 
+// Actors are bodies too. Until now `blocked()` walked walls and barrels and
+// nothing else, so the dog's move was never tested against the player — which
+// is why it walked INTO you. Every actor is a HALF-extent box; a mover passes
+// everyone but itself. Never cached: they move every tick.
+export const PLAYER_ID = 'player';
+export function actorBodies(s, exceptId) {
+  const out = [];
+  if (exceptId !== PLAYER_ID) out.push({ cx: s.x, cy: s.y, f: HALF, id: PLAYER_ID });
+  for (const f of s.foes) if (f.id !== exceptId) out.push({ cx: f.x, cy: f.y, f: HALF, id: f.id });
+  return out;
+}
+
+// Contact is TOUCHING, not overlap. Two bodies that cannot overlap stop just
+// short of 2·HALF apart on the axis of approach, so an overlap test would never
+// fire again and the dog would be silently harmless. The margin covers one
+// movement step plus a little.
+export const TOUCH = 2 * UNITS;
+export const touching = (ax, ay, bx, by) =>
+  Math.abs(ax - bx) < 2 * HALF + TOUCH && Math.abs(ay - by) < 2 * HALF + TOUCH;
+
 // Tile coordinates of a subpixel position. One definition, because three
 // different roundings of the same idea is how a prompt and a button disagree.
 export const tileOf = (x, y) => [Math.floor(x / (TILE*UNITS)), Math.floor(y / (TILE*UNITS))];

@@ -259,6 +259,25 @@ repo. One afternoon, whenever it is picked up.
 
 **Status:** backlog (DJ, 2026-09-24).
 
+## 12. The Wall-Slam
+
+> The thing you hit does not stop where you hit it. It stops where the wall is,
+> and the wall has an opinion.
+
+**Rests on:** knockback (`plans/foe-behaviour.md`), whose `slide()` already
+knows when a shove was stopped short of its full travel.
+
+**Shape (DJ, 2026-09-24):** a foe knocked into a wall takes a radial impact
+effect, extra damage, and a **stun or guard-break** status. It is also one of
+the two ways a Rot-type foe *bursts* on death, which raises its chance of
+producing Appendages — the other being a blunt weapon, also unbuilt.
+
+**Why it is here:** "probably not MVP 1 material" — DJ. The hook is cheap to
+leave in place; the effect, the status and the corruption tie-in are three
+systems that do not exist yet.
+
+**Status:** long-term, agreed in principle.
+
 ## Runners-up
 
 *DJ: "all worthy of backlog adds."*

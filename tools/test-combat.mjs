@@ -239,7 +239,8 @@ function delve(floor, room) {
   // The invulnerability window. Without it, contact is a shredder.
   const s = delve(den.floor, den.room);
   const f = s.foes[0];
-  f.awake = true; f.x = s.x; f.y = s.y;
+  const { HALF: H0 } = await import('../sim/space.js');
+  f.awake = true; f.x = s.x + 2 * H0; f.y = s.y;      // touching, not inside — bodies cannot overlap now
   let bites = 0;
   for (let i = 0; i < HURT_INVULN; i++) {
     for (const a of combat(s, 0)) { if (a.k === 'bite') bites++; applyAction(s, a); }
@@ -331,6 +332,166 @@ function delve(floor, room) {
   ok('drop-load jettisons the cargo', s.dropped.length === 2 && s.carried.length === 0, `${s.dropped.length} down`);
   ok('and leaves you armed — the row is not cargo', !!bestWeapon(s) && bestWeapon(s).kind === 'sword',
      bestWeapon(s) ? bestWeapon(s).kind : 'fists');
+}
+
+// --- bodies cannot overlap ----------------------------------------------------
+// Until now blocked() walked walls and barrels and nothing else, so a dog's
+// move was never tested against the player. That is why it walked INTO you.
+{
+  const { HALF, TOUCH, touching, actorBodies, blocked, centreOf } = await import('../sim/space.js');
+  const { roomTiles, floorCount, floorPlan, COLS: C, ROWS: R, T: TT } = await import('../core/gen.js');
+  const { foesOf } = await import('../core/foes.js');
+  const { solidBodies } = await import('../sim/space.js');
+  const den = denRoom();
+  const overlap = (a, b) => Math.abs(a.x - b.x) < 2 * HALF && Math.abs(a.y - b.y) < 2 * HALF;
+
+  // A straight run of clear floor from the player, in whichever cardinal
+  // direction has one. A foe planted by guesswork ended up inside a wall and
+  // "could not walk through the player" because it could not walk at all.
+  const runFrom = (s, tiles) => {
+    const { grid } = roomTiles(s.seed, s.site, s.floor, s.room);
+    const bodies = solidBodies(s);
+    const px = Math.floor(s.x / (TILE*UNITS)), py = Math.floor(s.y / (TILE*UNITS));
+    for (const [dx, dy] of [[1,0],[-1,0],[0,1],[0,-1]]) {
+      let clear = true;
+      for (let k = 1; k <= tiles && clear; k++) {
+        const x = px + dx*k, y = py + dy*k;
+        if (x < 1 || y < 1 || x >= C-1 || y >= R-1 || grid[y*C + x] !== TT.FLOOR) clear = false;
+        else if (blocked(grid, bodies, s.x + dx*k*TILE*UNITS, s.y + dy*k*TILE*UNITS)) clear = false;
+      }
+      if (clear) return { x: s.x + dx*tiles*TILE*UNITS, y: s.y + dy*tiles*TILE*UNITS, dx, dy,
+                          verb: dx > 0 ? VERB.RIGHT : dx < 0 ? VERB.LEFT : dy > 0 ? VERB.DOWN : VERB.UP };
+    }
+    return null;
+  };
+
+  // The player cannot walk through a foe.
+  {
+    const s = delve(den.floor, den.room);
+    const f = s.foes[0];
+    const run = runFrom(s, 3);
+    ok('there is a clear run to test against', !!run, run ? `${run.dx},${run.dy}` : 'none from spawn');
+    if (run) {
+      f.awake = false;                                // it stays put; no systems run
+      f.x = run.x; f.y = run.y;
+      const d0 = Math.abs(s.x - f.x) + Math.abs(s.y - f.y);
+      for (let i = 0; i < 300; i++) step(s, setVerb(0, run.verb, true), []);
+      const d1 = Math.abs(s.x - f.x) + Math.abs(s.y - f.y);
+      ok('the player cannot walk through a foe', d1 < d0 && d1 >= 2 * HALF && !overlap(s, f),
+         `closed from ${(d0/UNITS).toFixed(0)}px to ${(d1/UNITS).toFixed(1)}px and stopped`);
+    }
+  }
+
+  // A foe cannot walk through the player.
+  {
+    const s = delve(den.floor, den.room);
+    const f = s.foes[0];
+    const run = runFrom(s, 4);
+    if (run) {
+      // Only this foe: a second, sleeping dog on the run once stopped the mover
+      // two tiles short, and the gate passed without testing what it claims.
+      s.foes = [f];
+      f.awake = true; f.x = run.x; f.y = run.y;
+      // A dog that reaches you bites every 45 ticks, and six bites is a dead
+      // player: die() moves you to camp and every measurement below becomes
+      // the distance from the camp spawn to a frozen foe. That read as
+      // "50.3px" twice and was blamed on geometry. So: the run is as long as
+      // arrival needs and no longer, and surviving it is asserted.
+      s.hp = 1000;
+      let overlapped = 0, moved = false;
+      const fx0 = f.x, fy0 = f.y;
+      for (let i = 0; i < 160; i++) {
+        for (const a of combat(s, 0)) applyAction(s, a);
+        if (f.x !== fx0 || f.y !== fy0) moved = true;
+        if (overlap(s, f)) overlapped++;
+        s.tick++;
+      }
+      ok('the fixture survived to be measured', !s.deaths && s.floor === den.floor, `deaths ${s.deaths || 0}, floor ${s.floor}`);
+      const gap = Math.max(Math.abs(s.x - f.x), Math.abs(s.y - f.y));
+      const arrived = gap < 2 * HALF + TOUCH + FOE.dog.speed;
+      ok('a foe cannot walk through the player', moved && overlapped === 0 && gap >= 2 * HALF && arrived,
+         `${overlapped} overlapping ticks; it closed to ${(gap / UNITS).toFixed(1)}px and stopped there`);
+    } else ok('a foe cannot walk through the player', false, 'no clear run from spawn');
+  }
+
+  // Two foes cannot stack into one.
+  {
+    const s = delve(den.floor, den.room);
+    const a = s.foes[0];
+    const run = runFrom(s, 7);
+    const near = run ? { x: s.x + run.dx * 5 * TILE * UNITS, y: s.y + run.dy * 5 * TILE * UNITS } : { x: s.x - 5 * TILE * UNITS, y: s.y };
+    a.awake = true; a.x = near.x; a.y = near.y;
+    const b = { id: 'second', kind: 'dog', x: run ? run.x : a.x - 2 * TILE * UNITS, y: run ? run.y : s.y, hp: 6, awake: true, bitAt: -9999 };
+    s.foes = [a, b];
+    s.hp = 1000;                                       // two dogs kill a fixture in 180 ticks; see above
+    const a0 = { x: a.x, y: a.y }, b0 = { x: b.x, y: b.y };
+    let stacked = 0;
+    for (let i = 0; i < 250; i++) {
+      for (const act of combat(s, 0)) applyAction(s, act);
+      if (overlap(a, b)) stacked++;
+      s.tick++;
+    }
+    ok('that fixture survived too', !s.deaths && s.floor === den.floor, `deaths ${s.deaths || 0}`);
+    const bothMoved = (a.x !== a0.x || a.y !== a0.y) && (b.x !== b0.x || b.y !== b0.y);
+    ok('two foes cannot occupy the same space', bothMoved && stacked === 0,
+       `${stacked} stacked ticks; ${bothMoved ? 'both closed on you' : 'one never moved'}`);
+    ok('and neither is inside the player', !overlap(s, a) && !overlap(s, b));
+  }
+
+  // A bite fires from TOUCHING. Overlap is no longer a state that can arise,
+  // so the old test would have gone silently harmless.
+  {
+    const at = (gap) => {
+      const s = delve(den.floor, den.room);
+      const f = s.foes[0];
+      f.awake = true; f.bitAt = -9999; s.hurtAt = -9999;
+      f.x = s.x + gap; f.y = s.y;
+      const acts = combat(s, 0);
+      return { bit: acts.some((x) => x.k === 'bite'), moved: acts.some((x) => x.k === 'moveFoe'), s, f };
+    };
+    const flush = at(2 * HALF);
+    ok('a foe flush against you bites', flush.bit);
+    ok('and does not step into you to do it', !flush.moved, flush.moved ? 'it moved' : 'held its ground');
+    const far = at(2 * HALF + TOUCH + FOE.dog.speed + 1);
+    ok('a foe a step and a margin away does not bite yet', !far.bit);
+    ok('but it does close the gap', far.moved);
+    ok('touching is a hard boundary, not a fuzzy one',
+       touching(0, 0, 2 * HALF + TOUCH - 1, 0) && !touching(0, 0, 2 * HALF + TOUCH, 0));
+  }
+
+  // Arriving in a room never lands you inside a foe — the foe moves, you do
+  // not, because where the stair puts you is a promise.
+  {
+    let checked = 0, inside = 0, offFloor = 0, drift = 0;
+    for (let site = 0; site < 24; site++)
+      for (let fl = 0; fl < floorCount(SEED, site); fl++)
+        for (const room of floorPlan(SEED, site, fl).cells) {
+          const roster = foesOf(SEED, site, fl, room);
+          if (!roster.length) continue;
+          const { grid } = roomTiles(SEED, site, fl, room);
+          for (const r of roster) {
+            // Worst case: you arrive exactly on its roster tile.
+            const s = createState(SEED);
+            s.site = site; s.floor = fl; s.room = room;
+            const p = centreOf(r.tile); s.x = p.x; s.y = p.y;
+            enterRoom(s);
+            checked++;
+            for (const f of s.foes) {
+              if (overlap(s, f)) inside++;
+              const tx = Math.floor(f.x / (TILE*UNITS)), ty = Math.floor(f.y / (TILE*UNITS));
+              if (grid[ty*C + tx] !== TT.FLOOR) offFloor++;
+            }
+            // And the nudge is arithmetic: doing it again lands them in the same place.
+            const t = createState(SEED);
+            t.site = site; t.floor = fl; t.room = room; t.x = p.x; t.y = p.y;
+            enterRoom(t);
+            if (JSON.stringify(s.foes.map((f) => [f.x, f.y])) !== JSON.stringify(t.foes.map((f) => [f.x, f.y]))) drift++;
+          }
+        }
+    ok('arriving on a foe never leaves you inside it', checked > 0 && inside === 0, `${inside}/${checked} arrivals`);
+    ok('a nudged foe still stands on floor', offFloor === 0, `${offFloor} off floor`);
+    ok('and the nudge is deterministic', drift === 0, `${drift} differed on replay`);
+  }
 }
 
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all combat gates passed\n');

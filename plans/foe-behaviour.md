@@ -211,15 +211,23 @@ One MINOR release — *0.7.0, the dog learns to hunt* — in five commits. The
 `interact.js` split from the review could ride along, since this touches
 `weaponOf` and `hitBox`, but it is optional and should not gate the release.
 
-## Open questions
+## Open questions — resolved (DJ, 2026-09-24)
 
-1. **Does a lunge that connects shove the player?** Same machinery, one more
-   action. It would make a bite feel like a bite. Not assumed.
-2. **Does knockback into a wall cost the foe extra?** A natural reward for
-   fighting with your back to open floor and theirs to masonry. Not assumed.
-3. **Is circle-and-lunge the dog's pattern, or the template for melee foes?**
-   Ghouls swarm and grab; Sentinels block; a War Child stalks. The machine is
-   general — modes are data — but the *policies* differ. Assumed: the dog gets
-   this; the table shape is what the others reuse.
-4. **Rupture on death** — the design's dog "sprays corruption when slain". Out
-   of scope here; it is the corruption system's first customer.
+1. **Does a lunge that connects shove the player?** Yes. Knockback runs both
+   ways: an opponent's move can knock the player back. Same machinery — the
+   player gains `vx, vy` and a `staggerAt`, applied through `slide()` like a
+   foe's. The dog's lunge carries a `knock`; a bite that lands shoves you.
+2. **Knockback into a wall.** Long-term, not MVP: a wall-slam should produce a
+   radial impact effect, extra damage, and a stun or guard-break status. On the
+   backlog as entry 12. The `slide()` return already tells us a shove was
+   stopped short, which is the hook.
+3. **Template or dog-only?** Template. **This is the foundation of the melee
+   system.** The mode machine is the shape every melee foe uses; each kind
+   supplies its own policy — orbit radius, when to commit, what recovery looks
+   like. Ghouls, Sentinels and War Children are tables, not new machines.
+4. **Rupture** belongs to the corruption system, and its rule is now known:
+   **most Rot-type foes have a chance of producing Appendages on death, higher
+   if the creature "burst"** — through a blunt weapon (not yet implemented) or a
+   wall-slam. So the death action needs to carry *how* it died, and a `blunt`
+   weapon property and the wall-slam signal from (2) are both inputs to a system
+   that does not exist yet. Recorded so those two hooks are left in place.

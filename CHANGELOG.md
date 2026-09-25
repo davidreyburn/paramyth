@@ -9,6 +9,15 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Added
+
+- **Actors are solid to each other.** The player is blocked by every foe; each
+  foe by the player and every other foe. Until now `blocked()` walked walls and
+  barrels and nothing else, so a dog's move was never tested against you — which
+  is why it walked *into* you. Contact is now *touching*, not overlap, because
+  overlap can no longer happen. Arriving in a room on a foe's tile nudges the
+  foe, never you. Step 0 of `plans/foe-behaviour.md`.
+
 ### Fixed
 
 - `npm start` on a busy port printed an `EADDRINUSE` stack trace. It now probes
