@@ -56,7 +56,12 @@ Also still open: a **foreign** reference names a site that computes but that
 nothing yet walks to. Those dead ends close when the Field has more than one
 mouth, not before.
 
-### Threat — begun in 0.5.0
+### Threat — begun in 0.5.0; the dog learns to hunt next
+The dog is a proximity tax today: it walks into you and bites on a timer.
+`plans/foe-behaviour.md` plans circle → strike → back off → prepare as a mode
+machine in the delta, and knockback from a weapon's `knock` over a foe's
+`weight`. Four commits, one MINOR release. The encumbrance gates get rewritten
+around *breaking contact* rather than pace.
 One enemy of eight, one weapon, contact damage, the swing, death and a full
 drop. The claim that damage costs **cargo** rather than only health is built and
 gated: the encumbrance speed table finally reaches the movement path, so a dog
