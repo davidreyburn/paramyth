@@ -9,6 +9,16 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+## [0.6.1] — 2026-09-24
+
+### Fixed
+
+- **0.6.0 was tagged with `check.sh` red.** The items suite failed to import
+  `bestWeapon` for a new equipment gate. The game itself was fine — the browser
+  gates had passed and nothing in `core/`, `sim/` or `render/` was wrong — but a
+  tag with a failing suite behind it breaks the one rule this project has. The
+  import is fixed; nothing else changes.
+
 ## [0.6.0] — 2026-09-24
 
 The game can be put down and picked up again. Three save files, a front door,

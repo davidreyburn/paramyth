@@ -991,3 +991,30 @@ bits that rose this tick, and that is the whole test.
 **Not done:** the blasting charge and the Field, both agreed, both next.
 `interact.js` is still five questions in one file — the split is planned for
 when the charge lands, since it touches the same functions.
+
+---
+
+## 2026-09-24 — v0.6.0 went out red
+
+**Lesson:** a pipe reports the exit status of its last command. `./check.sh |
+grep` told the `&&` chain that grep had found something, not that the gates had
+passed.
+
+**What.** The release chain was fix → check.sh → commit → tag → push, joined
+with `&&` so a failure anywhere would stop it before git. Two things defeated
+that. The Python fix ended with a newline rather than `&&`, so its failed assert
+did not stop the chain. And `./check.sh 2>&1 | grep -E …` — the grep succeeded,
+so the chain continued past a suite that had thrown. The tag landed on a commit
+where `tools/test-items.mjs` could not run.
+
+**What was actually broken.** One missing import in one test file. The game was
+fine; the browser gates had passed minutes earlier and nothing under `core/`,
+`sim/` or `render/` was wrong. That is the only reason this is a patch release
+and not a rollback.
+
+**Outcome.** 0.6.1 fixes the import and nothing else. The tag is not moved —
+published tags stay put, and a red release is a fact worth keeping in the
+history rather than erasing. The release step now judges `check.sh` by its own
+exit status (`./check.sh > log; rc=$?`), and the fix step joins the chain with
+`&&` like everything after it. The clever one-shot release was the mistake; two
+round trips would have cost forty seconds.

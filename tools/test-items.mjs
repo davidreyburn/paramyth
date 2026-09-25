@@ -8,7 +8,7 @@ import { createState, spawnIn, toDelta, UNITS } from '../sim/state.js';
 import { step, solidTiles, solidBodies } from '../sim/step.js';
 import { VERB, setVerb } from '../sim/frame.js';
 import { visible, reachable, prompt, carriedBulk, tier, keyOf, containerItems,
-         haulValue, stationAt, dropTile, BULK_BUDGET, STASH_SLOTS } from '../sim/interact.js';
+         haulValue, stationAt, dropTile, BULK_BUDGET, STASH_SLOTS, bestWeapon } from '../sim/interact.js';
 import { hashState } from '../sim/state.js';
 import { chainFor } from '../sim/interact.js';
 
