@@ -66,5 +66,24 @@ for (const f of ['tileset-sheet.html']) {
   ok('with no stack trace', !/EADDRINUSE|at Server\./.test(r.stderr));
 }
 
+// Installable. The manifest is linked, served as a manifest, names icons that
+// resolve, and the worker and the fullscreen module load. Over http on a LAN
+// none of this makes the app installable — only fullscreen-on-gesture works
+// there — but on localhost, https and in the APK it is what "Install" reads.
+{
+  const index = await (await fetch(`${base}/app/`)).text();
+  ok('the page links a manifest', /<link rel="manifest" href="\.\/manifest\.webmanifest">/.test(index));
+  const m = await fetch(`${base}/app/manifest.webmanifest`);
+  ok('the manifest is served as one', m.ok && /manifest\+json/.test(m.headers.get('content-type') || ''), m.headers.get('content-type'));
+  const man = m.ok ? await m.json() : {};
+  ok('and asks for fullscreen, landscape', man.display === 'fullscreen' && man.orientation === 'landscape');
+  let icons = 0;
+  for (const ic of man.icons || []) { const r = await fetch(`${base}/app/${ic.src}`); if (r.ok && /image\/png/.test(r.headers.get('content-type') || '')) icons++; }
+  ok('every icon it names resolves as a PNG', icons === (man.icons || []).length && icons >= 2, `${icons} icons`);
+  for (const f of ['sw.js', 'fullscreen.js']) { const r = await fetch(`${base}/app/${f}`); ok(`app/${f} loads`, r.ok && /javascript/.test(r.headers.get('content-type') || '')); }
+  const sw = await (await fetch(`${base}/app/sw.js`)).text();
+  ok('the worker caches nothing', !/caches\.|cache\.put|CacheStorage/.test(sw), 'a cache would go stale behind a zero-build module graph');
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all server gates passed\n');
 process.exit(failures ? 1 : 0);

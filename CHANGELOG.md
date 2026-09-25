@@ -11,6 +11,13 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **Fullscreen, and an installable app** (`plans/pwa-fullscreen.md`). Tap or
+  any key at the title, or F at any time, asks for fullscreen and a landscape
+  lock; refusals print on the title. A manifest (fullscreen, landscape, the
+  sword as icon at 192 and 512, built from the project sheet by
+  `tools/build-icons.mjs`) and a service worker that caches nothing, registered
+  only in a secure context — over LAN http only the fullscreen part applies;
+  install is for localhost, https and the APK. Server gates cover all of it.
 - **The Field** (`plans/field-2026-09-25.md`). The surface is a floor like the
   others: six rooms, all linked, all present. Room 0 is the Company Camp,
   authored as before but with its east and south sides open. The other five are

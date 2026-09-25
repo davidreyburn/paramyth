@@ -5,6 +5,7 @@ import { step } from '../sim/step.js';
 import combat from '../systems/combat/index.js';
 import { VERB, VERB_NAMES, hasVerb } from '../sim/frame.js';
 import { createInput } from './input.js';
+import { goFullscreen, toggleFullscreen, isFullscreen, standalone } from './fullscreen.js';
 import { createRenderer } from '../render/canvas.js';
 import { loadPack } from '../render/tileset.js';
 import { roomTiles, floorPlan, floorCount } from '../core/gen.js';
@@ -33,6 +34,20 @@ let slot = -1;
 let state = null;
 let SEED = 0;
 const title = { cur: 0, confirm: -1, slots: listSlots(), note: '', last: 0 };
+
+// Fullscreen on the first gesture at the title, and F to toggle any time. A
+// pad button is not a gesture the browser will honour, so the title says
+// 'tap'. Refusals are printed on the title, never swallowed.
+const fullscreenNote = (r) => { title.note = r.ok ? '' : `fullscreen refused: ${r.why}`; };
+if (!standalone()) title.note = 'tap the screen or press F for fullscreen';
+addEventListener('pointerdown', () => { if (!isFullscreen()) goFullscreen().then(fullscreenNote); }, { passive: true });
+addEventListener('keydown', (e) => {
+  if (e.code === 'KeyF') toggleFullscreen().then(fullscreenNote);
+  else if (mode === 'title' && !isFullscreen() && !standalone()) goFullscreen().then(fullscreenNote);
+});
+// Installable, where the page is a secure context (localhost, https, the APK).
+// Over plain http on a LAN this is simply skipped; fullscreen above still works.
+if ('serviceWorker' in navigator && isSecureContext) navigator.serviceWorker.register('./sw.js').catch(() => {});
 let lastSaved = '';
 
 function begin(n) {
