@@ -465,7 +465,8 @@ export function createRenderer(canvas, pack = null) {
       const crouch = f.mode === 'lunge' && def && age < def.lungeWindup;
       const dash = f.mode === 'lunge' && !crouch;
       const stagger = f.mode === 'stagger';
-      let sx = 1, sy = 1, dy = 0, colour = '#c2836b';
+      // The kind's own colour comes from the pack; the modes tint over it.
+      let sx = 1, sy = 1, dy = 0, colour = (art && art.tone) || '#c2836b';
       if (f.mode === 'asleep') colour = '#6b6357';
       else if (crouch) { sx = 1.3; sy = 0.65; dy = 3; colour = P.ember; }
       else if (dash) { const alongX = Math.abs(f.aimX - f.x) >= Math.abs(f.aimY - f.y); sx = alongX ? 1.45 : 0.8; sy = alongX ? 0.8 : 1.45; colour = P.ember; }

@@ -87,7 +87,10 @@ export function combat(s, frame) {
 
     if (f.mode === 'circle') {
       // Commit. The aim is where you are NOW; the dash will not follow you.
-      if (age >= circleFor(def, s.seed, f.id, f.modeAt)) {
+      // Commit on the clock — or, for a foe with a strike range, on the clock
+      // AND in reach. A Sentinel does not lurch at empty air.
+      const dist0 = octLen(rx, ry);
+      if (age >= circleFor(def, s.seed, f.id, f.modeAt) && (!def.strikeRange || dist0 <= def.strikeRange * UNITS)) {
         // The aim is the END of a fixed-length line through where you are NOW.
         // The dash will not follow you; it will run its length along that line.
         const [lx, ly] = steer(rx, ry, def.lungeSpeed * (def.lungeTicks - def.lungeWindup));
@@ -99,9 +102,11 @@ export function combat(s, frame) {
       // spirals in to regain it rather than strolling round a circle it is not
       // on. With equal weights its inward share was slower than a laden player,
       // and it never caught anyone who kept walking.
-      const dist = octLen(rx, ry), want = orbitFor(def, f.id, s.tick) * UNITS;
+      const dist = dist0, want = orbitFor(def, f.id, s.tick) * UNITS;
       const radial = dist > want + 4 * UNITS ? 3 : dist < want - 4 * UNITS ? -1 : 0;
-      const tangent = (spin) => steer(-ry * spin + rx * radial, rx * spin + ry * radial, def.speed);
+      // No orbit, no tangent: a foe that does not circle walks a straight line.
+      const tw = def.orbit ? 1 : 0;
+      const tangent = (spin) => steer(-ry * spin * tw + rx * radial, rx * spin * tw + ry * radial, def.speed);
       // A circle needs room to the side. Probe a whole tile along each tangent
       // rather than judging by whether a step moved: a wall lets a fraction of
       // a diagonal step through, and a dog judging by that crept forever in a

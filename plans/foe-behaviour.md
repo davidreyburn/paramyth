@@ -227,8 +227,8 @@ One MINOR release — *0.7.0, the dog learns to hunt* — in five commits. The
   two numbers, and they are the ones to move if it stops feeling right.
 - Numbers left as played: orbit 40 ± 14 over 120, circle 45–90, crouch 12,
   recover 30, stagger 15, dog walk 255.
-- Next for this system: a second policy table (a heavier, slower thing that
-  does not circle) to prove the machine is a template and not a dog.
+- ✓ (2026-09-25) The second policy table: the Broken Sentinel. No orbit, a
+  strike range, weight 6. The machine gained two knobs and no branches.
 
 ## Status after step 3 (2026-09-25)
 

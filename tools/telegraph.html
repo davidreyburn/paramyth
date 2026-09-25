@@ -8,7 +8,7 @@
   p { margin: 0 0 8px; color: #7b776f; }
   #status.bad { color: #d9673f; white-space: pre-wrap; }
 </style></head><body>
-<p>The dog in every mode, drawn by the game's own renderer and cropped around it. This is what a player has to read a sidestep from.</p>
+<p>A foe in every mode, drawn by the game's own renderer and cropped around it. This is what a player has to read a sidestep from.</p>
 <div id="status">loading…</div>
 <div id="row"></div>
 <script>
@@ -27,7 +27,10 @@ import { enterRoom } from '../sim/step.js';
 import { floorPlan, floorCount } from '../core/gen.js';
 import { foesOf, FOE } from '../core/foes.js';
 
-const S = Number(new URLSearchParams(location.search).get('scale')) || 4;
+const q = new URLSearchParams(location.search);
+const S = Number(q.get('scale')) || 4;
+const KIND = q.get('kind') || 'dog';
+if (!FOE[KIND]) throw new Error(`no such foe: ${KIND} (try ${Object.keys(FOE).join(', ')})`);
 const SEED = 0x1594;
 const pack = await loadPack('../assets/packs/onebit.json');
 
@@ -40,7 +43,7 @@ const modes = [
   ['asleep',  (f, s) => { f.mode = 'asleep'; }],
   ['circle',  (f, s) => { f.mode = 'circle'; }],
   ['crouch',  (f, s) => { f.mode = 'lunge'; f.modeAt = s.tick; f.aimX = s.x; f.aimY = s.y; }],
-  ['dash',    (f, s) => { f.mode = 'lunge'; f.modeAt = s.tick - FOE.dog.lungeWindup; f.aimX = s.x; f.aimY = s.y; }],
+  ['dash',    (f, s) => { f.mode = 'lunge'; f.modeAt = s.tick - FOE[KIND].lungeWindup; f.aimX = s.x; f.aimY = s.y; }],
   ['recover', (f, s) => { f.mode = 'recover'; f.modeAt = s.tick; }],
   ['stagger', (f, s) => { f.mode = 'stagger'; f.modeAt = s.tick; }],
 ];
@@ -53,6 +56,7 @@ for (const [name, set] of modes) {
   s.x = p.x; s.y = p.y; s.lamp = 900 * 256; s.tick = 100;
   enterRoom(s);
   const f = s.foes[0]; s.foes = [f];
+  f.kind = KIND; f.hp = FOE[KIND].hp;
   f.x = s.x + 40 * 256; f.y = s.y; f.modeAt = s.tick;
   set(f, s);
   const full = document.createElement('canvas');
@@ -68,6 +72,6 @@ for (const [name, set] of modes) {
   const cap = document.createElement('figcaption'); cap.textContent = name; fig.appendChild(cap);
   row.appendChild(fig);
 }
-say(`${modes.length} modes, dog 40px east of you`);
+say(`${KIND}: ${modes.length} modes, 40px east of you — ?kind=${Object.keys(FOE).join('|')}`);
 window.__ready = true;
 </script></body></html>

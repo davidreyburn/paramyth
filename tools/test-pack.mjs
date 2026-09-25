@@ -7,6 +7,7 @@ import { roomTiles, floorPlan, COLS, ROWS } from '../core/gen.js';
 import { T } from '../core/gen.js';
 import { LIGHT_BANDS, LIGHT_BEYOND, TONES, P, FLICKER, LAMP_BACK, lampShape, SURFACE_LIFT } from '../core/palette.js';
 import { ERAS } from '../core/gen.js';
+import { FOE } from '../core/foes.js';
 
 let failures = 0;
 const ok = (name, cond, detail = '') => {
@@ -383,6 +384,12 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
   const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url)));
   ok('package.json and core/version.js agree', pkg.version === VERSION, `${pkg.version} vs ${VERSION}`);
   ok('the version is semver', /^\d+\.\d+\.\d+(-[0-9A-Za-z.-]+)?$/.test(VERSION), VERSION);
+}
+
+// Every foe the table knows has a glyph in the pack, or it draws as '?'.
+{
+  const bare = Object.keys(FOE).filter((k) => !(pack.foes && pack.foes[k] && pack.foes[k].glyph));
+  ok('every foe kind has art in the pack', bare.length === 0, bare.join(', ') || Object.keys(FOE).join(', '));
 }
 
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all asset gates passed\n');

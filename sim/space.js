@@ -92,8 +92,13 @@ export function steer(dx, dy, speed) {
 // v0 * den/(den-num); solving for v0 gives the impulse. Weight divides it.
 // Integer throughout; a rooted foe (weight Infinity) gets zero and stays put.
 export const KNOCK_DECAY = [3, 4];
+// Under this much travel a shove is nothing: no movement, no stagger. It is
+// what lets weight mean something short of Infinity — a sword's 24 over a
+// Sentinel's 6 is 4px, which is a tap, and a tap does not stagger a statue.
+export const KNOCK_MIN = 5;
 export function impulse(knock, weight) {
   if (!(weight > 0) || weight === Infinity) return 0;
+  if (knock < KNOCK_MIN * weight) return 0;
   return ((knock * UNITS * (KNOCK_DECAY[1] - KNOCK_DECAY[0])) / (KNOCK_DECAY[1] * weight)) | 0;
 }
 export function decay(v) {

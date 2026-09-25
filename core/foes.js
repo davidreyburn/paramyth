@@ -62,6 +62,33 @@ export const FOE = {
     knock: 12,
     staggerTicks: 15, // a quarter second helpless after a hit lands
   },
+
+  // design/combat-and-tools.md: “Enormous damage, slow, blocks a route rather
+  // than chasing. Walk around it.” DJ: it does not stir until you are within
+  // its radius, then comes slowly and straight; much heavier, so only a heavy
+  // impact weapon moves it. The SAME machine as the dog — this table is the
+  // proof that it is a template — with no orbit, so it walks a line, and a
+  // strike range, so it commits when it can reach you rather than on a clock.
+  sentinel: {
+    label: 'Broken Sentinel',
+    glyph: 'S',
+    hp: 16,
+    damage: 4,
+    speed: 120,              // slower than an overloaded player: you can always walk away
+    foot: 5,
+    wake: 3,                 // tiles: it stirs late
+    orbit: 0,                // no circle: straight at you
+    orbitWobble: 0, orbitPeriod: 1,
+    circleTicks: [20, 30],   // between blows, once in reach
+    strikeRange: 28,         // px: commits only from here
+    lungeWindup: 24,         // a long, visible wind-up
+    lungeSpeed: 400,
+    lungeTicks: 34,          // wind-up plus a 10-tick lurch: 15px
+    recoverTicks: 40,
+    staggerTicks: 20,
+    weight: 6,               // a sword's 24 is a 4px tap: nothing. A maul's 48 is 8px: it moves.
+    knock: 24,               // its blow throws you a tile
+  },
 };
 
 export const foeAt = (kind) => FOE[kind];
@@ -126,7 +153,10 @@ export function foesOf(seed, site, floor, room) {
         tile = t; break;
       }
       if (tile < 0) continue;
-      out.push({ id: `${site}:${floor}:${room}:${i}`, kind: 'dog', tile });
+      // Sentinels stand in the deep strata — the War Dead and below — one room
+      // in three that holds anything. The shallows are dogs.
+      const kind = depth >= 3 && hi(3, seed, site, floor, room, i, 0xd003) === 0 ? 'sentinel' : 'dog';
+      out.push({ id: `${site}:${floor}:${room}:${i}`, kind, tile });
     }
   }
 

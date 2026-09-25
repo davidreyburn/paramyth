@@ -155,7 +155,7 @@ avoided entirely by a player paying attention.
 | **Rot-Touched Dog** | Fast, packs, ruptures on death and sprays corruption | Kill at reach, or at a doorway |
 | **Barrowlands Ghoul** | Swarms; preferentially grabs the laden and the wounded | Be light, or be behind chalk |
 | **Red Hand Bandit** | Tactical, ranged, breaks when the leader falls — and loots corpses | Take the leader, or pay them |
-| **Broken Sentinel** | Enormous damage, slow, blocks a route rather than chasing | Walk around it. Almost always the answer |
+| **Broken Sentinel** | Enormous damage, slow, blocks a route rather than chasing. *Built (0.7.x): stirs at 3 tiles, walks at 120, strikes from 28px after a 24-tick wind-up, weight 6 — only a heavy impact weapon moves it* | Walk around it. Almost always the answer |
 | **Infected Appendage** | Small, erratic, fouls cargo | Probe-pole, or ignore |
 | **Rot-Touched Pilgrim** | Intelligent, infects by touch, and talks to you | Bearing. Dialogue is a real option |
 | **War Child** | Silent, fast, terrifying; rarely fought and never fairly | Light and distance. Do not fight this |

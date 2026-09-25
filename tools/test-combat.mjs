@@ -882,5 +882,105 @@ let runFrom;
   }
 }
 
+// --- the Broken Sentinel: the machine is a template ---------------------------
+// A second policy table, no second machine. It does not stir until you are
+// within its radius; then it comes slowly and straight; a sword does not move it.
+{
+  const { impulse, HALF, TOUCH, touching, octLen } = await import('../sim/space.js');
+  const { CAMP } = await import('../core/gen.js');
+  const { readFile } = await import('node:fs/promises');
+  const sen = FOE.sentinel, dog = FOE.dog;
+
+  // The proof of the template: the machine names no kind. Comments aside.
+  const src = (await readFile(new URL('../systems/combat/index.js', import.meta.url), 'utf8'))
+    .split('\n').filter((l) => !l.trim().startsWith('//')).map((l) => l.split('//')[0]).join('\n');
+  ok('the machine names no kind — a Sentinel is a table, not a branch', !/sentinel|'dog'|"dog"/.test(src));
+
+  // Open ground: the camp's top row, as the contact gates use.
+  const open = (gapPx, mode = 'asleep') => {
+    const s = createState(SEED); s.hp = 1000;
+    s.x = (6 * TILE + TILE / 2) * UNITS; s.y = (TILE + TILE / 2) * UNITS; s.facing = 1;
+    s.foes = [{ id: 'statue', kind: 'sentinel', x: s.x + gapPx * UNITS, y: s.y, hp: sen.hp,
+                mode, modeAt: s.tick, spin: 1, aimX: 0, aimY: 0, vx: 0, vy: 0 }];
+    return { s, f: s.foes[0] };
+  };
+  const run = (s, ticks, frame = 0) => { for (let i = 0; i < ticks; i++) step(s, frame, SYSTEMS); };
+
+  // It does not stir until you are within its radius.
+  {
+    const far = open((sen.wake + 1) * TILE);
+    const x0 = far.f.x; run(far.s, 90);
+    ok('a sentinel does not stir until you are within its radius', far.f.mode === 'asleep' && far.f.x === x0,
+       `${sen.wake + 1} tiles away: ${far.f.mode}, unmoved after 90 ticks`);
+    const near = open(sen.wake * TILE);
+    run(near.s, 2);
+    ok('and stirs when you are', near.f.mode !== 'asleep', `${sen.wake} tiles away: ${near.f.mode}`);
+  }
+
+  // Then it comes straight at you, slowly.
+  {
+    const { s, f } = open(100, 'circle');
+    const x0 = f.x, y0 = f.y;
+    let backwards = 0, prev = f.x;
+    for (let i = 0; i < 150; i++) { step(s, 0, SYSTEMS); if (f.x > prev) backwards++; prev = f.x; }
+    const closed = (x0 - f.x) / UNITS;
+    ok('then it comes at you', closed > 40 && backwards === 0, `closed ${closed.toFixed(0)}px in 150 ticks, never a step back`);
+    ok('in a straight line — it does not circle', Math.abs(f.y - y0) <= UNITS, `drifted ${(Math.abs(f.y - y0) / UNITS).toFixed(1)}px sideways`);
+    const [n, d] = LOAD.overloaded;
+    ok('and slowly: even overloaded you can walk away from it', sen.speed < ((SPEED * n) / d | 0), `${sen.speed} < ${(SPEED * n) / d | 0}`);
+  }
+
+  // It strikes only within reach — never at empty air.
+  {
+    const far = open(sen.strikeRange + 30, 'circle'); far.f.modeAt = far.s.tick - 1000;
+    ok('it does not lurch at empty air', !combat(far.s, 0).some((a) => a.k === 'setMode' && a.mode === 'lunge'));
+    const near = open(sen.strikeRange - 2, 'circle'); near.f.modeAt = near.s.tick - 1000;
+    ok('but commits when it can reach you', combat(near.s, 0).some((a) => a.k === 'setMode' && a.mode === 'lunge'));
+    // And the lurch connects from there.
+    let bit = false;
+    for (let i = 0; i < sen.lungeTicks + 2 && !bit; i++) { const hp = near.s.hp; step(near.s, 0, SYSTEMS); if (near.s.hp < hp) bit = true; }
+    ok('and the blow lands', bit, `from ${sen.strikeRange - 2}px`);
+  }
+
+  // A sword does not move it. A heavier blow would.
+  {
+    ok('a sword does not move a sentinel', impulse(KIND.sword.knock, sen.weight) === 0 && impulse(UNARMED.knock, sen.weight) === 0,
+       `${KIND.sword.knock} over weight ${sen.weight}`);
+    ok('a heavy impact weapon would', impulse(48, sen.weight) > 0, `knock 48: ${(impulse(48, sen.weight) * 4 / UNITS).toFixed(0)}px`);
+    ok('while a dog still moves to a fist', impulse(UNARMED.knock, dog.weight) > 0);
+    // In the simulation: hit it, and watch it neither stagger nor give ground.
+    // Underground — steel stays sheathed in camp, and a fixture there swung
+    // at nothing and reported a statue at full health as proof.
+    const den = denRoom();
+    const s = delve(den.floor, den.room); s.hp = 1000;
+    const f = s.foes[0]; s.foes = [f];
+    const way = runFrom(s, 2) || { dx: 1, dy: 0 };
+    f.kind = 'sentinel'; f.hp = sen.hp; f.mode = 'circle'; f.modeAt = s.tick;
+    f.x = s.x + way.dx * (2 * HALF + UNITS); f.y = s.y + way.dy * (2 * HALF + UNITS);
+    s.facing = way.dy < 0 ? 0 : way.dx > 0 ? 1 : way.dy > 0 ? 2 : 3;
+    const along = (b) => (b.x - f.x) * way.dx + (b.y - f.y) * way.dy;
+    const x0 = { x: f.x, y: f.y };
+    let staggered = false, gaveGround = false;
+    step(s, setVerb(0, VERB.ATTACK, true), SYSTEMS);
+    for (let i = 0; i < 30; i++) { step(s, 0, SYSTEMS); if (f.mode === 'stagger') staggered = true; if ((f.x - x0.x) * way.dx + (f.y - x0.y) * way.dy > 0) gaveGround = true; }
+    ok('so hitting one staggers nothing and gives no ground', f.hp < sen.hp && !staggered && !gaveGround,
+       `hp ${f.hp}/${sen.hp}, ${staggered ? 'staggered' : 'unmoved'}`);
+  }
+
+  ok('its blow hits harder and throws further than a dog\'s', sen.damage > dog.damage && sen.knock > dog.knock,
+     `${sen.damage} for ${sen.knock}px vs ${dog.damage} for ${dog.knock}px`);
+
+  // Where it stands: the deep strata, never the shallows.
+  {
+    let shallow = 0, deep = 0;
+    for (let site = 0; site < 24; site++)
+      for (let fl = 0; fl < floorCount(SEED, site); fl++)
+        for (const room of floorPlan(SEED, site, fl).cells)
+          for (const f of foesOf(SEED, site, fl, room)) if (f.kind === 'sentinel') { if (absDepth(fl) < 3) shallow++; else deep++; }
+    ok('sentinels stand in the deep strata', deep > 0, `${deep} below depth 3`);
+    ok('and never in the shallows', shallow === 0, `${shallow} above`);
+  }
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all combat gates passed\n');
 process.exit(failures ? 1 : 0);

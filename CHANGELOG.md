@@ -9,6 +9,22 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Added
+
+- **The Broken Sentinel (`S`).** The second foe, and the proof that the machine
+  is a template: a policy table in `core/foes.js`, no new branch in
+  `systems/combat/` (a gate reads the source and checks it names no kind). It
+  does not stir until you are within three tiles; then it comes slowly and
+  straight — slower than an overloaded player, so you can always walk away;
+  commits only within reach after a long wind-up; hits for 4 and throws you a
+  tile. Weight 6: a sword's shove is a 4px tap and does nothing; a heavy impact
+  weapon (knock ≥ 30 — not yet built) would move it. Stands in the deep strata,
+  never the shallows. Lichen-green in the pack; `tools/telegraph.html?kind=sentinel`.
+- Two template knobs it needed: `strikeRange` (commit when in reach, not on the
+  clock) and *no orbit means no tangent*. One general rule: a shove that would
+  travel under `KNOCK_MIN` (5px) is no shove — no movement, no stagger — which
+  is what lets weight mean something short of Infinity.
+
 ## [0.7.0] — 2026-09-25
 
 *The dog learns to hunt.* DJ, after a playtest: “a genuinely challenging combat

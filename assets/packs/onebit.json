@@ -358,7 +358,14 @@
   "_foes": "Enemies, keyed by the kinds in core/foes.js. A glyph, like the player, because the reference sheet's characters do not fit the tone either. Swap to a sprite by replacing this with { sheet, w, h, idle, walk }.",
   "foes": {
     "dog": {
-      "glyph": "D"
+      "glyph": "D",
+      "tone": "#c2836b",
+      "_": "warm: something alive and wrong"
+    },
+    "sentinel": {
+      "glyph": "S",
+      "tone": "#8a9472",
+      "_": "lichen on old stone (palette.lichen): a statue that moves"
     }
   },
   "_glazes": "See glazes._ below.",
