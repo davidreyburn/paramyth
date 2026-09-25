@@ -699,6 +699,44 @@ let runFrom;
     }
   }
 
+  // The orbit is not perfect: over a long circle it breathes in to within a
+  // blade's reach and out again. Chasing it can land a hit — and costs you.
+  {
+    const { orbitFor } = await import('../core/foes.js');
+    const reach = (KIND.sword.reach + 5) * UNITS;          // the box's far edge from your centre
+    const wants = [...Array(dog.orbitPeriod)].map((_, t) => orbitFor(dog, 'x', t));
+    ok('the orbit breathes', Math.min(...wants) <= dog.orbit - dog.orbitWobble + 1 && Math.max(...wants) >= dog.orbit + dog.orbitWobble - 1,
+       `${Math.min(...wants)}..${Math.max(...wants)}px over ${dog.orbitPeriod} ticks`);
+    ok('and at its closest it is just inside a sword', Math.min(...wants) * UNITS < reach && Math.min(...wants) * UNITS > 2 * HALF + TOUCH,
+       `${Math.min(...wants)}px vs ${reach / UNITS}px reach`);
+    ok('two dogs do not breathe in step', Math.abs(orbitFor(dog, '0:0:0:0', 0) - orbitFor(dog, '0:0:0:1', 0)) >= 4,
+       `${orbitFor(dog, '0:0:0:0', 0)}px vs ${orbitFor(dog, '0:0:0:1', 0)}px at the same tick`);
+
+    // The chase. You walk at it and swing whenever it is in the box; it runs
+    // its full machine. A chaser CAN land a hit, and is bitten for trying.
+    const { s, f, run } = arena(3);
+    if (run) {
+      const { hitBox: boxOf, inHitBox: inBox } = await import('../sim/interact.js');
+      f.mode = 'circle'; f.modeAt = s.tick; f.x = run.x; f.y = run.y;
+      f.hp = 999;                                     // a full chase, not a short one: two hits kill a real dog
+      let hits = 0, bites = 0;
+      for (let i = 0; i < 900 && s.foes.length; i++) {
+        const rx = f.x - s.x, ry = f.y - s.y;
+        const toward = Math.abs(rx) >= Math.abs(ry) ? (rx > 0 ? VERB.RIGHT : VERB.LEFT) : (ry > 0 ? VERB.DOWN : VERB.UP);
+        let frame = setVerb(0, toward, true);
+        // Face it, then swing if its centre is in the box and no swing is up.
+        const faced = { ...s, facing: Math.abs(rx) >= Math.abs(ry) ? (rx > 0 ? 1 : 3) : (ry > 0 ? 2 : 0), swing: null };
+        if (!swingPhase(s) && inBox(boxOf(faced), f.x, f.y)) frame = setVerb(frame, VERB.ATTACK, true);
+        const hp = s.hp, fhp = f.hp;
+        step(s, frame, SYSTEMS);
+        if (f.hp < fhp) hits++;
+        if (s.hp < hp) bites++;
+      }
+      ok('chasing it, you can just about land a hit', hits > 0, `${hits} hits in 900 ticks`);
+      ok('but it is risky', bites > 0, `${bites} bites taken doing it`);
+    }
+  }
+
   // A lunge closes the gap: from orbit range, contact within the lunge.
   {
     const { s, f, run } = arena(3);

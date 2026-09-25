@@ -38,6 +38,13 @@ export const FOE = {
     // itself is systems/combat/; these numbers are what make it a DOG. The
     // bite cooldown is gone — the cycle is the cooldown.
     orbit: 40,               // px: two tiles out, close enough to threaten
+    // The orbit is not perfect. The wanted radius drifts by this much either
+    // way over a period, so a dog that is chased can JUST be caught inside a
+    // sword's reach (27px from your centre) at the bottom of its drift — and
+    // the bottom of the drift is also where a crouch is most likely to begin.
+    // DJ: “if you go chasing it you can just about land a hit, but it's risky.”
+    orbitWobble: 14,         // px: 26..54
+    orbitPeriod: 120,        // ticks for a full in-and-out
     circleTicks: [45, 90],   // jittered per foe, so a pack does not lunge as one
     lungeWindup: 12,         // the crouch: still, aim fixed. The sidestep window.
     lungeSpeed: 408,         // 1.6x its walk, faster than a light player, for the dash only
@@ -58,6 +65,17 @@ export const foeAt = (kind) => FOE[kind];
 const idNum = (id) => { let k = 0; for (let i = 0; i < id.length; i++) k = (Math.imul(k, 31) + id.charCodeAt(i)) | 0; return k; };
 // Which way round it circles. Fixed per foe so it reads as a habit.
 export const spinOf = (seed, id) => (hi(2, seed, idNum(id), 0xd010) ? 1 : -1);
+// The radius it wants THIS tick: a triangle wave, phased per foe so two dogs
+// do not breathe in step. Integer, and a function of the delta alone.
+export function orbitFor(def, id, tick) {
+  const P = def.orbitPeriod || 1, w = def.orbitWobble || 0;
+  // Hash the id into the phase: roster ids differ by one character, which is
+  // one tick of phase, which rounds to the same radius.
+  const phase = (((tick + hi(P, idNum(id), 0xd012)) % P) + P) % P;
+  const tri = phase < P / 2 ? phase : P - phase;          // 0 .. P/2 .. 0
+  return def.orbit + (((tri * 4 * w) / P) | 0) - w;         // orbit-w .. orbit+w
+}
+
 // How long THIS circle lasts, from the tick it began. Two dogs that woke on the
 // same tick get different answers, which is the whole point of the jitter.
 export function circleFor(def, seed, id, modeAt) {

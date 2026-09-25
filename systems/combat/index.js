@@ -13,7 +13,7 @@ import { VERB, hasVerb } from '../../sim/frame.js';
 import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, PLAYER_WEIGHT, swingPhase, friendly } from '../../sim/state.js';
 import { slide, blocked, solidBodies, actorBodies, touching, tileOf, HALF, impulse, steer, octLen } from '../../sim/space.js';
 import { roomTiles, TILE } from '../../core/gen.js';
-import { FOE, circleFor } from '../../core/foes.js';
+import { FOE, circleFor, orbitFor } from '../../core/foes.js';
 import { weaponOf, hitBox, inHitBox, FACE } from '../../sim/interact.js';
 
 // The swing's timing and its phase function live in L3 beside the delta field
@@ -89,7 +89,7 @@ export function combat(s, frame) {
       // Commit. The aim is where you are NOW; the dash will not follow you.
       if (age >= circleFor(def, s.seed, f.id, f.modeAt)) { setMode('lunge', { aimX: s.x, aimY: s.y }); continue; }
       // A tangent step by `spin`, plus a radial correction toward orbit radius.
-      const dist = octLen(rx, ry), want = def.orbit * UNITS;
+      const dist = octLen(rx, ry), want = orbitFor(def, f.id, s.tick) * UNITS;
       const radial = dist > want + 4 * UNITS ? 1 : dist < want - 4 * UNITS ? -1 : 0;
       const tangent = (spin) => steer(-ry * spin + rx * radial, rx * spin + ry * radial, def.speed);
       // A circle needs room to the side. Probe a whole tile along each tangent

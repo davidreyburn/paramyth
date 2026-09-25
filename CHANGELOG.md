@@ -21,6 +21,11 @@ entire.** See `plans/roadmap.md`.
   to either side — it comes straight on, so a doorway is a place to fight, not
   to hide. Steering uses an octagonal norm: no square root, no float. The
   machine is a template; the dog is its first policy table. 14 new gates.
+- **The orbit is not perfect.** The wanted radius breathes 26–54px on a
+  120-tick triangle wave, phased per foe. At the bottom of the drift the dog is
+  just inside a sword's reach: chase it and you can land a hit, and the close
+  pass is also where a crouch begins. Gated as DJ said it — a chasing bot lands
+  hits and is bitten for it (12 and 3 in 900 ticks).
 
 - **Knockback, both ways** — step 1 of `plans/foe-behaviour.md`. A hit shoves the
   foe along the swing: the weapon's `knock` (sword 24px, fists 8px — a distance,
