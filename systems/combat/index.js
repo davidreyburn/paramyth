@@ -87,10 +87,20 @@ export function combat(s, frame) {
 
     if (f.mode === 'circle') {
       // Commit. The aim is where you are NOW; the dash will not follow you.
-      if (age >= circleFor(def, s.seed, f.id, f.modeAt)) { setMode('lunge', { aimX: s.x, aimY: s.y }); continue; }
+      if (age >= circleFor(def, s.seed, f.id, f.modeAt)) {
+        // The aim is the END of a fixed-length line through where you are NOW.
+        // The dash will not follow you; it will run its length along that line.
+        const [lx, ly] = steer(rx, ry, def.lungeSpeed * (def.lungeTicks - def.lungeWindup));
+        setMode('lunge', { aimX: f.x + lx, aimY: f.y + ly });
+        continue;
+      }
       // A tangent step by `spin`, plus a radial correction toward orbit radius.
+      // Out of band the radial DOMINATES (x3): a dog that has lost its orbit
+      // spirals in to regain it rather than strolling round a circle it is not
+      // on. With equal weights its inward share was slower than a laden player,
+      // and it never caught anyone who kept walking.
       const dist = octLen(rx, ry), want = orbitFor(def, f.id, s.tick) * UNITS;
-      const radial = dist > want + 4 * UNITS ? 1 : dist < want - 4 * UNITS ? -1 : 0;
+      const radial = dist > want + 4 * UNITS ? 3 : dist < want - 4 * UNITS ? -1 : 0;
       const tangent = (spin) => steer(-ry * spin + rx * radial, rx * spin + ry * radial, def.speed);
       // A circle needs room to the side. Probe a whole tile along each tangent
       // rather than judging by whether a step moved: a wall lets a fraction of
@@ -140,6 +150,9 @@ export function combat(s, frame) {
     if (f.mode === 'recover') {
       // Back off toward orbit. Cannot bite. This is the window you swing into.
       if (age >= def.recoverTicks) { setMode('circle'); continue; }
+      // Toward orbit radius — and no further. Backing off from someone already
+      // out of range was a free head start after every bite.
+      if (octLen(rx, ry) >= orbitFor(def, f.id, s.tick) * UNITS) continue;
       const to = go(...steer(-rx, -ry, def.speed));
       if (moved(to)) out.push({ k: 'moveFoe', id: f.id, x: to.x, y: to.y });
     }

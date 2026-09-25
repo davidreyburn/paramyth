@@ -204,12 +204,31 @@ Tuned at the table, not here. Integer, in the units the code already uses.
    regression from today.
 3. ✓ (2026-09-25) **The telegraph.** Rendering per mode. Small, but it is what makes the
    sidestep possible for a human rather than only for a gate.
-4. **Tuning, and the speed-tier gates rewritten** around escape rather than
+4. ✓ (2026-09-25, v0.7.0) **Tuning, and the speed-tier gates rewritten** around escape rather than
    pace.
 
 One MINOR release — *0.7.0, the dog learns to hunt* — in five commits. The
 `interact.js` split from the review could ride along, since this touches
 `weaponOf` and `hitBox`, but it is optional and should not gate the release.
+
+## Status after step 4 (2026-09-25) — shipped as 0.7.0
+
+- The contact gates run on the camp's top row: thirty clear tiles, a wall
+  above so the dog circles below. After a bite you run for 400 ticks.
+- **Three geometry faults**, found by the gates and fixed before any tuning:
+  recover backed off from a player already out of range; the circle's radial
+  share (equal-weighted with the tangent) was ~180, slower than laden's 216;
+  the dash ended at the aim point, so it could not catch a straight runner.
+- **The dash is now a line through you**, `lungeSpeed × (lungeTicks −
+  lungeWindup)` long, aimed the tick the crouch begins. Closure per tier over
+  a 30-tick dash at 640: light 41px, laden 50px, overloaded 56px. Light reaches
+  the crouch at ~76px (the dog cannot close on 288), laden at ~60, so the
+  first is clear and the second is caught. This is the whole load thesis in
+  two numbers, and they are the ones to move if it stops feeling right.
+- Numbers left as played: orbit 40 ± 14 over 120, circle 45–90, crouch 12,
+  recover 30, stagger 15, dog walk 255.
+- Next for this system: a second policy table (a heavier, slower thing that
+  does not circle) to prove the machine is a template and not a dog.
 
 ## Status after step 3 (2026-09-25)
 

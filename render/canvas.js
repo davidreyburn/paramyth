@@ -472,12 +472,15 @@ export function createRenderer(canvas, pack = null) {
       else if (f.mode === 'recover') { sy = 0.85; dy = 1; colour = '#8f6a58'; }
       else if (stagger) colour = P.parchment;
       const x = Math.round(px(f.x)) + (stagger ? ((s.tick & 1) ? 1 : -1) : 0), y = Math.round(px(f.y)) + dy;
-      // In the crouch, the spot it will spring to. The aim is fixed the moment
-      // the crouch begins, so this mark is a promise: step off it and it misses.
+      // In the crouch, the line it will spring along: dots from it to the end
+      // of its dash. The line is fixed the moment the crouch begins, so the
+      // dots are a promise: be off the line when the crouch ends and it misses.
       if (crouch) {
-        const ax = Math.round(px(f.aimX)), ay = Math.round(px(f.aimY));
+        const x0 = Math.round(px(f.x)), y0 = Math.round(px(f.y));
+        const x1 = Math.round(px(f.aimX)), y1 = Math.round(px(f.aimY));
+        const n = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0));
         ctx.fillStyle = P.lanternDeep;
-        ctx.fillRect(ax - 3, ay, 7, 1); ctx.fillRect(ax, ay - 3, 1, 7);
+        for (let k = 8; k < n; k += 6) ctx.fillRect(x0 + Math.round(((x1 - x0) * k) / n), y0 + Math.round(((y1 - y0) * k) / n), 1, 1);
       }
       ctx.save();
       ctx.translate(x, y); ctx.scale(sx, sy);

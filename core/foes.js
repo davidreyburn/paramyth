@@ -12,19 +12,20 @@ import { roomTiles, absDepth, COLS, ROWS, T } from './gen.js';
 // The speed column is the whole design, so it is worth stating plainly here
 // rather than leaving it in a balance spreadsheet nobody opens.
 //
-//   player, light       288   outruns a dog
-//   player, laden       216   caught
-//   player, overloaded  158   eaten
+//   player, light       288   breaks contact: the dog falls behind while it
+//                             circles, and its next lunge falls short
+//   player, laden       216   cannot make the distance before the next lunge
+//   player, overloaded  158   is run down almost at once
 //
-// A dog at 255 is therefore not a damage problem, it is a CARGO problem. Greed
-// is what makes it lethal and the drop-load button is the answer, which is the
-// exact moment plans/slice-01.md is waiting to observe.
-//
-// This number is DEPENDENT on the player's base speed and must move with it.
-// It sat at 170 against a base of 192; the base went to 288 and laden began
-// outrunning it, which quietly deleted the entire point of the enemy. The three
-// speed gates in tools/test-combat.mjs are what bind the two together, and they
-// only work because they import the real constants instead of copying them.
+// A dog is therefore not a damage problem, it is a CARGO problem. Greed is
+// what makes it lethal and the drop-load button is the answer. Since the
+// machine, the chase is no longer a footrace: the dog walks at 255 and lunges
+// at 408, so what decides it is whether you are clear of lunge range when the
+// crouch ends — and that is a function of load. The two contact gates in
+// tools/test-combat.mjs measure exactly that, on the camp's open ground, and
+// they only work because they import the real constants instead of copying
+// them. These numbers move with the player's base speed and must be re-run
+// whenever it does.
 export const FOE = {
   dog: {
     label: 'rot-touched dog',
@@ -47,8 +48,12 @@ export const FOE = {
     orbitPeriod: 120,        // ticks for a full in-and-out
     circleTicks: [45, 90],   // jittered per foe, so a pack does not lunge as one
     lungeWindup: 12,         // the crouch: still, aim fixed. The sidestep window.
-    lungeSpeed: 408,         // 1.6x its walk, faster than a light player, for the dash only
-    lungeTicks: 30,          // windup plus about three tiles of dash
+    // The dash is a LINE THROUGH where you were, not a trip to it: a fixed
+    // length at a fixed speed. That is what lets it run down a laden player
+    // who keeps running, and what makes a light one — who is further out when
+    // the crouch ends — get clear. Worked by tier in plans/foe-behaviour.md.
+    lungeSpeed: 640,         // 2.5x its walk, for the dash only: 50px of closure on a laden runner, 41 on a light one
+    lungeTicks: 42,          // the crouch plus 30 ticks of dash: 75px, nearly four tiles
     recoverTicks: 30,        // half a second of open window
     // Knockback, both ways. `weight` divides what a hit does to it — a dog is
     // the reference weight, a Sentinel will be heavy, a Warden rooted at

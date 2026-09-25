@@ -9,8 +9,25 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+## [0.7.0] — 2026-09-25
+
+*The dog learns to hunt.* DJ, after a playtest: “a genuinely challenging combat
+encounter. God help you if you only have fists.”
+
 ### Added
 
+- **Contact, not pace** — step 4 of `plans/foe-behaviour.md`. The two speed-tier
+  gates that compared constants are replaced by a chase on the camp's open
+  ground: after a bite, you run. Light breaks contact (123px clear at 400
+  ticks); laden is bitten at tick 130; overloaded at 113, three times. Getting
+  there exposed three geometry faults that no number could have fixed: recover
+  backed off from a player already out of range (a free head start every
+  bite); the circle's inward share was slower than a laden walk, so it never
+  regained orbit on anyone who kept moving; and the dash ended AT the aim, so it
+  could never catch a straight-line runner at any speed. Now recover holds at
+  range, the radial dominates 3× out of band (a spiral in), and the lunge is a
+  fixed 75px line *through* where you were at 2.5× walk. The telegraph draws
+  that line as dots during the crouch.
 - **The telegraph** — step 3 of `plans/foe-behaviour.md`. Every mode has a shape
   and a colour on the glyph: asleep dim; circle warm and upright; the **crouch**
   squashed low and ember-bright, with a small cross on the spot it will spring

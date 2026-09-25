@@ -272,19 +272,42 @@ function delve(floor, room) {
 }
 
 // --- a dog is a cargo problem -----------------------------------------------
+// Since the machine this is not a footrace, so raw speed says nothing. What
+// decides it is BREAKING CONTACT: after a bite, can you get clear of lunge
+// range before the crouch ends? Measured on the camp's open ground — thirty
+// clear tiles with a wall above, so the dog circles below and has the room to
+// do everything it knows. SPEED, LOAD and FOE are imported, not copied.
 {
-  // SPEED and LOAD are imported, not copied. A private copy of a constant here
-  // passed cleanly while the engine ran at a different number entirely — the
-  // spec's "unbound constants" failure mode, caught in its own combat gate.
-  const at = (bulk) => {
-    const t = tier(bulk);
-    const [n, d] = LOAD[t];
-    return { t, v: ((SPEED * n) / d) | 0 };
+  const { CAMP } = await import('../core/gen.js');
+  const chase = (bulk) => {
+    const s = createState(SEED);                    // the camp: floor -1
+    s.hp = 1000;
+    s.x = (2 * TILE + TILE / 2) * UNITS; s.y = (TILE + TILE / 2) * UNITS;   // top row, west end
+    s.facing = 1;
+    // The issued blade is already in the row at bulk 3; keys make up the rest.
+    s.carried = Array.from({ length: Math.max(0, bulk - 3) }, (_, i) => ref('key', i));
+    // The moment after a bite: flush behind you, backing off.
+    s.foes = [{ id: 'chaser', kind: 'dog', x: s.x - 2 * 5 * UNITS, y: s.y, hp: 999,
+                mode: 'recover', modeAt: 0, spin: 1, aimX: 0, aimY: 0, vx: 0, vy: 0 }];
+    const f = s.foes[0];
+    const bites = [];
+    for (let i = 0; i < 400; i++) {
+      const hp = s.hp;
+      step(s, setVerb(0, VERB.RIGHT, true), SYSTEMS);
+      if (s.hp < hp) bites.push(i);
+      if (s.floor !== CAMP) break;                     // ran out of camp: the fixture is wrong, not the dog
+    }
+    const gap = Math.max(Math.abs(s.x - f.x), Math.abs(s.y - f.y));
+    return { t: tier(carriedBulk(s)), bites, gap: gap / UNITS, floor: s.floor };
   };
-  const light = at(4), laden = at(12), over = at(19);
-  ok('light outruns a dog', light.v > FOE.dog.speed, `${light.v} > ${FOE.dog.speed}`);
-  ok('laden does not', laden.v < FOE.dog.speed, `${laden.v} < ${FOE.dog.speed}`);
-  ok('overloaded is not close', over.v < FOE.dog.speed - 40, `${over.v} vs ${FOE.dog.speed}`);
+  const light = chase(4), laden = chase(12), over = chase(19);
+  ok('the chase fixtures stayed in the camp', [light, laden, over].every((r) => r.floor === CAMP));
+  ok('the tiers are what they claim', light.t === 'light' && laden.t === 'laden' && over.t === 'overloaded');
+  ok('light breaks contact', light.bites.length === 0 && light.gap > FOE.dog.orbit + FOE.dog.orbitWobble,
+     `no bites in 400 ticks; ${light.gap.toFixed(0)}px clear at the end`);
+  ok('laden does not', laden.bites.length > 0, laden.bites.length ? `bitten at tick ${laden.bites[0]}` : 'never bitten');
+  ok('overloaded is run down sooner', over.bites.length > 0 && (!laden.bites.length || over.bites[0] <= laden.bites[0]),
+     over.bites.length ? `bitten at tick ${over.bites[0]}, ${over.bites.length} times` : 'never bitten');
 
   // And the engine must actually apply it — the tiers changed nothing until now.
   const den = denRoom();
