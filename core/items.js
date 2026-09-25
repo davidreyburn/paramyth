@@ -37,9 +37,9 @@ export const KIND = {
   bones:   { force: 'breaks', label: 'bones',   bulk: 2, value:  2, fragility: 2 },
   // Your remains. Where you died, everything you held, as a container that
   // opens like a chest. Never generated: it exists only in the delta. It is
-  // not solid (you can stand on your own bones), not portable, and a cap does
-  // not destroy it — what it holds is the reason for the next run.
-  remains: { force: 'stands', label: 'remains', container: true, solid: false, foot: 0, bulk: 0, fragility: 0, delta: true },
+  // not solid (you can stand on your own bones), not portable, and a cap
+  // DESTROYS it, contents and all. It is not a nice place (DJ).
+  remains: { force: 'breaks', label: 'remains', container: true, solid: false, foot: 0, bulk: 0, fragility: 0, delta: true },
 
   // Fixtures. Scenery until a system gives them a verb — but furniture still
   // takes up the floor it stands on.

@@ -357,6 +357,7 @@ function delve(floor, room) {
     const { prompt } = await import('../sim/prompt.js');
     const { forceOn } = await import('../core/items.js');
     const { toDelta } = await import('../sim/state.js');
+    const { gridOf: gridOfRoom } = await import('../sim/room.js');
     const { centreOf } = await import('../sim/space.js');
     const r0 = s.remains[0], key = remainsKey(0);
     s.site = 0; s.floor = r0.floor; s.room = r0.room; s.foes = [];
@@ -379,7 +380,25 @@ function delve(floor, room) {
     step(s, 0, SYSTEMS);
     step(s, setVerb(0, VERB.CANCEL, true), SYSTEMS);
     ok('the empty bones stay as a marker but ask nothing more', thingsIn(s, s.site, s.floor, s.room).some((t) => t.kind === 'remains') && (!reachable(s) || reachable(s).kind !== 'remains'));
-    ok('a cap does not destroy your remains', forceOn('remains') === 'stands');
+    // A cap set on your bones destroys them, contents and all. It is not a nice place.
+    ok('a cap destroys your remains', forceOn('remains') === 'breaks');
+    {
+      const { blastOf } = await import('../core/items.js');
+      const g = createState(SEED); g.hp = 1000;
+      g.site = 0; g.floor = r0.floor; g.room = r0.room;
+      const cc = centreOf(r0.tile); g.x = cc.x; g.y = cc.y;
+      g.remains = [{ site: 0, floor: r0.floor, room: r0.room, tile: r0.tile, at: 0, items: [{ kind: 'gem', key: '0:0:0:9' }] }];
+      enterRoom(g); g.foes = [];
+      g.equipped.tool = { kind: 'bcap', key: 'issue:0:0:1' };
+      // Set it and walk clear along whatever is open, so the blast alone is measured.
+      step(g, setVerb(0, VERB.TOOL, true), SYSTEMS); step(g, 0, SYSTEMS);
+      const gridG = gridOfRoom(g);
+      const away = [[VERB.LEFT, -1, 0], [VERB.RIGHT, 1, 0], [VERB.UP, 0, -1], [VERB.DOWN, 0, 1]].find(([, dx, dy]) => { const t = r0.tile + dy * 32 + dx * 2; return t >= 0 && t < gridG.length && !solidTile(gridG[t]) && !solidTile(gridG[r0.tile + dy * 32 + dx]); });
+      for (let i = 0; i < blastOf('bcap').fuse + 4; i++) step(g, away ? setVerb(0, away[0], true) : 0, SYSTEMS);
+      ok('and it does: the bones are gone from the room', !thingsIn(g, 0, r0.floor, r0.room).some((t) => t.kind === 'remains'));
+      ok('with everything in them', g.remains[0].gone === true && g.remains[0].items.length === 0);
+      ok('and a scar where they lay', g.scars.includes(`0:${r0.floor}:${r0.room}:${r0.tile}`));
+    }
     const d = JSON.parse(JSON.stringify(toDelta(s)));
     ok('remains survive a save', d.remains.length === 1 && Array.isArray(d.remains[0].items));
     const h1 = hashState(s), h2 = hashState(Object.assign(createState(SEED), d));

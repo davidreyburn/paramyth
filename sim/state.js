@@ -185,7 +185,7 @@ export function hashState(s) {
     mix(d.site); mix(d.floor); mix(d.room); mix(d.tile);
   }
   mix(s.remains.length);
-  for (const r of s.remains) { mix(r.site); mix(r.floor); mix(r.room); mix(r.tile); mix(r.at); rollRefs(r.items); }
+  for (const r of s.remains) { mix(r.site); mix(r.floor); mix(r.room); mix(r.tile); mix(r.at); mix(r.gone ? 1 : 0); rollRefs(r.items); }
   // The body and what is hunting it. Foe positions are part of the state, so
   // replay has to reproduce them tick for tick.
   mix(s.hp); mix(s.hurtAt < 0 ? 0 : s.hurtAt);

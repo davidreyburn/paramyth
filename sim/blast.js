@@ -52,6 +52,16 @@ function breakThings(s, c, r) {
     if (Math.abs(cx - c.x) > r || Math.abs(cy - c.y) > r) continue;
     if (forceOn(it.kind) !== 'breaks') continue;
 
+    // Your remains, contents and all. The entry stays (its index is its key)
+    // but it is gone from every room, and the floor remembers where it lay.
+    if (it.remains !== undefined) {
+      const r = s.remains[it.remains];
+      if (r) { r.items = []; r.gone = true; }
+      const k = brokenKey(c.site, c.floor, c.room, it.tile);
+      if (!s.scars.includes(k)) s.scars.push(k);
+      continue;
+    }
+
     if (it.dropped) {
       const i = s.dropped.findIndex((d) => d.key === it.key && d.tile === it.tile && d.site === c.site && d.floor === c.floor && d.room === c.room);
       if (i >= 0) s.dropped.splice(i, 1);

@@ -33,7 +33,7 @@ export function thingsIn(s, site, floor, room, taken = new Set(s.taken), opened 
   // And where you died. A corpse is a container that exists only in the delta;
   // its key is its index, which is stable because remains are never removed.
   for (const [i, r] of s.remains.entries())
-    if (r.site === site && r.floor === floor && r.room === room)
+    if (!r.gone && r.site === site && r.floor === floor && r.room === room)
       out.push({ slot: -1, tile: r.tile, kind: 'remains', key: remainsKey(i), open: opened.has(remainsKey(i)), remains: i });
   return out;
 }

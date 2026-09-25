@@ -16,8 +16,8 @@ entire.** See `plans/roadmap.md`.
   pale-lichen bones under a faint verdigris aura that breathes with the tick
   (a Bayer-dithered disc: no gradient, no clock). It opens like a chest —
   “Open remains” — and taking from it is taking; take-all empties it and the
-  bones stay as a marker that asks nothing more. You can stand on them. A cap
-  does not destroy them. Delta-only, never generated; hashed and saved. DJ:
+  bones stay as a marker that asks nothing more. You can stand on them. **A cap
+  destroys them, contents and all** — it is not a nice place. Delta-only, never generated; hashed and saved. DJ:
   “your corpse should be a special colored bones, maybe with a faint aura glow,
   that opens as a container.”
 
