@@ -466,6 +466,13 @@ try {
       r.draw(s7, [{text:''},{text:''},{text:''},{text:''}]); const fieldShot = ctx.getImageData(0,0,W,VIEW_H).data;
       let differ = 0, green = 0; for (let i = 0; i < fieldShot.length; i += 4) { if (fieldShot[i] !== campShot[i] || fieldShot[i+1] !== campShot[i+1]) differ++; if (fieldShot[i+1] > fieldShot[i] + 8 && fieldShot[i+1] > fieldShot[i+2] + 8) green++; }
       ok('a field room draws, and not as the camp', differ > fieldShot.length / 16, `${differ} px differ`);
+      // The health bar follows danger, not depth: on the Field, where a dog can
+      // bite, it shows; in the camp, where nothing can, it does not.
+      const fieldPip = ctx.getImageData(7, 9, 1, 1).data;
+      ok('the health bar shows on the Field', Math.max(fieldPip[0], fieldPip[1], fieldPip[2]) > 60, `rgb(${fieldPip[0]},${fieldPip[1]},${fieldPip[2]})`);
+      s7.room = CAMP0; s7.x = 16*20*256 + 10*256; s7.y = 8*20*256 + 10*256; r.draw(s7, [{text:''},{text:''},{text:''},{text:''}]);
+      const campPip = ctx.getImageData(7, 9, 1, 1).data;
+      ok('and not in the camp', Math.max(campPip[0], campPip[1], campPip[2]) <= 60 || campPip.join() === campShot.slice(9*W*4 + 7*4, 9*W*4 + 7*4 + 4).join(), `rgb(${campPip[0]},${campPip[1]},${campPip[2]})`);
       ok('and it is green', green > fieldShot.length / 32, `${green} green px`);
       r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]);
 

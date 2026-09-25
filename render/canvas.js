@@ -14,7 +14,7 @@ import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
 import { blastOf } from '../core/items.js';
 import { liveBlasts, capsHere } from '../sim/blast.js';
-import { MAX_HP, FADE_TICKS, POP_TICKS, swingPhase, saying, lampVec, surface } from '../sim/state.js';
+import { MAX_HP, FADE_TICKS, POP_TICKS, swingPhase, saying, lampVec, surface, friendly } from '../sim/state.js';
 import { isContainer, labelOf, bulkOf, KIND, SLOTS } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
@@ -681,7 +681,9 @@ export function createRenderer(canvas, pack = null) {
       drawFade(state);
       // Over the light, because it is interface: a health bar you cannot read in
       // the dark is a health bar that tells you nothing at the moment it matters.
-      if (state.floor >= 0) drawHealth(state);
+      // Drawn wherever you can be hurt — everywhere but the camp. It used to be
+      // 'underground only', which was the same thing until the Field had dogs.
+      if (!friendly(state)) drawHealth(state);
       // What the world just said outranks what you are standing next to: a
       // refusal you asked for is more urgent than a verb you did not.
       if (state.screen) drawScreen(state, tone);
