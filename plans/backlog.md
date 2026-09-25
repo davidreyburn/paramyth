@@ -241,6 +241,14 @@ menu.
 
 ---
 
+## 11a. Tuning from the first device pass (2026-09-25)
+
+DJ, after playing 0.8.0 on the Retroid: the Field needs tuning; the on-screen
+controls need tuning. Specifics to come. Candidates already visible from here:
+Field boulder density (`hrange(3, 6)` clusters), grass tuft density, monument
+size; the pad's deadzone and size, the overlay's opacity, and Select/Start
+sitting on the credit line in landscape.
+
 ## 11. Measure It on the Retroid
 
 > The brief begins "minimal and resource efficient first." Everything about that

@@ -18,9 +18,22 @@ Act I is defined in `design/world-shape.md` and gated by the campaign's own
 spoiler discipline: sets follow acts, so the Frontier Halls, the Fundament and
 Vorathum's Domain are later releases, not missing pieces.
 
-## Where it stands — 0.5.0
+## Where it stands — 0.8.0
 
-A generated mausoleum you can walk, light, rob and be killed in, a camp to sell
+*Played on the Retroid, 2026-09-25: “it all feels great, combat is good, the dog
+is challenging, the pop is satisfying, knockback is great … a promising
+prototype.” The Field and the on-screen controls want tuning.*
+
+A Field of open ground above a generated mausoleum, with the Company Camp as
+one room of it and the mouth two rooms away; two foes on one mode machine (a
+dog that circles, crouches and springs; a Sentinel that stands until you are
+near); knockback both ways; the Blasting Cap, which opens boulders, breaks
+furniture, spares one thing in three from a pot, and moves what a sword
+cannot; a dithered fade and a pop; three save slots; fullscreen and install;
+a public build on GitHub Pages that runs the gates before it deploys; on-screen
+controls for a phone; a licence and a notice. Six stats, three renamed.
+
+*What 0.5.0 said, still true:* a generated mausoleum you can walk, light, rob and be killed in, a camp to sell
 into, and an object's history that tells you where to go next. The kernel is deterministic
 and replayable, the world is a pure function of its address, and the actor graph
 inverts — which is the mechanic the whole design rests on and the one that was
@@ -56,12 +69,12 @@ Also still open: a **foreign** reference names a site that computes but that
 nothing yet walks to. Those dead ends close when the Field has more than one
 mouth, not before.
 
-### Threat — begun in 0.5.0; the dog learns to hunt next
-The dog is a proximity tax today: it walks into you and bites on a timer.
-`plans/foe-behaviour.md` plans circle → strike → back off → prepare as a mode
-machine in the delta, and knockback from a weapon's `knock` over a foe's
-`weight`. Five commits, one MINOR release — the first makes actors solid to each other, which today they are not. The encumbrance gates get rewritten
-around *breaking contact* rather than pace.
+### Threat — the dog hunts (0.7.0); the Sentinel stands (0.8.0)
+`plans/foe-behaviour.md` is built and shipped: a five-mode machine in the
+delta, knockback from a weapon's `knock` over a foe's `weight`, the contact
+gates around *breaking contact*. Two foes on one machine, with a gate that
+refuses a third that is not a table. Next foe: the Red Hand bandit, the first
+that loots — it is what makes corpses and the Field mean something.
 One enemy of eight, one weapon, contact damage, the swing, death and a full
 drop. The claim that damage costs **cargo** rather than only health is built and
 gated: the encumbrance speed table finally reaches the movement path, so a dog
@@ -74,7 +87,9 @@ used the drop-load button on purpose — which is now possible and not yet
 observed.
 
 ### The world above and below
-The Field as a real surface with many mausoleum mouths. The Barrow Deep as one
+The Field exists (0.8.0) as one site's surface; it wants tuning and content,
+and then many mouths. Next: **the corpse** as a container of special bones
+with a faint aura, opening like a chest (DJ). Then The Barrow Deep as one
 connected network rather than per-site basements. Shortcuts, discovered
 extraction points, and the guild lift. Company Camp, Grimhaven and Ashmark as
 places with people in them.

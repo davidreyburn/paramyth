@@ -9,6 +9,13 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+## [0.8.0] — 2026-09-25
+
+*The Field, the cap, the Sentinel, and the game on a phone.* DJ, on the Retroid:
+“it all feels great, combat is good, the dog is challenging, the pop is
+satisfying, knockback is great … on retroid it plays beautifully now.” The
+Field and the on-screen controls want tuning; both are noted in the backlog.
+
 ### Added
 
 - **On-screen controls for a phone without a controller.** Detected by a pure
