@@ -32,9 +32,9 @@ document.getElementById('bar').innerHTML =
   Object.keys(pack.sheets).map((k) => `<a href="?sheet=${k}&scale=${S}">${k}${k===which?' ◀':''}</a>`).join('')
   + ` | zoom <a href="?sheet=${which}&scale=2">2×</a><a href="?sheet=${which}&scale=3">3×</a><a href="?sheet=${which}&scale=5">5×</a>`;
 
-const SRC = '..' + decodeURIComponent(pack.sheets[which]).replace(/^\./, '');
+const SRC = new URL(pack.sheets[which], new URL('../assets/packs/onebit.json', location.href)).href;   // relative to the pack file
 const img = new Image();
-img.onerror = () => say('Could not load the sheet.\n\n  tried: ' + new URL(pack.sheets[which], location.href).href, true);
+img.onerror = () => say('Could not load the sheet.\n\n  tried: ' + SRC, true);
 
 img.onload = () => {
   const GX = Math.floor(img.width / T), GY = Math.floor(img.height / T);

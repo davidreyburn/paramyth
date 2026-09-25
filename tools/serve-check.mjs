@@ -85,5 +85,27 @@ for (const f of ['tileset-sheet.html']) {
   ok('the worker caches nothing', !/caches\.|cache\.put|CacheStorage/.test(sw), 'a cache would go stale behind a zero-build module graph');
 }
 
+// Location-independent. Nothing the app ships may name the site root: an
+// absolute `/app/` or `/assets/` works on the dev server and breaks at
+// `/paramyth/` on GitHub Pages and inside the APK's shell. Tools pages are
+// dev-only and exempt; the pack gate covers sheet paths.
+{
+  const { readdir: rd, readFile: rf } = await import('node:fs/promises');
+  const root = new URL('../', import.meta.url);
+  const bad = [];
+  for (const dir of ['app', 'render', 'sim', 'core', 'systems']) {
+    for (const f of await rd(new URL(dir + '/', root))) {
+      if (!/\.(js|html|webmanifest)$/.test(f)) continue;
+      const src = await rf(new URL(`${dir}/${f}`, root), 'utf8');
+      for (const m of src.matchAll(/['"](\/(?:app|assets|inbox|tools|core|sim|render|systems)\/[^'"]*)['"]/g)) bad.push(`${dir}/${f}: ${m[1]}`);
+    }
+  }
+  ok('nothing shipped names the site root', bad.length === 0, bad.join(' | ') || 'app, render, sim, core, systems');
+  const man = JSON.parse(await rf(new URL('app/manifest.webmanifest', root), 'utf8'));
+  ok('the manifest scopes itself relatively', man.start_url === './' && man.scope === './');
+  const rootPage = await fetch(base + '/index.html');
+  ok('a root index.html forwards to app/ where no server can redirect', rootPage.ok && /url=app\//.test(await rootPage.text()));
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all server gates passed\n');
 process.exit(failures ? 1 : 0);

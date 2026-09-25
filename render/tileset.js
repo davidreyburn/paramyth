@@ -2,18 +2,22 @@
 // assumed — swapping packs is a manifest change, and running with no pack at
 // all is a supported mode that falls back to flat colour.
 
+// Sheet paths in a pack are relative to the PACK FILE, not to the page and
+// not to the site root, so the same pack loads from the dev server, from a
+// subpath on GitHub Pages, and from inside the APK's shell.
 export async function loadPack(url) {
-  const pack = await (await fetch(url)).json();
+  const base = new URL(url, location.href);
+  const pack = await (await fetch(base)).json();
   const sheets = {};
   await Promise.all(Object.entries(pack.sheets).map(([k, src]) =>
     new Promise((res) => {
       const img = new Image();
       img.onload = () => { sheets[k] = img; res(); };
       img.onerror = () => { res(); };            // a missing sheet is not fatal
-      img.src = src;
+      img.src = new URL(src, base).href;
     })));
   const missing = Object.keys(pack.sheets).filter((k) => !sheets[k]);
-  return { ...pack, sheets, missing, ok: missing.length === 0 };
+  return { ...pack, url: base.href, sheets, missing, ok: missing.length === 0 };
 }
 
 import { h } from '../core/addr.js';

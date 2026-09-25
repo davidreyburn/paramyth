@@ -39,6 +39,16 @@ Design lives in `design/`; `specs/spec-layer-contract.md` is the constitution.
 | `design/` · `specs/` · `plans/` | Game design · normative specs · scheduled work |
 | `case-study-log.md` | Every notable decision: what · why · evidence · outcome |
 
+## Hosting
+
+The tree is static and every shipped path is relative (gated), so it runs from
+the dev server at `/`, from GitHub Pages at `/paramyth/`, and from the APK's
+shell unchanged. `.github/workflows/pages.yml` runs `./check.sh` and deploys
+`main` to Pages; enable it under Settings → Pages → Source: GitHub Actions. A
+root `index.html` forwards to `app/` where no server can redirect. Pages is
+https, so the manifest and worker make the game installable there — fullscreen,
+landscape — which plain http on a LAN cannot.
+
 ## Tools
 
 With `npm start` running:

@@ -11,6 +11,13 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **Location-independent, and a Pages deploy.** Every shipped path is relative
+  now — the app loads its pack relative to itself, a pack's sheets are relative
+  to the pack file (so a pack is a folder you can move whole), the manifest
+  scopes itself `./` — and a server gate refuses any absolute site-root path
+  in `app/`, `render/`, `sim/`, `core/` or `systems/`. A root `index.html`
+  forwards to `app/`. `.github/workflows/pages.yml` runs the gates and deploys
+  `main` to GitHub Pages; the repo's visibility is DJ's switch to flip.
 - **Fullscreen, and an installable app** (`plans/pwa-fullscreen.md`). Tap or
   any key at the title, or F at any time, asks for fullscreen and a landscape
   lock; refusals print on the title. A manifest (fullscreen, landscape, the

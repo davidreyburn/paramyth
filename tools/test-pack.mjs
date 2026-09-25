@@ -67,9 +67,12 @@ ok('every overlay base resolves without a cycle', baseOk, baseDetail);
 
 ok('pack tile size matches the world grid', pack.tile === 20, `pack ${pack.tile}px`);
 
+// Sheet paths are relative to the pack FILE. An absolute path is a defect now:
+// it would work on the dev server and nowhere else.
+const PACK_URL = new URL('../assets/packs/onebit.json', import.meta.url);
+ok('no sheet path is absolute', Object.values(pack.sheets).every((s) => !s.startsWith('/')), Object.values(pack.sheets).join(' '));
 const files = await Promise.all(Object.values(pack.sheets).map(async (s) => {
-  const rel = decodeURIComponent(s).replace(/^\//, '');
-  try { await readFile(new URL('../' + rel, import.meta.url)); return true; } catch { return false; }
+  try { await readFile(new URL(s, PACK_URL)); return true; } catch { return false; }
 }));
 ok('every declared sheet exists on disk', files.every(Boolean),
    `${files.filter(Boolean).length}/${files.length}`);
@@ -195,7 +198,7 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
   // to the two reference sheets' sizes, which meant the first sheet of our OWN
   // art (160x20) was decoded with the wrong stride and this gate passed on noise.
   const decode = (rel) => {
-    const d = readFileSync(new URL('../' + rel, import.meta.url));
+    const d = readFileSync(new URL(rel, PACK_URL));
     const w = d.readUInt32BE(16), h = d.readUInt32BE(20);
     let i = 8; const parts = [];
     while (i < d.length) { const ln = d.readUInt32BE(i);
@@ -215,10 +218,7 @@ ok('flicker is defined and bounded', FLICKER.pulse > 0 && FLICKER.pulse < 0.25 &
     return { out, stride, w, h };
   };
   const sheets = {};
-  for (const [k, u] of Object.entries(pack.sheets)) {
-    const rel = decodeURIComponent(u).replace(/^\//, '');
-    sheets[k] = decode(rel);
-  }
+  for (const [k, u] of Object.entries(pack.sheets)) sheets[k] = decode(u);
   // A cell that lies outside its sheet reads as zeros — 'transparent', which the
   // slab check would wave through. Refuse it instead.
   const offSheet = [];

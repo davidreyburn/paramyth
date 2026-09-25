@@ -1,0 +1,40 @@
+# Deploy the repo as-is to GitHub Pages. There is no build: the game is a
+# static module graph and every path in it is relative, which is what lets one
+# tree serve the dev server, Pages at /paramyth/, and the APK's shell.
+#
+# Needs: Settings → Pages → Source: "GitHub Actions". On a private repo, Pages
+# requires a paid plan; otherwise the repo must be public. That switch is DJ's.
+name: pages
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+jobs:
+  gates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: ./check.sh
+  deploy:
+    needs: gates
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: deployment
+        uses: actions/deploy-pages@v4

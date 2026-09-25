@@ -24,7 +24,9 @@ const MAX_STEPS_PER_FRAME = 5;   // no spiral of death
 
 const canvas = document.getElementById('screen');
 let pack = null;
-try { pack = await loadPack('/assets/packs/onebit.json'); } catch (e) { pack = null; }
+// Relative to this module, never to the site root: the app runs from `/`,
+// from `/paramyth/` on Pages, and from the APK's shell without a build step.
+try { pack = await loadPack(new URL('../assets/packs/onebit.json', import.meta.url).href); } catch (e) { pack = null; }
 const renderer = createRenderer(canvas, pack && pack.ok ? pack : null);
 const input = createInput();
 
