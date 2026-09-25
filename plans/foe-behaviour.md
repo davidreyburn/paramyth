@@ -7,6 +7,56 @@
 > with a weapon should incur knockback, influenced by the weapon and the weight
 > of the enemy.
 
+## Step 0: bodies cannot overlap
+
+*Added mid-plan (DJ): "enemies and players need collision so they can't occupy
+the same space as a player and kill them."*
+
+This is not an extra — it is the ground the rest stands on. Today `blocked()`
+in `sim/space.js` tests wall tiles and item bodies and **nothing else**: the
+dog's move is checked against barrels, never against you, and yours never
+against it. That is literally why it walks *into* you. A circling dog has to
+stop at contact; a shove has to start from two bodies that are not already
+inside each other; two dogs that can stack are one dog on screen.
+
+**The change.** Actors become bodies. `blocked(grid, bodies, x, y)` gains the
+other actors as boxes of `HALF` extent — the constant player and foe already
+share, because "two things that move through the same doorways should measure
+the same." The player's check includes every foe; each foe's includes the
+player and every *other* foe. It is one more list walked by the same loop that
+walks the barrels.
+
+**What it changes downstream, and must not be missed:**
+
+- **The bite trigger.** Today a bite fires on *overlap* (`|dx| < 2·HALF`).
+  Two bodies that cannot overlap will stop exactly `2·HALF` apart on the axis of
+  approach, so that test would **never fire again**. Contact becomes
+  *touching*: within `2·HALF` plus a small margin. Getting this wrong makes the
+  dog harmless, silently.
+- **Room entry.** You arrive at a door or stair; a foe stands on its roster
+  tile. They can coincide. On `enterRoom`, a foe overlapping the arrival point
+  is nudged to the nearest free tile — never the other way round, because where
+  *you* arrive is a promise the stairs keep.
+- **The mode machine inherits it for free.** `circle` keeps distance because it
+  steers away; `lunge` stops at contact because the body does; `recover` backs
+  off from a position it could actually reach. None of that works against a
+  ghost.
+
+**Gates:**
+
+- the player cannot walk through a foe
+- a foe cannot walk through the player
+- two foes cannot occupy the same tile
+- a bite fires from *touching*, not overlap — construct two bodies exactly
+  `2·HALF` apart, assert the bite; at `2·HALF + margin + 1`, assert none
+- entering a room never lands you inside a foe, over the whole gate corpus
+- replay and no-float, re-run
+
+**Cost.** Small. `blocked()` grows a loop; `combat()` passes the actor list;
+`enterRoom` gains a nudge. It goes in as its own commit ahead of knockback,
+because it changes what "contact" means and every later step has to be built
+on the new meaning.
+
 ## What is wrong with the dog today
 
 `systems/combat/index.js` moves the dog straight at you, one axis at a time, and
@@ -143,7 +193,10 @@ Tuned at the table, not here. Integer, in the units the code already uses.
 
 ## Sequence
 
-1. **Knockback first.** Smaller, self-contained, immediately satisfying, and
+0. **Bodies.** Actors collide with actors. The bite trigger becomes touching.
+   Room entry nudges a coincident foe. Its own commit, first, because it changes
+   what contact *means* and everything after is built on the new meaning.
+1. **Knockback. Smaller, self-contained, immediately satisfying, and
    `stagger` is the first mode — so it seeds the `mode` field the machine needs.
    One commit.
 2. **The machine.** Replace pursuit-and-cooldown with the five modes. Corridor
@@ -154,7 +207,7 @@ Tuned at the table, not here. Integer, in the units the code already uses.
 4. **Tuning, and the speed-tier gates rewritten** around escape rather than
    pace.
 
-One MINOR release — *0.7.0, the dog learns to hunt* — in four commits. The
+One MINOR release — *0.7.0, the dog learns to hunt* — in five commits. The
 `interact.js` split from the review could ride along, since this touches
 `weaponOf` and `hitBox`, but it is optional and should not gate the release.
 
