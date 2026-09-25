@@ -551,20 +551,27 @@ const delve = (site = 0, floor = 0, room = null) => {
   ok('a full stash refuses', full.carried.length === 1 && full.stash.length === STASH_SLOTS);
 }
 
-// --- camp and mausoleum connect both ways -----------------------------------
+// --- the Field and the mausoleum connect both ways ---------------------------
+// The mouth is on the Field now, not in the camp (DJ, 2026-09-25: "they
+// wouldn't sleep next to that"). Stand on it, go down, come back up.
 {
-  const { T: TT, roomTiles: RT, floorPlan: FP, COLS: C } = await import('../core/gen.js');
+  const { T: TT, roomTiles: RT, floorPlan: FP, COLS: C, FIELD_CAMP } = await import('../core/gen.js');
   const { campRoom } = await import('../core/camp.js');
 
   const s = createState(SEED);
-  const g = campRoom().grid;
+  ok('you start in the camp, room 0 of the Field', s.floor === -1 && s.room === FIELD_CAMP);
+  ok('the camp has no mouth in it', ![...campRoom().grid].includes(TT.STAIR_D));
+  const plan = FP(SEED, s.site, -1);
+  ok('the Field has one, at least two rooms away', plan.stairDown !== FIELD_CAMP && plan.cells.includes(plan.stairDown), `room ${plan.stairDown}`);
+  s.room = plan.stairDown;
+  const g = RT(SEED, s.site, -1, s.room).grid;
   let mouth = -1;
   for (let i = 0; i < g.length; i++) if (g[i] === TT.STAIR_D) { mouth = i; break; }
-  ok('the camp has a mouth down', mouth >= 0);
+  ok('the mouth room has the stairs', mouth >= 0);
 
   s.x = ((mouth % C) * TILE + TILE/2) * UNITS;
   s.y = (((mouth / C) | 0) * TILE + TILE/2) * UNITS;
-  ok('standing on the mouth prompts a descent', prompt(s).text === 'Descend', prompt(s).text);
+  ok('standing on the mouth prompts a descent', prompt(s) && prompt(s).text === 'Descend', prompt(s) && prompt(s).text);
 
   step(s, setVerb(0, VERB.INTERACT, true));
   ok('descending reaches floor 0', s.floor === 0, `floor ${s.floor}`);
@@ -574,7 +581,7 @@ const delve = (site = 0, floor = 0, room = null) => {
 
   step(s, 0);
   step(s, setVerb(0, VERB.INTERACT, true));
-  ok('climbing out returns you to the camp', s.floor === -1, `floor ${s.floor}`);
+  ok('climbing out returns you to the Field', s.floor === -1 && s.room === plan.stairDown, `floor ${s.floor} room ${s.room}`);
   ok('and you land on the mouth you left by',
      Math.floor(s.x/(TILE*UNITS)) === mouth % C && Math.floor(s.y/(TILE*UNITS)) === ((mouth/C)|0));
 }

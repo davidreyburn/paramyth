@@ -7,7 +7,7 @@
 //   "Threat is denominated in cargo as well as health."
 
 import { h, hi, hrange, hchance } from './addr.js';
-import { roomTiles, absDepth, COLS, ROWS, T } from './gen.js';
+import { roomTiles, absDepth, groundTile, FIELD_CAMP, COLS, ROWS, T } from './gen.js';
 
 // The speed column is the whole design, so it is worth stating plainly here
 // rather than leaving it in a balance spreadsheet nobody opens.
@@ -127,7 +127,7 @@ const memo = new Map();
 // contents lying in it. Nothing here is stored — the delta records only which
 // of them you killed.
 export function foesOf(seed, site, floor, room) {
-  if (floor < 0) return [];                     // nothing hunts you in camp
+  if (floor < 0 && room === FIELD_CAMP) return [];   // nothing hunts you in camp; the Field is not the camp
   const key = `${seed}|${site}|${floor}|${room}`;
   const hit = memo.get(key);
   if (hit) return hit;
@@ -148,7 +148,7 @@ export function foesOf(seed, site, floor, room) {
         const t = (start + k) % (COLS * ROWS);
         const x = t % COLS, y = (t / COLS) | 0;
         if (x < 2 || y < 2 || x >= COLS - 2 || y >= ROWS - 2) continue;
-        if (grid[t] !== T.FLOOR || !reach[t]) continue;
+        if (!groundTile(grid[t]) || !reach[t]) continue;
         if (out.some((f) => f.tile === t)) continue;
         tile = t; break;
       }

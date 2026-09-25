@@ -2,36 +2,39 @@
 //
 // `design/world-shape.md` calls for hand-placed anchors with generated tissue
 // between them. This is the first anchor: a fixed layout that never varies by
-// seed, sitting one level above every mausoleum, reached by climbing out.
+// seed. It is room 0 of the Field — the surface floor above every mausoleum —
+// and it opens onto the Field along its east and south sides. The mausoleum
+// mouth is NOT here: nobody sleeps next to that (DJ, 2026-09-25). It stands
+// in a field room at least two rooms away; core/gen.js places it.
 //
-// Grid symbols: # wall · . floor · , rubble · > the mouth of the mausoleum
+// Grid symbols: # palisade · . packed ground · , rubble
 //               Q quartermaster · S stash · A appraiser
 
 import { COLS, ROWS, T } from './grid.js';
 
 const MAP = [
   '################################',
-  '#..............................#',
-  '#..###.................###.....#',
-  '#..#Q..................#S......#',
-  '#..###.................###.....#',
-  '#..............................#',
-  '#.........,...........,........#',
-  '#.............####.............#',
-  '#.............#>>#.............#',
-  '#.............#>>#.............#',
-  '#.............#..#.............#',
-  '#.............#..#.............#',
-  '#..............................#',
-  '#..###.........................#',
-  '#..#A..........................#',
-  '################################',
+  '#...............................',
+  '#..###.................###......',
+  '#..#Q..................#S.......',
+  '#..###.................###......',
+  '#...............................',
+  '#.........,...........,.........',
+  '#...............................',
+  '#...............................',
+  '#..............,................',
+  '#...............................',
+  '#...............................',
+  '#...............................',
+  '#..###..........................',
+  '#..#A...........................',
+  '#...............................',
 ];
 
 export const STATION = { QUARTERMASTER: 'quartermaster', STASH: 'stash', APPRAISER: 'appraiser' };
 
 const CHAR = {
-  '#': T.WALL, '.': T.FLOOR, ',': T.RUBBLE, '>': T.STAIR_D,
+  '#': T.WALL, '.': T.FLOOR, ',': T.RUBBLE,
   'Q': T.FLOOR, 'S': T.FLOOR, 'A': T.FLOOR,
 };
 const STATION_CHAR = { Q: STATION.QUARTERMASTER, S: STATION.STASH, A: STATION.APPRAISER };
@@ -58,10 +61,9 @@ export function campRoom() {
     }
   }
 
-  // Everything is walkable from the mouth; the camp is not a puzzle.
+  // Everything is walkable from the open side; the camp is not a puzzle.
   const reach = new Uint8Array(COLS * ROWS);
-  let start = -1;
-  for (let i = 0; i < grid.length && start < 0; i++) if (grid[i] === T.STAIR_D) start = i;
+  let start = (ROWS >> 1) * COLS + COLS - 1;               // the east edge, mid-height: open ground
   if (start >= 0) {
     reach[start] = 1;
     const st = [start];
@@ -78,16 +80,15 @@ export function campRoom() {
   }
 
   for (const st of stations) {
-    if (!reach[st.tile]) throw new Error(`camp station '${st.kind}' is unreachable from the mouth`);
+    if (!reach[st.tile]) throw new Error(`camp station '${st.kind}' is unreachable from the open side`);
   }
 
+  // No plan here: the camp is one room of the Field, and gen.js supplies the
+  // Field's plan when it routes room 0 to this map.
   built = {
-    grid, reach, stations,
-    protect: [start].filter((i) => i >= 0),
+    grid, reach, stations, protect: [],
     archetype: 'company-camp',
     era: { name: 'Recent', tint: '#7a6242', arch: ['company-camp'] },
-    plan: { cells: [0], links: [], stairDown: 0, stairUp: -1,
-            era: { name: 'Recent', tint: '#7a6242', arch: ['company-camp'] } },
   };
   return built;
 }

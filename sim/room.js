@@ -6,7 +6,7 @@
 // One of four files that were `sim/interact.js` until 2026-09-25, when it had
 // grown to six questions in one place. This one answers: what is HERE?
 
-import { contentsOf, insideOf, roomTiles, COLS, ROWS, TILE, T } from '../core/gen.js';
+import { contentsOf, insideOf, roomTiles, groundTile, FIELD_CAMP, COLS, ROWS, TILE, T } from '../core/gen.js';
 import { campStations } from '../core/camp.js';
 import { isContainer, footOf, verbFor } from '../core/items.js';
 import { UNITS } from './state.js';
@@ -91,7 +91,7 @@ export function dropTile(s) {
   const free = (x, y) => {
     if (x < 1 || y < 1 || x >= COLS - 1 || y >= ROWS - 1) return false;
     const i = y * COLS + x;
-    return grid[i] === T.FLOOR && !used.has(i);
+    return groundTile(grid[i]) && !used.has(i);
   };
   for (let r = 0; r < Math.max(COLS, ROWS); r++)
     for (let dy = -r; dy <= r; dy++)
@@ -143,7 +143,7 @@ export function stairUnder(s) {
 // A station you are standing at. Camp only, and reachable from a tile away so
 // you do not have to stand exactly on the counter.
 export function stationAt(s) {
-  if (s.floor >= 0) return null;
+  if (s.floor >= 0 || s.room !== FIELD_CAMP) return null;   // the camp's counters are in the camp
   const px = Math.floor(s.x / (TILE * UNITS)), py = Math.floor(s.y / (TILE * UNITS));
   let best = null, bd = Infinity;
   for (const st of campStations()) {

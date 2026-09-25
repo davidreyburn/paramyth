@@ -189,6 +189,32 @@
           8
         ]
       ]
+    },
+    "GRASS": {
+      "kind": "variants",
+      "shade": 1,
+      "tone": {
+        "light": "#7d9a4f",
+        "dark": "#3f5230"
+      },
+      "cells": [
+        [
+          "paramyth",
+          2,
+          0
+        ],
+        [
+          "paramyth",
+          3,
+          0
+        ],
+        [
+          "paramyth",
+          4,
+          0
+        ]
+      ],
+      "_": "The Field's ground. Generated cells (paramyth-20.txt 2-4), a fixed green so the outdoors is green at every site and takes no stratum tone. Shade 1: the tone IS the daylight value."
     }
   },
   "player": {

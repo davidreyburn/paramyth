@@ -2,7 +2,7 @@
 // Positions are integers in subpixel UNITS, never floats — so the whole
 // movement path is exact arithmetic and replay holds on any device.
 
-import { roomTiles, floorPlan, COLS, ROWS, TILE, T } from '../core/gen.js';
+import { roomTiles, floorPlan, FIELD_CAMP, groundTile, COLS, ROWS, TILE, T } from '../core/gen.js';
 
 export const UNITS = 256;
 export const px = (u) => u / UNITS;
@@ -65,10 +65,9 @@ export const saying = (s) => (s.say && s.tick - s.say.at < SAY_TICKS) ? s.say : 
 // makes selling a haul feel like another delve.
 export const surface = (s) => s.floor < 0;
 
-// Where steel stays sheathed. These two are the same test today and will not
-// stay that way: the Field is surface and emphatically not friendly — it has
-// bandit holds on it. Kept apart so that day does not have to mean safe.
-export const friendly = (s) => s.floor < 0;
+// Where steel stays sheathed: the camp, and only the camp. The Field around it
+// is surface and emphatically not friendly. Day does not mean safe.
+export const friendly = (s) => s.floor < 0 && s.room === FIELD_CAMP;
 
 export const swingPhase = (s) => {
   if (!s.swing) return null;
@@ -86,7 +85,7 @@ export function spawnIn(seed, site, floor, room) {
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       const x = cx + dx, y = cy + dy;
       if (x < 1 || y < 1 || x >= COLS-1 || y >= ROWS-1) continue;
-      if (grid[y*COLS + x] === T.FLOOR && reach[y*COLS + x])
+      if (groundTile(grid[y*COLS + x]) && reach[y*COLS + x])
         return { x: (x*TILE + TILE/2) * UNITS, y: (y*TILE + TILE/2) * UNITS };
     }
   }

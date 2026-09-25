@@ -7,11 +7,13 @@ import { campRoom } from './camp.js';
 
 // The grid's shape lives in grid.js so authored places can share it without a
 // circular import. Re-exported here because everything already reads it from gen.
-export { TILE, COLS, ROWS, T, solidTile } from './grid.js';
-import { TILE, COLS, ROWS, T, solidTile } from './grid.js';
+export { TILE, COLS, ROWS, T, solidTile, groundTile } from './grid.js';
+import { TILE, COLS, ROWS, T, solidTile, groundTile } from './grid.js';
 
-// Floors below zero are the surface. -1 is the camp above every mausoleum.
+// Floors below zero are the surface. -1 is the Field above every mausoleum: a
+// floor like any other, six rooms, of which room 0 is the Company Camp.
 export const CAMP = -1;
+export const FIELD_CAMP = 0;
 
 export const GW = 3, GH = 2;                 // room grid per floor
 
@@ -69,6 +71,7 @@ function nearestCell(cells, target) {
 // the nearest one where it does not. Independent rolls put the two ends of a
 // staircase in unrelated rooms.
 export function stairDownCell(seed, site, floor) {
+  if (floor < 0) return fieldPlan(seed, site).stairDown;
   if (floor >= floorCount(seed, site) - 1) return -1;
   return hpick(cellsOf(seed, site, floor).cells, seed, site, floor, 0xd0);
 }
@@ -82,7 +85,7 @@ export function stairUpCell(seed, site, floor) {
 }
 
 export function floorPlan(seed, site, floor) {
-  if (floor < 0) return campRoom().plan;
+  if (floor < 0) return fieldPlan(seed, site);
   const { shape, cells } = cellsOf(seed, site, floor);
 
   const links = [];
@@ -222,10 +225,15 @@ function mainSpace(g) {
 const memo = new Map();                       // in-memory only, never saved
 
 export function roomTiles(seed, site, floor, room) {
-  if (floor < 0) return campRoom();          // authored, identical every time
   const key = `${seed}|${site}|${floor}|${room}`;
   const hit = memo.get(key);
   if (hit) return hit;
+  if (floor < 0) {
+    const plan = fieldPlan(seed, site);
+    const out = room === FIELD_CAMP ? { ...campRoom(), plan } : fieldRoom(seed, site, room, plan);
+    memo.set(key, out);
+    return out;
+  }
 
   const plan = floorPlan(seed, site, floor);
   const g = new Uint8Array(COLS * ROWS);
@@ -315,6 +323,77 @@ export function roomTiles(seed, site, floor, room) {
   if (memo.size > 512) memo.clear();
   memo.set(key, out);
   return out;
+}
+
+// ---------------------------------------------------------------------------
+// The surface. design/world-shape.md: "Open, traversable, dotted with mausoleum
+// mouths, salvage camps, bandit holds, broken monuments. Dangerous but
+// survivable. The hub." Floor -1 is a floor like the others — a GW x GH grid of
+// rooms, all present, all linked — except that room 0 is the authored camp and
+// the rest are open ground. The mouth of the mausoleum stands in a room at
+// least two away from the camp: nobody sleeps next to that.
+
+const FIELD_ERA = { name: 'Recent', tint: '#7a6242', arch: ['field'] };
+const FIELD_CELLS = [...Array(GW * GH).keys()];
+
+export function fieldPlan(seed, site) {
+  const links = [];
+  for (const i of FIELD_CELLS) {
+    const gx = i % GW, gy = (i / GW) | 0;
+    if (gx + 1 < GW) links.push([i, i + 1, 'h']);
+    if (gy + 1 < GH) links.push([i, i + GW, 'v']);
+  }
+  // Two or more rooms from the camp, by grid distance.
+  const far = FIELD_CELLS.filter((i) => Math.abs(i % GW - FIELD_CAMP % GW) + Math.abs(((i / GW) | 0) - ((FIELD_CAMP / GW) | 0)) >= 2);
+  return { shape: FIELD_CELLS.map(() => 1), cells: FIELD_CELLS, links,
+           stairDown: hpick(far, seed, site, 0xf1e1d), stairUp: -1, era: FIELD_ERA, camp: FIELD_CAMP };
+}
+
+// The mausoleum's face: a small walled front with the stairs inside and the
+// approach open to the south. Stamped whole, so the mouth always reads the same.
+const MOUTH = ['####', '#>>#', '#>>#', '#..#'];
+
+function fieldRoom(seed, site, room, plan) {
+  const g = new Uint8Array(COLS * ROWS).fill(T.GRASS);
+  const gx = room % GW, gy = (room / GW) | 0;
+
+  // Where the world ends, a line of boulders. Where a room continues, the edge
+  // is open its whole length: crossing is walking, not a doorway. Corners are
+  // always solid so nothing leaves diagonally into a room that is not there.
+  const openN = gy > 0, openS = gy + 1 < GH, openW = gx > 0, openE = gx + 1 < GW;
+  for (let x = 0; x < COLS; x++) { if (!openN) g[x] = T.RUBBLE; if (!openS) g[(ROWS - 1) * COLS + x] = T.RUBBLE; }
+  for (let y = 0; y < ROWS; y++) { if (!openW) g[y * COLS] = T.RUBBLE; if (!openE) g[y * COLS + COLS - 1] = T.RUBBLE; }
+  for (const c of [0, COLS - 1, (ROWS - 1) * COLS, ROWS * COLS - 1]) g[c] = T.RUBBLE;
+
+  const mouth = plan.stairDown === room;
+  const cx = COLS >> 1, cy = ROWS >> 1;
+  const nearMouth = (x, y) => mouth && x >= cx - 4 && x < cx + 4 && y >= cy - 5 && y < cy + 4;
+
+  // Boulders and broken monuments, hashed. Obstruction is content: a cap opens
+  // a boulder; a monument is masonry and stays.
+  const n = hrange(3, 6, seed, site, room, 0xf1e2);
+  for (let i = 0; i < n; i++) {
+    const monument = hchance(1, 3, seed, site, room, i, 0xf1e5);
+    const w = monument ? hrange(1, 2, seed, site, room, i, 0xf1e6) : hrange(2, 3, seed, site, room, i, 0xf1e6);
+    const hgt = monument ? hrange(2, 3, seed, site, room, i, 0xf1e7) : hrange(1, 2, seed, site, room, i, 0xf1e7);
+    const x0 = hrange(3, COLS - 4 - w, seed, site, room, i, 0xf1e3), y0 = hrange(2, ROWS - 3 - hgt, seed, site, room, i, 0xf1e4);
+    for (let y = y0; y < y0 + hgt; y++)
+      for (let x = x0; x < x0 + w; x++)
+        if (!nearMouth(x, y)) g[y * COLS + x] = monument ? T.WALL : T.RUBBLE;
+  }
+
+  if (mouth) {
+    for (let r = 0; r < MOUTH.length; r++)
+      for (let c = 0; c < MOUTH[r].length; c++) {
+        const ch = MOUTH[r][c], i = (cy - 3 + r) * COLS + (cx - 2 + c);
+        g[i] = ch === '#' ? T.WALL : ch === '>' ? T.STAIR_D : T.GRASS;
+      }
+  }
+
+  const reach = mainSpace(g);
+  const protect = [];
+  for (let i = 0; i < g.length; i++) if (g[i] === T.STAIR_D) protect.push(i);
+  return { grid: g, archetype: 'field', era: FIELD_ERA, plan, reach, protect };
 }
 
 export const isSolid = (grid, tx, ty) =>

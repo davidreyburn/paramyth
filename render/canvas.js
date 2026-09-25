@@ -1,6 +1,6 @@
 // L5: presentation. Reads everything, changes nothing.
 
-import { roomTiles, COLS, ROWS, TILE, T } from '../core/gen.js';
+import { roomTiles, FIELD_CAMP, COLS, ROWS, TILE, T } from '../core/gen.js';
 import { UNITS, px } from '../sim/state.js';
 import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER,
          LAMP_BACK, lampShape, SURFACE_LIFT } from '../core/palette.js';
@@ -31,7 +31,7 @@ const NAME = Object.fromEntries(Object.entries(T).map(([k, v]) => [v, k]));
 const FLAT = {
   FLOOR:[P.umbra, P.pitch], WALL:[P.stoneMid, P.stoneShadow], RUBBLE:[P.stoneShadow, P.umbra],
   SARC:[P.stone, P.stoneMid], NICHE:[P.void, P.pitch], PILLAR:[P.stone, P.stoneMid],
-  STAIR_D:[P.pitch, P.void], STAIR_U:[P.stone, P.bone],
+  STAIR_D:[P.pitch, P.void], STAIR_U:[P.stone, P.bone], GRASS:['#3f5230', '#34452a'],
 };
 
 export function createRenderer(canvas, pack = null) {
@@ -448,7 +448,7 @@ export function createRenderer(canvas, pack = null) {
   }
 
   function drawStations(s, tone) {
-    if (s.floor >= 0 || !pack || !pack.stations) return;
+    if (s.floor >= 0 || s.room !== FIELD_CAMP || !pack || !pack.stations) return;
     for (const st of campStations()) {
       const def = pack.stations[st.kind];
       if (!def) continue;

@@ -458,6 +458,17 @@ try {
       ok('then is gone', shot() === plain);
       s6.pops = [];
 
+      // The Field: a field room draws, green and daylit, and differs from the camp.
+      const { fieldPlan, FIELD_CAMP: CAMP0 } = await import('../core/gen.js');
+      const s7 = createState(0x1594);
+      r.draw(s7, [{text:''},{text:''},{text:''},{text:''}]); const campShot = ctx.getImageData(0,0,W,VIEW_H).data;
+      s7.room = fieldPlan(0x1594, 0).stairDown; s7.x = 16*20*256 + 10*256; s7.y = 12*20*256 + 10*256;
+      r.draw(s7, [{text:''},{text:''},{text:''},{text:''}]); const fieldShot = ctx.getImageData(0,0,W,VIEW_H).data;
+      let differ = 0, green = 0; for (let i = 0; i < fieldShot.length; i += 4) { if (fieldShot[i] !== campShot[i] || fieldShot[i+1] !== campShot[i+1]) differ++; if (fieldShot[i+1] > fieldShot[i] + 8 && fieldShot[i+1] > fieldShot[i+2] + 8) green++; }
+      ok('a field room draws, and not as the camp', differ > fieldShot.length / 16, `${differ} px differ`);
+      ok('and it is green', green > fieldShot.length / 32, `${green} green px`);
+      r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]);
+
       // The swing must be visible for exactly its active frames.
       s6.facing = 1;
       s6.swing = { at: s6.tick, dir: 1, hit: [] };

@@ -5,7 +5,7 @@
 import { VERB, hasVerb } from './frame.js';
 import { UNITS, spawnIn, MAX_HP, SWING_TICKS, POP_TICKS, swingPhase, lampStep, friendly } from './state.js';
 import { plant, fuseStep } from './blast.js';
-import { roomTiles, floorPlan, floorCount, CAMP, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
+import { roomTiles, floorPlan, floorCount, CAMP, FIELD_CAMP, groundTile, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
 import { isContainer, isPortable, isWeapon, bulkOf, SLOTS, slotOf, blastOf, KIND } from '../core/items.js';
 import { reachable, stairUnder, stationAt, visible, containerItems, dropTile, gridOf } from './room.js';
 import { carriedBulk, tier, mostFragile, bestWeapon, equippedRefs, BULK_BUDGET, STASH_SLOTS, PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './carry.js';
@@ -144,7 +144,7 @@ export function enterRoom(s) {
           const x = tx + ddx, y = ty + ddy;
           if (x < 1 || y < 1 || x >= COLS-1 || y >= ROWS-1) continue;
           const p = centreOf(y * COLS + x);
-          if (grid[y*COLS + x] !== T.FLOOR || blocked(grid, others, p.x, p.y)) continue;
+          if (!groundTile(grid[y*COLS + x]) || blocked(grid, others, p.x, p.y)) continue;
           f.x = p.x; f.y = p.y; moved = true;
         }
   }
@@ -165,7 +165,7 @@ function die(s) {
   s.swing = null;
   s.vx = 0; s.vy = 0;
   s.deaths = (s.deaths || 0) + 1;
-  s.site = 0; s.floor = CAMP; s.room = 0;
+  s.site = 0; s.floor = CAMP; s.room = FIELD_CAMP;
   const p = spawnIn(s.seed, s.site, s.floor, s.room);
   s.x = p.x; s.y = p.y;
   s.foes = [];

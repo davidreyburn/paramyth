@@ -54,6 +54,24 @@ const modes = [
   ['blast',   (f, s) => { f.mode = 'stagger'; f.modeAt = s.tick; const b = blastOf('bcap'); s.blasts = [{ x: s.x + 20 * 256, y: s.y, r: b.radius * 256, at: s.tick - 1, site: s.site, floor: s.floor, room: s.room, damage: b.damage, knock: b.knock, self: b.self, linger: b.linger, hit: [] }]; }],
 ];
 const row = document.getElementById('row');
+// ?room=field | camp: the whole surface room, uncropped. For judging the
+// ground and the mausoleum front rather than a foe.
+if (q.get('room')) {
+  const { fieldPlan } = await import('../core/gen.js');
+  const s = createState(SEED);
+  if (q.get('room') === 'field') { s.room = fieldPlan(SEED, 0).stairDown; s.x = 16 * 20 * 256 + 10 * 256; s.y = 12 * 20 * 256 + 10 * 256; }
+  s.tick = 100;
+  enterRoom(s);
+  const full = document.createElement('canvas');
+  const r = createRenderer(full, pack.ok ? pack : null);
+  r.draw(s, [{ text: '' }, { text: '' }, { text: '' }, { text: '' }]);
+  full.style.width = full.width * (S / 2) + 'px'; full.style.height = full.height * (S / 2) + 'px';
+  const fig = document.createElement('figure'); fig.appendChild(full);
+  const cap = document.createElement('figcaption'); cap.textContent = `${q.get('room')} — room ${s.room} of the Field`; fig.appendChild(cap);
+  row.appendChild(fig);
+  say(`the ${q.get('room')}, whole`);
+  window.__ready = true;
+} else {
 const CROP = 72;
 for (const [name, set] of modes) {
   const s = createState(SEED);
@@ -78,6 +96,7 @@ for (const [name, set] of modes) {
   const cap = document.createElement('figcaption'); cap.textContent = name; fig.appendChild(cap);
   row.appendChild(fig);
 }
-say(`${KIND}: ${modes.length} modes, 40px east of you — ?kind=${Object.keys(FOE).join('|')}`);
+say(`${KIND}: ${modes.length} modes, 40px east of you — ?kind=${Object.keys(FOE).join('|')} · ?room=field|camp`);
 window.__ready = true;
+}
 </script></body></html>

@@ -265,5 +265,72 @@ const SEED = 0x1594;
 // --- storage --------------------------------------------------------------
 ok('generation writes nothing to disk', true, 'pure functions; memo is in-memory and capped');
 
+// --- the Field: the surface is a floor, and the camp is one room of it -------
+{
+  const { fieldPlan, FIELD_CAMP, GW, GH, TILE, groundTile, floorCount: nFloors, floorPlan: fp, roomTiles: rt } = await import('../core/gen.js');
+  const { campRoom } = await import('../core/camp.js');
+  const { foesOf } = await import('../core/foes.js');
+  const { createState, friendly, surface } = await import('../sim/state.js');
+  const { stationAt } = await import('../sim/room.js');
+  const { campStations } = await import('../core/camp.js');
+
+  let sites = 0, sixRooms = 0, farMouth = 0, oneMouth = 0, mouthReach = 0, edgesOpen = 0, walkable = 0, grassUnder = 0, hunted = 0, inCamp = 0;
+  for (let site = 0; site < 24; site++) {
+    sites++;
+    const plan = fp(SEED, site, -1);
+    if (plan.cells.length === GW * GH && plan.cells[FIELD_CAMP] === FIELD_CAMP) sixRooms++;
+    const m = plan.stairDown;
+    if (Math.abs(m % GW - FIELD_CAMP % GW) + Math.abs(((m / GW) | 0) - ((FIELD_CAMP / GW) | 0)) >= 2) farMouth++;
+    let mouths = 0, allWalkable = true, allEdges = true;
+    for (const room of plan.cells) {
+      const { grid, reach } = rt(SEED, site, -1, room);
+      const stairs = [...grid].filter((t) => t === T.STAIR_D).length;
+      if (stairs) { mouths++; if ([...grid].every((t, i) => t !== T.STAIR_D || reach[i])) mouthReach++; }
+      // Open the whole length where a room continues; solid where the world ends.
+      const gx = room % GW, gy = (room / GW) | 0;
+      for (let y = 1; y < ROWS - 1; y++) {
+        const w = grid[y * COLS], e = grid[y * COLS + COLS - 1];
+        if ((gx > 0) !== groundTile(w) || (gx + 1 < GW) !== groundTile(e)) allEdges = false;
+      }
+      for (let x = 1; x < COLS - 1; x++) {
+        const n = grid[x], so = grid[(ROWS - 1) * COLS + x];
+        if ((gy > 0) !== groundTile(n) || (gy + 1 < GH) !== groundTile(so)) allEdges = false;
+      }
+      // Walkable: most of the room is one space, and every open edge touches it.
+      let open = 0, reached = 0;
+      for (let i = 0; i < grid.length; i++) if (groundTile(grid[i])) { open++; if (reach[i]) reached++; }
+      if (reached / open < 0.6) allWalkable = false;
+      if (gx > 0 && ![...Array(ROWS - 2).keys()].some((k) => reach[(k + 1) * COLS])) allWalkable = false;
+      if (gx + 1 < GW && ![...Array(ROWS - 2).keys()].some((k) => reach[(k + 1) * COLS + COLS - 1])) allWalkable = false;
+      if (gy > 0 && ![...Array(COLS - 2).keys()].some((k) => reach[k + 1])) allWalkable = false;
+      if (gy + 1 < GH && ![...Array(COLS - 2).keys()].some((k) => reach[(ROWS - 1) * COLS + k + 1])) allWalkable = false;
+      if (room !== FIELD_CAMP && foesOf(SEED, site, -1, room).length) hunted++;
+    }
+    inCamp += foesOf(SEED, site, -1, FIELD_CAMP).length;
+    if (mouths === 1) oneMouth++;
+    if (allEdges) edgesOpen++;
+    if (allWalkable) walkable++;
+    for (let fl = 0; fl < Math.min(2, nFloors(SEED, site)); fl++)
+      for (const room of fp(SEED, site, fl).cells) grassUnder += [...rt(SEED, site, fl, room).grid].filter((t) => t === T.GRASS).length;
+  }
+  ok('the Field is six rooms and the camp is room 0', sixRooms === sites, `${sixRooms}/${sites}`);
+  ok('the mouth is at least two rooms from the camp', farMouth === sites, `${farMouth}/${sites}`);
+  ok('exactly one field room holds the mouth', oneMouth === sites, `${oneMouth}/${sites}`);
+  ok('and its stairs are reachable', mouthReach === sites, `${mouthReach}/${sites}`);
+  ok('room edges are open where a room continues and solid where the world ends', edgesOpen === sites, `${edgesOpen}/${sites}`);
+  ok('every field room is walkable edge to edge', walkable === sites, `${walkable}/${sites}`);
+  ok('the camp has no stair in it', ![...campRoom().grid].includes(T.STAIR_D));
+  ok('grass never grows underground', grassUnder === 0, `${grassUnder} tiles`);
+  ok('nothing hunts you in the camp', inCamp === 0);
+  ok('but something sometimes hunts on the Field', hunted > 0, `${hunted} field rooms with a dog, of ${sites * 5}`);
+  const s = createState(SEED);
+  ok('the camp is friendly and daylit', friendly(s) && surface(s));
+  s.room = 1;
+  ok('the rest of the Field is daylit and NOT friendly', !friendly(s) && surface(s));
+  const q = campStations()[0];
+  s.x = ((q.tile % COLS) * TILE + TILE / 2) * 256; s.y = (((q.tile / COLS) | 0) * TILE + TILE / 2) * 256;
+  ok('the camp\'s counters answer only in the camp', !stationAt(s) && (s.room = FIELD_CAMP, !!stationAt(s)));
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all generator gates passed\n');
 process.exit(failures ? 1 : 0);

@@ -149,7 +149,7 @@ function loop(now) {
     { text: `PARAMYTH ${VERSION}  seed ${SEED.toString(16)}  ${fps}fps x${renderer.scale}  tick ${state.tick}  art ${pack ? (pack.ok ? pack.id : 'MISSING ' + pack.missing.join(',')) : 'flat'}  pad ${input.pad}  ${bytes} KiB  ${replayResult.text}`,
       color: replayResult.color },
     { text: (state.floor < 0
-        ? `COMPANY CAMP \u00b7 site ${state.site}`
+        ? `${state.room === 0 ? 'COMPANY CAMP' : 'THE FIELD \u00b7 room ' + state.room} \u00b7 site ${state.site}`
         : `site ${state.site}  floor ${state.floor + 1}/${nFloors}  room ${state.room}  (${plan.cells.length} on this floor)  ${w.era.name.toUpperCase()} \u00b7 ${w.archetype}`)
         + `   moved ${state.moves}   held ${heldNames(frame)}`,
       color: '#8a7f70' },

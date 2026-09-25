@@ -9,6 +9,21 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Added
+
+- **The Field** (`plans/field-2026-09-25.md`). The surface is a floor like the
+  others: six rooms, all linked, all present. Room 0 is the Company Camp,
+  authored as before but with its east and south sides open. The other five are
+  generated open ground — a new `GRASS` tile from three generated cells in the
+  project sheet, a fixed green at every site — with hashed boulder clusters (a
+  cap opens them) and broken monuments (masonry, which stays). Room edges are
+  open their whole length where a room continues, a boulder line where the
+  world ends: crossing is walking, not doorways. **The mausoleum mouth has left
+  the camp** — nobody sleeps next to that — and stands as a small walled front
+  in a room at least two away. Floor 0's up-stair still returns you to it. The
+  camp is the only friendly room: steel comes out on the Field, caps can be
+  set, and a dog sometimes hunts there. Counters answer only in the camp.
+
 ### Changed
 
 - **Three stats renamed** (DJ): Finesse → **Swift**, Keen → **Insight**, Bearing →

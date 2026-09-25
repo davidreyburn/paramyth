@@ -28,7 +28,7 @@ That single structural fact does most of the design's work:
 
 | Stratum | Character | Act |
 |---|---|---|
-| **The Field** | Surface Barrowlands. Open, traversable, dotted with mausoleum mouths, salvage camps, bandit holds, broken monuments. Dangerous but survivable. The hub. | I |
+| **The Field** | Surface Barrowlands. Open, traversable, dotted with mausoleum mouths, salvage camps, bandit holds, broken monuments. Dangerous but survivable. The hub. *Built 2026-09-25 as floor −1: six rooms of generated open ground, the Company Camp authored as room 0, the mouth at least two rooms away, dogs but no salvage yet; see `plans/field-2026-09-25.md`.* | I |
 | **The Mausoleums** | Dozens of shallow complexes, 3–10 rooms each. Distinct architecture per era and builder. Most players' whole early game. | I |
 | **The Barrow Deep** | One connected network beneath every mausoleum. Collapsed halls, vaults, the Ransacked Archive. Where the graph becomes the game. | I–II |
 | **The Frontier Halls** | Primeval caverns. Poison air — sealed plate required. Barrowburg as a deep settlement and second economy. | III |

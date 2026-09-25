@@ -50,7 +50,7 @@ With `npm start` running:
 | `/tools/tile-mapper.html` | Assign sheet cells to tile types, with a live lit room preview |
 | `/tools/tileset-sheet.html` | Contact sheet with grid coordinates (`?sheet=decor&scale=5`) |
 | `/tools/icon-preview.html` | Every item icon per stratum, drawn through the pack screen's path |
-| `/tools/telegraph.html` | A foe in every mode, plus a set cap and a blast, through the real renderer (`?scale=4&kind=sentinel`) |
+| `/tools/telegraph.html` | A foe in every mode, plus a set cap and a blast, through the real renderer (`?kind=sentinel`); `?room=field\|camp` draws a whole surface room |
 | `tools/build-sheet.mjs` | Builds the project's own sheet from `assets/sheets/paramyth-20.txt` (`#` light, `@` dark, `.` clear) |
 | `/tools/pagecheck.html` | The browser gates |
 

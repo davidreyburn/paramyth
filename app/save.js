@@ -51,7 +51,7 @@ export function summarize(save) {
     scrap: d.scrap || 0,
     deaths: d.deaths || 0,
     moves: d.moves || 0,
-    where: d.floor < 0 ? 'in camp' : `at ${placeLabel(`${d.site}:${d.floor}:${d.room}`)}`,
+    where: d.floor < 0 ? (d.room === 0 ? 'in camp' : 'on the Field') : `at ${placeLabel(`${d.site}:${d.floor}:${d.room}`)}`,
     version: save.version,
   };
 }
