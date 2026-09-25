@@ -20,7 +20,7 @@ entire.** See `plans/roadmap.md`.
   changes the map, recorded as one line of delta per tile while the generator
   stays pure. It hurts each body in it once (8; you 4 if you stand there) and
   shoves with knock 48: the heavy impact that moves a Sentinel. The Worker is
-  issued one; more lie in the shallows at 2 scrap. Own icon in the project
+  issued one; more lie in the shallows at 2 scrap. DJ's bomb icon in the project
   sheet, which now builds from `assets/sheets/paramyth-20.txt` by
   `tools/build-sheet.mjs`. A ninth gate suite, `tools/test-tools.mjs`.
 - `sim/blast.js` (L3): fuses and blasts are world physics beside `carry()`;

@@ -362,7 +362,7 @@
           0
         ]
       ],
-      "_": "Blasting Cap; B.Cap in the UI. Own art, cell 1."
+      "_": "Blasting Cap; B.Cap in the UI. DJ's bomb, own art, cell 1."
     }
   },
   "_foes": "Enemies, keyed by the kinds in core/foes.js. A glyph, like the player, because the reference sheet's characters do not fit the tone either. Swap to a sprite by replacing this with { sheet, w, h, idle, walk }.",
@@ -473,5 +473,5 @@
       ]
     }
   },
-  "_sheets_note": "`paramyth` is the project's OWN sheet, built from paramyth-20.txt by tools/build-sheet.mjs. 20px cells, the pack's two-tone palette, transparent ground. 0 sword (DJ), 1 blasting cap."
+  "_sheets_note": "`paramyth` is the project's OWN sheet, built from paramyth-20.txt by tools/build-sheet.mjs. 20px cells, the pack's two-tone palette, transparent ground. 0 sword (DJ), 1 blasting cap (DJ)."
 }
