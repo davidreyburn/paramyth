@@ -46,6 +46,12 @@ entire.** See `plans/roadmap.md`.
   camp is the only friendly room: steel comes out on the Field, caps can be
   set, and a dog sometimes hunts there. Counters answer only in the camp.
 
+### Fixed
+
+- **No health bar on the Field.** It was drawn 'underground only', a rule from
+  when the whole surface was the safe camp. The Field has dogs. It now follows
+  danger, not depth: everywhere but the camp. Gated both ways.
+
 ### Changed
 
 - **Three stats renamed** (DJ): Finesse → **Swift**, Keen → **Insight**, Bearing →
