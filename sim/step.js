@@ -154,12 +154,13 @@ export function enterRoom(s) {
 // the floor is full, so anything that will not fit is lost rather than silently
 // kept — dying in a packed room costs you more, which is correct.
 function die(s) {
-  while (s.carried.length && putDown(s, 0));
-  s.carried.length = 0;
-  for (const slot of SLOTS) {
-    if (s.equipped[slot]) putDownRef(s, s.equipped[slot]);
-    s.equipped[slot] = null;
-  }
+  // Everything you held, pack and row, into ONE container where you fell. Not
+  // scattered: a corpse is a place, and the reason for the next run.
+  const items = [...s.carried, ...SLOTS.map((k) => s.equipped[k]).filter(Boolean)];
+  const tile = Math.floor(s.y / (TILE * UNITS)) * COLS + Math.floor(s.x / (TILE * UNITS));
+  s.remains.push({ site: s.site, floor: s.floor, room: s.room, tile, at: s.tick, items });
+  s.carried = [];
+  for (const slot of SLOTS) s.equipped[slot] = null;
   s.hp = MAX_HP;
   s.hurtAt = -9999;
   s.swing = null;
@@ -310,6 +311,14 @@ function screenStep(s, frame) {
 
   const take = (it) => {
     if (carriedBulk(s) + bulkOf(it.kind) > BULK_BUDGET) return false;
+    if (it.remains !== undefined) {
+      // Out of your remains, by key: the world already knows this thing is taken.
+      const r = s.remains[it.remains], i = r ? r.items.findIndex((x) => x.key === it.key) : -1;
+      if (i < 0) return false;
+      r.items.splice(i, 1);
+      s.carried.push({ kind: it.kind, key: it.key });
+      return true;
+    }
     s.carried.push({ kind: it.kind, key: it.key });
     s.taken.push(it.key);
     return true;

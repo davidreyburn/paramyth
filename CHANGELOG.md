@@ -9,6 +9,23 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Added
+
+- **Your remains.** Death no longer scatters what you held across the floor: it
+  leaves ONE container where you fell, holding everything, pack and row, as
+  pale-lichen bones under a faint verdigris aura that breathes with the tick
+  (a Bayer-dithered disc: no gradient, no clock). It opens like a chest —
+  “Open remains” — and taking from it is taking; take-all empties it and the
+  bones stay as a marker that asks nothing more. You can stand on them. A cap
+  does not destroy them. Delta-only, never generated; hashed and saved. DJ:
+  “your corpse should be a special colored bones, maybe with a faint aura glow,
+  that opens as a container.”
+
+### Fixed
+
+- The room view's cache stamp did not include remains, so re-entering the room
+  you died in served the view from before you died. It does now.
+
 ## [0.8.0] — 2026-09-25
 
 *The Field, the cap, the Sentinel, and the game on a phone.* DJ, on the Retroid:

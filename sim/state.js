@@ -141,6 +141,7 @@ export function createState(seed) {
     known: [],         // keys whose record has been read
     taken: [],         // keys of contents removed from the world
     dropped: [],       // what you put back down, and where it lies
+    remains: [],       // where you died: { site, floor, room, tile, at, items } — a container in the delta
     opened: [],        // keys of containers opened
     screen: '',        // '' | 'pack' | 'container'
     screenKey: '',     // which container, when screen is 'container'
@@ -183,6 +184,8 @@ export function hashState(s) {
     for (let i = 0; i < d.key.length; i++) mix(d.key.charCodeAt(i));
     mix(d.site); mix(d.floor); mix(d.room); mix(d.tile);
   }
+  mix(s.remains.length);
+  for (const r of s.remains) { mix(r.site); mix(r.floor); mix(r.room); mix(r.tile); mix(r.at); rollRefs(r.items); }
   // The body and what is hunting it. Foe positions are part of the state, so
   // replay has to reproduce them tick for tick.
   mix(s.hp); mix(s.hurtAt < 0 ? 0 : s.hurtAt);

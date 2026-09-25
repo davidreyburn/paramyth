@@ -51,6 +51,7 @@ const modes = [
   ['cap set', (f, s) => { f.mode = 'circle'; s.charges = [{ kind: 'bcap', key: 'k', site: s.site, floor: s.floor, room: s.room, x: s.x + 20 * 256, y: s.y, at: s.tick - 40 }]; }],
   ['pop',     (f, s) => { s.foes = []; s.pops = [{ x: f.x, y: f.y, at: s.tick - 3, kind: f.kind }]; }],
   ['fade',    (f, s) => { f.mode = 'circle'; s.arrivedAt = s.tick - 7; }],
+  ['remains', (f, s) => { s.foes = []; s.remains = [{ site: s.site, floor: s.floor, room: s.room, tile: Math.floor(f.y / 5120) * 32 + Math.floor(f.x / 5120), at: s.tick - 5, items: [{ kind: 'sword', key: 'issue:0:0:0' }] }]; }],
   ['blast',   (f, s) => { f.mode = 'stagger'; f.modeAt = s.tick; const b = blastOf('bcap'); s.blasts = [{ x: s.x + 20 * 256, y: s.y, r: b.radius * 256, at: s.tick - 1, site: s.site, floor: s.floor, room: s.room, damage: b.damage, knock: b.knock, self: b.self, linger: b.linger, hit: [] }]; }],
 ];
 const row = document.getElementById('row');

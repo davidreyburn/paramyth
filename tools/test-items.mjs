@@ -63,7 +63,7 @@ const delve = (site = 0, floor = 0, room = null) => {
     for (let f = 0; f < floorCount(SEED, s); f++)
       for (const r of floorPlan(SEED, s, f).cells)
         for (const c of contentsOf(SEED, s, f, r)) kinds.add(c.kind);
-  const declared = Object.keys(KIND);
+  const declared = Object.keys(KIND).filter((k) => !KIND[k].delta);   // delta-only kinds (remains) are never generated, by design
   const dead = declared.filter((k) => !kinds.has(k));
   ok('every declared kind can actually appear', dead.length === 0, dead.length ? 'never placed: ' + dead.join(', ') : `${kinds.size}/${declared.length}`);
 
@@ -756,7 +756,7 @@ const delve = (site = 0, floor = 0, room = null) => {
   d.foes = [{ id: 'x', kind: 'dog', x: d.x, y: d.y, hp: 6, mode: 'circle', modeAt: 0, spin: 1, aimX: 0, aimY: 0, vx: 0, vy: 0 }];
   for (let i = 0; i < 20 && !d.deaths; i++) { d.hurtAt = -9999; applyAction(d, { k: 'bite', id: 'x', n: 4 }); }
   ok('death empties every slot', d.deaths === 1 && SLOTS.every((k) => d.equipped[k] === null));
-  ok('and the blade is on the floor where you fell', d.dropped.some((x) => x.kind === 'sword'));
+  ok('and the blade is in your remains where you fell', d.remains.length === 1 && d.remains[0].items.some((x) => x.kind === 'sword'));
 }
 
 // --- the status page --------------------------------------------------------

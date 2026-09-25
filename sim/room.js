@@ -30,8 +30,14 @@ export function thingsIn(s, site, floor, room, taken = new Set(s.taken), opened 
   for (const d of s.dropped)
     if (d.site === site && d.floor === floor && d.room === room)
       out.push({ slot: -1, tile: d.tile, kind: d.kind, key: d.key, dropped: true });
+  // And where you died. A corpse is a container that exists only in the delta;
+  // its key is its index, which is stable because remains are never removed.
+  for (const [i, r] of s.remains.entries())
+    if (r.site === site && r.floor === floor && r.room === room)
+      out.push({ slot: -1, tile: r.tile, kind: 'remains', key: remainsKey(i), open: opened.has(remainsKey(i)), remains: i });
   return out;
 }
+export const remainsKey = (i) => `remains:${i}`;
 
 // ONE VIEW PER TICK. What is in this room — the things still lying here, and
 // the boxes you walk around — computed once and cached on a transient field.
@@ -42,7 +48,9 @@ export function thingsIn(s, site, floor, room, taken = new Set(s.taken), opened 
 // every such change alters one of three list lengths — so validity is a string
 // compare and needs no invalidation calls. plans/review-2026-09-24.md.
 export function roomView(s) {
-  const stamp = `${s.site}|${s.floor}|${s.room}|${s.taken.length}|${s.opened.length}|${s.dropped.length}|${s.broken.length}|${s.scars.length}`;
+  // Every list whose length changes what is in a room is in the stamp. Remains
+  // were not, and re-entering the room you died in served the view from before.
+  const stamp = `${s.site}|${s.floor}|${s.room}|${s.taken.length}|${s.opened.length}|${s.dropped.length}|${s.broken.length}|${s.scars.length}|${s.remains.length}`;
   const v = s._view;
   if (v && v.stamp === stamp) return v;
 
@@ -105,6 +113,10 @@ export function dropTile(s) {
 // What is still inside a container. Contents stay in it until taken — spilling
 // them across the floor made an opened chest look like it had done nothing.
 export function containerItems(s, key) {
+  if (String(key).startsWith('remains:')) {
+    const r = s.remains[Number(String(key).slice(8))];
+    return r ? r.items.map((ref) => ({ ...ref, remains: Number(String(key).slice(8)) })) : [];
+  }
   const slot = Number(String(key).split(':')[3]);
   const { taken } = roomView(s);
   return insideOf(s.seed, s.site, s.floor, s.room, slot)

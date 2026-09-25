@@ -394,6 +394,20 @@
         "dark": "#2b2521"
       },
       "_tone": "iron. A fixed tone wins over the stratum: a bomb is the same bomb at every depth."
+    },
+    "remains": {
+      "cells": [
+        [
+          "decor",
+          5,
+          1
+        ]
+      ],
+      "tone": {
+        "light": "#c9d7b0",
+        "dark": "#3d6b62"
+      },
+      "_": "Your remains: the bones cell in a fixed pale-lichen tone with verdigris shadow, so they read as YOURS at any depth. The aura is drawn by the renderer (drawAuras), keyed to the tick."
     }
   },
   "_foes": "Enemies, keyed by the kinds in core/foes.js. A glyph, like the player, because the reference sheet's characters do not fit the tone either. Swap to a sprite by replacing this with { sheet, w, h, idle, walk }.",

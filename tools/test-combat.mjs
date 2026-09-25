@@ -342,11 +342,49 @@ function delve(floor, room) {
   ok('and you wake in the camp', s.floor === -1, `floor ${s.floor}`);
   ok('carrying nothing', s.carried.length === 0);
   ok('the stash is untouched', s.stash.length === 1, s.stash.map((r) => r.kind).join(','));
-  ok('and everything you held is on the floor where you fell',
-     s.dropped.length >= 2 && s.dropped.every((d) => d.floor === where.floor && d.room === where.room),
-     `${s.dropped.length} items at ${where.floor}:${where.room}`);
-  ok('including the blade — death takes everything',
-     s.dropped.some((d) => d.kind === 'sword'));
+  // Not scattered on the floor any more: ONE container where you fell, holding
+  // everything, pack and row. Your remains are the reason for the next run.
+  ok('and everything you held is in your remains where you fell',
+     s.dropped.length === 0 && s.remains.length === 1 && s.remains[0].floor === where.floor && s.remains[0].room === where.room
+       && s.remains[0].items.length === 4,
+     `${s.remains[0]?.items.length} items at ${where.floor}:${where.room}`);
+  ok('including the blade and the cap — death takes everything',
+     s.remains[0].items.some((r) => r.kind === 'sword') && s.remains[0].items.some((r) => r.kind === 'bcap'));
+
+  // Going back for them.
+  {
+    const { thingsIn, containerItems, reachable, remainsKey } = await import('../sim/room.js');
+    const { prompt } = await import('../sim/prompt.js');
+    const { forceOn } = await import('../core/items.js');
+    const { toDelta } = await import('../sim/state.js');
+    const { centreOf } = await import('../sim/space.js');
+    const r0 = s.remains[0], key = remainsKey(0);
+    s.site = 0; s.floor = r0.floor; s.room = r0.room; s.foes = [];
+    const c = centreOf(r0.tile); s.x = c.x; s.y = c.y;
+    enterRoom(s); s.foes = [];
+    ok('your remains lie in the room, as a container', thingsIn(s, s.site, s.floor, s.room).some((t) => t.kind === 'remains' && t.key === key && t.tile === r0.tile));
+    ok('you can stand on them', !solidTile(0) && KIND.remains.solid === false);
+    ok('and the toast says what to do', prompt(s) && prompt(s).text === 'Open remains', prompt(s)?.text);
+    step(s, setVerb(0, VERB.INTERACT, true), SYSTEMS);
+    ok('opening them is the container screen', s.screen === 'container' && s.screenKey === key);
+    const shown = containerItems(s, key);
+    ok('showing everything you died with', shown.length === 4 && shown.every((x) => x.remains === 0));
+    step(s, 0, SYSTEMS);
+    step(s, setVerb(0, VERB.INTERACT, true), SYSTEMS);            // take the first
+    ok('taking one moves it to your pack and out of the bones', s.carried.length === 1 && containerItems(s, key).length === 3);
+    step(s, 0, SYSTEMS);
+    step(s, setVerb(0, VERB.TOOL, true), SYSTEMS);                // take all
+    ok('take-all empties them', containerItems(s, key).length === 0 && s.carried.length === 4);
+    ok('and the sword came back as a thing you can wield again', s.carried.some((r) => r.kind === 'sword' && r.key === 'issue:0:0:0'));
+    step(s, 0, SYSTEMS);
+    step(s, setVerb(0, VERB.CANCEL, true), SYSTEMS);
+    ok('the empty bones stay as a marker but ask nothing more', thingsIn(s, s.site, s.floor, s.room).some((t) => t.kind === 'remains') && (!reachable(s) || reachable(s).kind !== 'remains'));
+    ok('a cap does not destroy your remains', forceOn('remains') === 'stands');
+    const d = JSON.parse(JSON.stringify(toDelta(s)));
+    ok('remains survive a save', d.remains.length === 1 && Array.isArray(d.remains[0].items));
+    const h1 = hashState(s), h2 = hashState(Object.assign(createState(SEED), d));
+    ok('and are hashed', h1 === h2);
+  }
 }
 
 // --- drop-load keeps the blade ----------------------------------------------

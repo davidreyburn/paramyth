@@ -185,6 +185,22 @@ export function createRenderer(canvas, pack = null) {
     }
   }
 
+  // A faint aura under your remains: a Bayer-dithered disc that breathes with
+  // the tick — no gradient, per design/palette.md, and no clock, per the gate.
+  const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
+  function drawAuras(s) {
+    for (const r of s.remains) {
+      if (r.site !== s.site || r.floor !== s.floor || r.room !== s.room) continue;
+      const cx = (r.tile % COLS) * TILE + (TILE >> 1), cy = ((r.tile / COLS) | 0) * TILE + (TILE >> 1);
+      const level = 3 + (((s.tick / 24) | 0) % 3);           // 3..5 of 16: faint, breathing
+      ctx.fillStyle = P.verdigris;
+      for (let y = -14; y <= 14; y++) for (let x = -14; x <= 14; x++) {
+        if (x * x + y * y > 14 * 14) continue;
+        if (BAYER[(cy + y) & 3][(cx + x) & 3] < level) ctx.fillRect(cx + x, cy + y, 1, 1);
+      }
+    }
+  }
+
   function drawItems(s, tone) {
     for (const c of visible(s)) {
       const tx = c.tile % COLS, ty = (c.tile / COLS) | 0;
@@ -528,7 +544,6 @@ export function createRenderer(canvas, pack = null) {
   // whose coverage falls from all to none across FADE_TICKS. Seventeen pattern
   // tiles built once; a level is one fillRect. Keyed to arrivedAt, so a
   // fixed state draws the same fade twice.
-  const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
   const fadeTiles = [];
   for (let level = 0; level <= 16; level++) {
     const t = document.createElement('canvas'); t.width = 4; t.height = 4;
@@ -679,6 +694,7 @@ export function createRenderer(canvas, pack = null) {
       drawRoom(roomView(state).grid, world.era, surface(state) ? SURFACE_LIFT : 1);
       drawScars(state, world.era, surface(state) ? SURFACE_LIFT : 1);
       drawStations(state, tone);
+      drawAuras(state);
       drawItems(state, tone);
       drawCharges(state);
       drawFoes(state);

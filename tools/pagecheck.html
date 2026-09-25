@@ -459,6 +459,15 @@ try {
       ok('then is gone', shot() === plain);
       s6.pops = [];
 
+      // Your remains: coloured bones under a breathing aura, drawn the same twice.
+      s6.remains = [{ site: s6.site, floor: s6.floor, room: s6.room, tile: Math.floor(s6.y/5120)*32 + Math.floor(s6.x/5120) + 2, at: s6.tick, items: [{ kind: 'sword', key: 'issue:0:0:0' }] }];
+      const withRemains = shot();
+      ok('your remains draw', withRemains !== plain);
+      ok('and draw the same twice', shot() === withRemains);
+      s6.tick += 24; const breathed = shot(); s6.tick -= 24;
+      ok('and the aura breathes with the tick', breathed !== withRemains);
+      s6.remains = [];
+
       // The Field: a field room draws, green and daylit, and differs from the camp.
       const { fieldPlan, FIELD_CAMP: CAMP0 } = await import('../core/gen.js');
       const s7 = createState(0x1594);
