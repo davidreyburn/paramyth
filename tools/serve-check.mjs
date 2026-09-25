@@ -53,5 +53,18 @@ for (const f of ['tileset-sheet.html']) {
   ok(`${f} uses a relative asset path`, !/src\s*=\s*['"]\//.test(src) && !/=\s*['"]\/inbox/.test(src));
 }
 
+// A second server on a busy port must say so and get out of the way — not
+// dump an EADDRINUSE stack trace. This gate starts one against the server it
+// is already talking to.
+{
+  const { spawnSync } = await import('node:child_process');
+  const r = spawnSync(process.execPath, [new URL('serve.mjs', import.meta.url).pathname],
+    { env: { ...process.env, PORT: String(PORT) }, encoding: 'utf8', timeout: 8000 });
+  ok('a second server on a busy port exits instead of hanging', r.status === 1, `exit ${r.status}`);
+  ok('and it names the cause and the fix', /already running/.test(r.stderr) && /pkill|open it/.test(r.stderr),
+     (r.stderr || '').trim().split('\n')[1] || '(silent)');
+  ok('with no stack trace', !/EADDRINUSE|at Server\./.test(r.stderr));
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all server gates passed\n');
 process.exit(failures ? 1 : 0);

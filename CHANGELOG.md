@@ -9,6 +9,14 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Fixed
+
+- `npm start` on a busy port printed an `EADDRINUSE` stack trace. It now probes
+  the port: if a paramyth server is already there it says so and how to open or
+  stop it; if something else is, it suggests `PORT=3141`. Exits 1 either way
+  rather than half-starting. The usual cause was a server left running by an
+  earlier session, and a gate now starts a second server against a live one.
+
 ## [0.6.1] — 2026-09-24
 
 ### Fixed
