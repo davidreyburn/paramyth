@@ -7,10 +7,9 @@ import { UNITS, spawnIn, MAX_HP, SWING_TICKS, POP_TICKS, swingPhase, lampStep, f
 import { plant, fuseStep } from './blast.js';
 import { roomTiles, floorPlan, floorCount, CAMP, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
 import { isContainer, isPortable, isWeapon, bulkOf, SLOTS, slotOf, blastOf, KIND } from '../core/items.js';
-import { reachable, stairUnder, stationAt, visible, carriedBulk, containerItems,
-         haulValue, assessed, dropTile, tier, mostFragile, bestWeapon, equippedRefs,
-         APPRAISAL_FEE, BULK_BUDGET, STASH_SLOTS,
-         PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, gridOf } from './interact.js';
+import { reachable, stairUnder, stationAt, visible, containerItems, dropTile, gridOf } from './room.js';
+import { carriedBulk, tier, mostFragile, bestWeapon, equippedRefs, BULK_BUDGET, STASH_SLOTS, PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './carry.js';
+import { haulValue, assessed, APPRAISAL_FEE } from './record.js';
 import { blocked, solidBodies, solidTiles, actorBodies, PLAYER_ID, HALF, centreOf, carry } from './space.js';
 import { hchance } from '../core/addr.js';
 import { fragilityOf } from '../core/items.js';

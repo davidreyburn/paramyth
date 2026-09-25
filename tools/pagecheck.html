@@ -170,7 +170,7 @@ try {
   // The toast is the whole interaction surface. A headless gate can prove the
   // prompt exists; only a render can prove it is on screen.
   {
-    const { visible, prompt } = await import('../sim/interact.js');
+    const { visible } = await import('../sim/room.js'); const { prompt } = await import('../sim/prompt.js');
     const { COLS, TILE } = await import('../core/gen.js');
     const s2 = delve();
     const cs = visible(s2);
@@ -202,7 +202,7 @@ try {
   // The transfer screen, rendered. Left it as the final draw so the page's
   // screenshot shows it.
   {
-    const { visible, containerItems } = await import('../sim/interact.js');
+    const { visible, containerItems } = await import('../sim/room.js');
     const { step } = await import('../sim/step.js');
     const { VERB, setVerb } = await import('../sim/frame.js');
     const { COLS, TILE } = await import('../core/gen.js');
@@ -218,7 +218,7 @@ try {
       ok('the screen opened', s3.screen === 'container');
 
       const { floorPlan } = await import('../core/gen.js');
-      const { keyOf } = await import('../sim/interact.js');
+      const { keyOf } = await import('../sim/room.js');
       s3.carried = ['gem','bones','key','crystal','trinket']
         .map((kind, i) => ({ kind, key: keyOf(s3, 90 + i) }));
       s3.stats = { ...s3.stats, keen: 2, lore: 1 };
@@ -325,7 +325,7 @@ try {
   // Things you put down have to be visible where you put them, or the dropped
   // list is bookkeeping the player never sees.
   {
-    const { visible } = await import('../sim/interact.js');
+    const { visible } = await import('../sim/room.js');
     const { VERB, setVerb } = await import('../sim/frame.js');
     const s4 = delve();
     r.draw(s4, [{text:'before'}]);
@@ -344,7 +344,7 @@ try {
 
   // The lead: the whole point of 0.4.0 has to reach the glass.
   {
-    const { leadFor, keyOf } = await import('../sim/interact.js');
+    const { leadFor } = await import('../sim/record.js'); const { keyOf } = await import('../sim/room.js');
     const s5 = delve();
     s5.floor = 2; s5.room = FP(0x1594, s5.site, 2).cells[0];
     let key = null;

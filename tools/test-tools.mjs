@@ -8,7 +8,7 @@ import combat from '../systems/combat/index.js';
 import { VERB, setVerb } from '../sim/frame.js';
 import { KIND, blastOf, slotOf, isTool } from '../core/items.js';
 import { roomTiles, floorPlan, floorCount, contentsOf, COLS, ROWS, TILE, T, solidTile } from '../core/gen.js';
-import { gridOf, roomView } from '../sim/interact.js';
+import { gridOf, roomView } from '../sim/room.js';
 import { plantAt, inBlast, liveBlasts, capsHere, brokenKey } from '../sim/blast.js';
 import { HALF, impulse } from '../sim/space.js';
 import { FOE } from '../core/foes.js';

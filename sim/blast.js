@@ -8,7 +8,8 @@
 
 import { UNITS, PLAYER_WEIGHT } from './state.js';
 import { blastOf } from '../core/items.js';
-import { roomView, FACE } from './interact.js';
+import { roomView } from './room.js';
+import { FACE } from './carry.js';
 import { impulse, steer, PLAYER_ID } from './space.js';
 import { roomTiles, T, COLS, ROWS, TILE, solidTile } from '../core/gen.js';
 import { FOE } from '../core/foes.js';

@@ -32,7 +32,7 @@ const delve = () => {
 // --- the delta is the save --------------------------------------------------
 {
   const s = delve();
-  const { roomView } = await import('../sim/interact.js');
+  const { roomView } = await import('../sim/room.js');
   roomView(s);                                       // populate the cache
   const d = toDelta(s);
   ok('a save is every non-underscore field', !('_view' in d) && 'equipped' in d && 'deaths' in d && 'seed' in d);

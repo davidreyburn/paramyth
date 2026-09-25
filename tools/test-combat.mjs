@@ -14,7 +14,7 @@ const SYSTEMS = [combat];
 import { foesOf, FOE } from '../core/foes.js';
 import { floorPlan, floorCount, roomTiles, absDepth, COLS, ROWS, TILE, T } from '../core/gen.js';
 import { VERB, setVerb } from '../sim/frame.js';
-import { carriedBulk, tier, bestWeapon, weaponOf, mostFragile, BULK_BUDGET } from '../sim/interact.js';
+import { carriedBulk, tier, bestWeapon, weaponOf, mostFragile, BULK_BUDGET } from '../sim/carry.js';
 import { KIND, UNARMED, isSolidItem } from '../core/items.js';
 import { solidTile } from '../core/grid.js';
 
@@ -739,7 +739,7 @@ let runFrom;
     // its full machine. A chaser CAN land a hit, and is bitten for trying.
     const { s, f, run } = arena(3);
     if (run) {
-      const { hitBox: boxOf, inHitBox: inBox } = await import('../sim/interact.js');
+      const { hitBox: boxOf, inHitBox: inBox } = await import('../sim/carry.js');
       f.mode = 'circle'; f.modeAt = s.tick; f.x = run.x; f.y = run.y;
       f.hp = 999;                                     // a full chase, not a short one: two hits kill a real dog
       let hits = 0, bites = 0;

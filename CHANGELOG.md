@@ -9,7 +9,22 @@ entire.** See `plans/roadmap.md`.
 
 ## [Unreleased]
 
+### Changed
+
+- **`sim/interact.js` is four files.** It had grown to six questions in one
+  place. Now `room.js` (what is here: the view, the grid with breaks, reach,
+  drop, stairs, stations), `carry.js` (the load and the hands: bulk, tiers,
+  the pack's shapes, the blade and its box), `record.js` (the record as this
+  character reads it: chains, marks, leads, worth) and `prompt.js` (the toast).
+  Deleted rather than kept as a barrel; every importer names the module it
+  actually reads. No behaviour changed; every gate still passes.
+
 ### Added
+
+- `plans/blast-interactions.md`: what a blast does to the things in it — a
+  `blast` column on kinds (chests stand; the rest break), loose things
+  destroyed, a one-in-three survivor from a broken container, and a scar on the
+  floor. A plan, not a build.
 
 - **Polish** (`plans/polish-2026-09-25.md`). A **dithered fade** on every change
   of floor — 4×4 Bayer, all to none over 18 ticks, over the world and the light

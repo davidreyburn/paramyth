@@ -12,7 +12,7 @@
 import { createState, toDelta } from '../sim/state.js';
 import { enterRoom } from '../sim/step.js';
 import { VERSION } from '../core/version.js';
-import { placeLabel } from '../sim/interact.js';
+import { placeLabel } from '../sim/record.js';
 
 export const SLOT_COUNT = 3;
 // Bump when the delta's shape changes incompatibly. A mismatched save is shown

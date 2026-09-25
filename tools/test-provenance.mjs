@@ -11,8 +11,8 @@ import { isPortable, valueOf } from '../core/items.js';
 import { createState } from '../sim/state.js';
 import { step } from '../sim/step.js';
 import { VERB, setVerb } from '../sim/frame.js';
-import { chainFor, marksFor, assessed, itemValue, readOut, keyOf, leadFor, troveFor,
-         leads, visible, containerItems, placeHere, APPRAISAL_FEE } from '../sim/interact.js';
+import { chainFor, marksFor, assessed, itemValue, readOut, leadFor, troveFor, leads, placeHere, APPRAISAL_FEE } from '../sim/record.js';
+import { keyOf, visible, containerItems } from '../sim/room.js';
 import { isContainer } from '../core/items.js';
 
 let failures = 0;

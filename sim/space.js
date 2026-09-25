@@ -11,7 +11,7 @@
 
 import { UNITS } from './state.js';
 import { isSolid, COLS, ROWS, TILE } from '../core/gen.js';
-import { roomView } from './interact.js';
+import { roomView } from './room.js';
 import { isSolidItem } from '../core/items.js';
 
 // The half-extent of a walking body, in subpixel units. Player and foe share it:

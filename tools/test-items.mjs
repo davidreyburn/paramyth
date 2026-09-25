@@ -7,10 +7,11 @@ import { KIND, isContainer, isPortable, isSolidItem, footOf, bulkOf, verbFor } f
 import { createState, spawnIn, toDelta, UNITS } from '../sim/state.js';
 import { step, solidTiles, solidBodies } from '../sim/step.js';
 import { VERB, setVerb } from '../sim/frame.js';
-import { visible, reachable, prompt, carriedBulk, tier, keyOf, containerItems,
-         haulValue, stationAt, dropTile, BULK_BUDGET, STASH_SLOTS, bestWeapon } from '../sim/interact.js';
+import { visible, reachable, keyOf, containerItems, stationAt, dropTile } from '../sim/room.js';
+import { prompt } from '../sim/prompt.js';
+import { carriedBulk, tier, BULK_BUDGET, STASH_SLOTS, bestWeapon } from '../sim/carry.js';
+import { haulValue, chainFor } from '../sim/record.js';
 import { hashState } from '../sim/state.js';
-import { chainFor } from '../sim/interact.js';
 
 let failures = 0;
 const ok = (n, c, d = '') => { console.log(`${c ? '  ok  ' : '  FAIL'}  ${n}${d ? '  ' + d : ''}`); if (!c) failures++; };
@@ -504,7 +505,7 @@ const delve = (site = 0, floor = 0, room = null) => {
   // which they were, until the actor pool changed, and then were not.
   for (const r of s.carried) s.known.push(r.key);
   const worth = haulValue(s);
-  const { itemValue } = await import('../sim/interact.js');
+  const { itemValue } = await import('../sim/record.js');
   const parts = s.carried.reduce((n, r) => n + itemValue(s, r), 0);
   ok('the haul is worth the sum of its parts', worth === parts, `${worth} = ${s.carried.map((r) => itemValue(s, r)).join(' + ')}`);
   ok('provenance has already moved the price off base',
@@ -772,7 +773,7 @@ const delve = (site = 0, floor = 0, room = null) => {
 // --- one view per tick ------------------------------------------------------
 {
   const s = delve();
-  const { roomView } = await import('../sim/interact.js');
+  const { roomView } = await import('../sim/room.js');
   const a = roomView(s), b = roomView(s);
   ok('the room view is computed once and reused', a === b);
   ok('the cache never reaches the save', !('_view' in toDelta(s)) && '_view' in s);

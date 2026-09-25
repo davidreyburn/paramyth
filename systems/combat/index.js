@@ -14,7 +14,8 @@ import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, PLAYER_WEIGHT
 import { slide, blocked, solidBodies, actorBodies, touching, tileOf, HALF, impulse, steer, octLen } from '../../sim/space.js';
 import { TILE } from '../../core/gen.js';
 import { FOE, circleFor, orbitFor } from '../../core/foes.js';
-import { weaponOf, hitBox, inHitBox, FACE, gridOf } from '../../sim/interact.js';
+import { weaponOf, hitBox, inHitBox, FACE } from '../../sim/carry.js';
+import { gridOf } from '../../sim/room.js';
 
 // The swing's timing and its phase function live in L3 beside the delta field
 // they describe; re-exported here so a reader of this file still sees them.

@@ -8,7 +8,8 @@ import { createInput } from './input.js';
 import { createRenderer } from '../render/canvas.js';
 import { loadPack } from '../render/tileset.js';
 import { roomTiles, floorPlan, floorCount } from '../core/gen.js';
-import { carriedBulk, tier, BULK_BUDGET, haulValue, leads, placeHere, placeLabel } from '../sim/interact.js';
+import { carriedBulk, tier, BULK_BUDGET } from '../sim/carry.js';
+import { haulValue, leads, placeHere, placeLabel } from '../sim/record.js';
 import { VERSION } from '../core/version.js';
 import { listSlots, writeSlot, clearSlot, restore, freshSeed, checkpoint, compatible } from './save.js';
 

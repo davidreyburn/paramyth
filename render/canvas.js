@@ -6,10 +6,10 @@ import { P, TONES, HUD, LIGHT_BANDS, LIGHT_BEYOND, LIGHT_DOWNSCALE, FLICKER,
          LAMP_BACK, lampShape, SURFACE_LIFT } from '../core/palette.js';
 import { h } from '../core/addr.js';
 import { tonedSheet, drawsFor, shadeTone, variantFor, glazeFor } from './tileset.js';
-import { visible, prompt, containerItems, carriedBulk, tier,
-         itemValue, assessed, readOut, marksFor, leadFor, placeLabel, atPlace, hitBox, APPRAISAL_FEE,
-         PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, STASH_ROWS,
-         BULK_BUDGET, STASH_SLOTS, roomView } from '../sim/interact.js';
+import { visible, containerItems, roomView } from '../sim/room.js';
+import { prompt } from '../sim/prompt.js';
+import { carriedBulk, tier, hitBox, PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS, STASH_ROWS, BULK_BUDGET, STASH_SLOTS } from '../sim/carry.js';
+import { itemValue, assessed, readOut, marksFor, leadFor, placeLabel, atPlace, APPRAISAL_FEE } from '../sim/record.js';
 import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
 import { blastOf } from '../core/items.js';
