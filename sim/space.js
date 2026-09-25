@@ -18,7 +18,12 @@ import { isSolidItem } from '../core/items.js';
 // two things that move through the same doorways should measure the same.
 export const HALF = 5 * UNITS;
 
-export function blocked(grid, bodies, x, y) {
+// `fx, fy` is where the body is coming FROM, when known. A body that already
+// overlaps an obstacle — you put a table down on your own tile — may still
+// move, so long as the move takes it no deeper into that obstacle. Without
+// this every position inside the box is blocked, including the ones that lead
+// out, and you are stuck in your own furniture. Off a table, never onto it.
+export function blocked(grid, bodies, x, y, fx, fy) {
   const x0 = Math.floor((x - HALF) / (TILE*UNITS)), x1 = Math.floor((x + HALF - 1) / (TILE*UNITS));
   const y0 = Math.floor((y - HALF) / (TILE*UNITS)), y1 = Math.floor((y + HALF - 1) / (TILE*UNITS));
   for (let ty = y0; ty <= y1; ty++)
@@ -29,7 +34,11 @@ export function blocked(grid, bodies, x, y) {
   // of their own size rather than claiming a whole tile.
   for (let i = 0; i < bodies.length; i++) {
     const b = bodies[i];
-    if (Math.abs(x - b.cx) < b.f + HALF && Math.abs(y - b.cy) < b.f + HALF) return true;
+    if (Math.abs(x - b.cx) < b.f + HALF && Math.abs(y - b.cy) < b.f + HALF) {
+      const inside = fx !== undefined && Math.abs(fx - b.cx) < b.f + HALF && Math.abs(fy - b.cy) < b.f + HALF;
+      const deeper = Math.abs(x - b.cx) < Math.abs(fx - b.cx) || Math.abs(y - b.cy) < Math.abs(fy - b.cy);
+      if (!inside || deeper) return true;
+    }
   }
   return false;
 }
@@ -39,8 +48,8 @@ export function blocked(grid, bodies, x, y) {
 // position it reached; it never returns a fractional one.
 export function slide(grid, bodies, x, y, dx, dy) {
   let nx = x, ny = y;
-  if (dx && !blocked(grid, bodies, nx + dx, ny)) nx += dx;
-  if (dy && !blocked(grid, bodies, nx, ny + dy)) ny += dy;
+  if (dx && !blocked(grid, bodies, nx + dx, ny, nx, ny)) nx += dx;
+  if (dy && !blocked(grid, bodies, nx, ny + dy, nx, ny)) ny += dy;
   return { x: nx, y: ny };
 }
 

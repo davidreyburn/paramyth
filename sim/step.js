@@ -386,9 +386,9 @@ export function step(s, frame, systems = []) {
   // Walls, barrels, and whatever is hunting you — all in one list.
   const walls = [...solids, ...actorBodies(s, PLAYER_ID)];
   const nx = s.x + dx * speed;
-  if (dx && !blocked(grid, walls, nx, s.y)) s.x = nx;
+  if (dx && !blocked(grid, walls, nx, s.y, s.x, s.y)) s.x = nx;
   const ny = s.y + dy * speed;
-  if (dy && !blocked(grid, walls, s.x, ny)) s.y = ny;
+  if (dy && !blocked(grid, walls, s.x, ny, s.x, s.y)) s.y = ny;
 
   // Shoves in flight, yours and theirs. This is world physics and not a
   // system's decision: a build with no systems still finishes a shove that is

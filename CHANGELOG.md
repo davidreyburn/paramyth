@@ -30,6 +30,13 @@ entire.** See `plans/roadmap.md`.
 
 ### Fixed
 
+- **Stuck in your own furniture.** Putting a table down out of a container
+  landed it on your tile, and `blocked()` then refused every move — including
+  the ones that led out. A body already overlapping an obstacle may now move so
+  long as the move takes it no deeper: off a table, never onto it. The drop
+  itself is unchanged; standing in furniture is allowed to happen. (DJ, who
+  called it “a fascinating emergent feature” — the collision, drop and
+  footprint systems composing into a situation nobody wrote.)
 - **The slab gate decoded sheets at hardcoded sizes.** Anything not named
   `tiles` was read as 140×280, so the first sheet of our own art (160×20) was
   decoded with the wrong stride and the gate passed on noise. It now reads each

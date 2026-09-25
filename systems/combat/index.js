@@ -82,8 +82,8 @@ export function combat(s, frame) {
     const dx = Math.sign(s.x - f.x), dy = Math.sign(s.y - f.y);
     const step = def.speed;
     let nx = f.x, ny = f.y;
-    if (dx && !blocked(grid, walls, nx + dx * step, ny)) nx += dx * step;
-    if (dy && !blocked(grid, walls, nx, ny + dy * step)) ny += dy * step;
+    if (dx && !blocked(grid, walls, nx + dx * step, ny, nx, ny)) nx += dx * step;
+    if (dy && !blocked(grid, walls, nx, ny + dy * step, nx, ny)) ny += dy * step;
     if (nx !== f.x || ny !== f.y) out.push({ k: 'moveFoe', id: f.id, x: nx, y: ny });
 
     // Contact is TOUCHING — bodies cannot overlap any more, so an overlap test

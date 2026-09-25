@@ -785,5 +785,33 @@ const delve = (site = 0, floor = 0, room = null) => {
   ok('putting something down invalidates it too', visible(s).some((c) => c.key === 'z:0:0:0'));
 }
 
+// --- off a table, never onto it ----------------------------------------------
+// DJ put a table down out of a container and was stuck halfway in it (2026-09-25):
+// the drop lands on your own tile, and every position inside the box was blocked,
+// including the ones that led out. Standing in furniture is allowed to happen;
+// being unable to leave it is not.
+{
+  const { putDown } = await import('../sim/step.js');
+  const { HALF, centreOf } = await import('../sim/space.js');
+  const s = delve();
+  s.carried = [ref('table')];
+  ok('a table can be put down where you stand', putDown(s, 0) && s.dropped.length === 1);
+  const d = s.dropped[0];
+  const under = d.tile === Math.floor(s.y / (TILE*UNITS)) * COLS + Math.floor(s.x / (TILE*UNITS));
+  ok('and it lands on your own tile', under, `tile ${d.tile}`);
+  const c = centreOf(d.tile);
+  const body = solidBodies(s).find((b) => b.cx === c.x && b.cy === c.y);
+  ok('and it is a solid body in the room', !!body && body.f === footOf('table') * UNITS, body ? `foot ${body.f / UNITS}` : 'no body');
+  const overlapping = () => Math.abs(s.x - body.cx) < body.f + HALF && Math.abs(s.y - body.cy) < body.f + HALF;
+  ok('so you are standing in it', overlapping());
+  const x0 = s.x;
+  for (let i = 0; i < 30; i++) step(s, setVerb(0, VERB.RIGHT, true), []);
+  ok('you can walk off a table', s.x > x0 && !overlapping(), `${((s.x - x0) / UNITS).toFixed(1)}px east, clear of it`);
+  const x1 = s.x;
+  for (let i = 0; i < 30; i++) step(s, setVerb(0, VERB.LEFT, true), []);
+  ok('but not back onto it', s.x < x1 && !overlapping(), `stopped ${((s.x - body.cx) / UNITS).toFixed(1)}px from its centre`);
+  ok('and you are not inside anything now', !overlapping());
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all item gates passed\n');
 process.exit(failures ? 1 : 0);
