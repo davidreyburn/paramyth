@@ -90,6 +90,13 @@ in `design/world-shape.md`.
 references are all data, and a build with no pack falls back to flat colour and
 still runs. The project's own art is text, `assets/sheets/paramyth-20.txt`.
 
+## Licence
+
+© 2026 David Reyburn. All rights reserved — see `LICENSE`. The tile art is
+*Playdate Dungeon Tileset* by [schwarnhild](https://schwarnhild.itch.io/playdate-dungeon-tileset-top-down-20x20),
+used under its own licence and **not included in this repository**; see
+`NOTICE`. The dev server expects it at `inbox/1-bit tileset/`.
+
 ## Versioning
 
 Semver. Pre-1.0, so the public surface is not yet stable: **MINOR** for new

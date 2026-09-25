@@ -1,0 +1,25 @@
+Copyright (c) 2026 David Reyburn. All rights reserved.
+
+SCOPE
+
+Everything in this repository is the work of David Reyburn and is protected by
+copyright: the source code, the design documents, the plans and specifications,
+the case-study log, and the project's own art (assets/sheets/paramyth-20.txt
+and the images built from it). The Barrowlands setting, its names, places and
+history, is his and is referenced here from campaign material that is not in
+this repository.
+
+Viewing and forking this repository on GitHub is permitted to the extent
+GitHub's Terms of Service require. No other right is granted. Without written
+permission from the copyright holder you may not copy, modify, distribute,
+publish, sell, or make commercial use of any part of it, or use any part of it
+to train, fine-tune or evaluate a machine-learning model.
+
+THIRD-PARTY ART, EXCLUDED
+
+The tile art the game draws with is not covered by the notice above and is not
+in this repository. It is the "Playdate Dungeon Tileset (Top-Down 20x20)" by
+schwarnhild, used under that pack's own licence, which permits its use in
+commercial projects and forbids its redistribution. See NOTICE. It is fetched at
+deploy time from a private store and served by the game, as any game serves its
+art; it is not offered for download here, and nothing here is derived from it.

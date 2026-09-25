@@ -11,6 +11,14 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **Licence and notice.** `LICENSE`: © 2026 David Reyburn, all rights reserved,
+  scope stated, third-party art excluded. `NOTICE` credits the tile art —
+  *Playdate Dungeon Tileset* by schwarnhild — with its terms; the credit is on
+  the title screen and in the README. **The tileset is no longer in this
+  repository or its history:** its licence forbids redistribution and a public
+  repo is a download. It lives in the private `paramyth-art` repo, which the
+  Pages workflow checks out into `inbox/` for the gates and the deploy. A gate
+  holds the notice, the credit and the ignore rule in place.
 - **Location-independent, and a Pages deploy.** Every shipped path is relative
   now — the app loads its pack relative to itself, a pack's sheets are relative
   to the pack file (so a pack is a folder you can move whole), the manifest

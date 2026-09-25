@@ -107,5 +107,21 @@ for (const f of ['tileset-sheet.html']) {
   ok('a root index.html forwards to app/ where no server can redirect', rootPage.ok && /url=app\//.test(await rootPage.text()));
 }
 
+// The notice. A licence file that quietly goes missing before a release is the
+// kind of thing this project gates; so is the credit the art's licence asks for.
+{
+  const { readFile: rf } = await import('node:fs/promises');
+  const root = new URL('../', import.meta.url);
+  const lic = await rf(new URL('LICENSE', root), 'utf8').catch(() => '');
+  const notice = await rf(new URL('NOTICE', root), 'utf8').catch(() => '');
+  const ignore = await rf(new URL('.gitignore', root), 'utf8').catch(() => '');
+  const title = await rf(new URL('render/canvas.js', root), 'utf8');
+  ok('LICENSE names the holder and the year', /Copyright \(c\) 2026 David Reyburn/.test(lic) && /All rights reserved/.test(lic));
+  ok('and excludes the third-party art', /THIRD-PARTY ART/.test(lic) && /schwarnhild/.test(lic));
+  ok('NOTICE credits the tileset and links the page', /Playdate Dungeon Tileset/.test(notice) && /schwarnhild\.itch\.io/.test(notice));
+  ok('the tileset is ignored, never committed', /^inbox\/1-bit tileset\/$/m.test(ignore));
+  ok('the title screen carries the credit', /Playdate Dungeon Tileset by schwarnhild/.test(title));
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all server gates passed\n');
 process.exit(failures ? 1 : 0);

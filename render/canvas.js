@@ -444,6 +444,9 @@ export function createRenderer(canvas, pack = null) {
     ctx.fillText('A play   \u00b7   X delete   \u00b7   \u2191\u2193 choose', W / 2, y0 + t.slots.length * rowH + 8);
     ctx.fillStyle = '#4a443c';
     ctx.fillText(t.note || '', W / 2, y0 + t.slots.length * rowH + 22);
+    // The credit the art's licence asks for, where a player will see it.
+    ctx.fillStyle = '#6b6357';
+    ctx.fillText('art: Playdate Dungeon Tileset by schwarnhild \u00b7 \u00a9 2026 David Reyburn', W / 2, H - 14);
     ctx.textAlign = 'start';
   }
 

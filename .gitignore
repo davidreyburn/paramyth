@@ -9,3 +9,9 @@ node_modules/
 #   https://opengameart.org/content/dungeon-crawl-32x32-tiles
 # Drop it back into inbox/ to browse it; remove this line to commit it.
 inbox/Dungeon Crawl Stone Soup Full/
+
+# The licensed tile art. Never committed: its licence forbids redistribution,
+# and a public repository is a download. It lives in the private repo
+# davidreyburn/paramyth-art and is checked out into inbox/ by the workflow;
+# locally, it is just here. See NOTICE.
+inbox/1-bit tileset/

@@ -1,6 +1,8 @@
 # Deploy the repo as-is to GitHub Pages. There is no build: the game is a
 # static module graph and every path in it is relative, which is what lets one
-# tree serve the dev server, Pages at /paramyth/, and the APK's shell.
+# tree serve the dev server, Pages at /paramyth/, and the APK's shell. The
+# licensed art is not in this repo; both jobs check it out from the private
+# art repo first, so the site serves it as any game serves its art.
 #
 # Needs: Settings → Pages → Source: "GitHub Actions". On a private repo, Pages
 # requires a paid plan; otherwise the repo must be public. That switch is DJ's.
@@ -21,6 +23,15 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # The licensed art, from its private repo. ART_TOKEN is a fine-grained
+      # token with Contents: read on davidreyburn/paramyth-art, set under
+      # Settings -> Secrets and variables -> Actions. Without it the gates fail
+      # loudly at 'every declared sheet exists on disk', which is correct.
+      - uses: actions/checkout@v4
+        with:
+          repository: davidreyburn/paramyth-art
+          token: ${{ secrets.ART_TOKEN }}
+          path: inbox
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - run: ./check.sh
@@ -32,6 +43,11 @@ jobs:
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: davidreyburn/paramyth-art
+          token: ${{ secrets.ART_TOKEN }}
+          path: inbox
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:

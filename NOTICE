@@ -1,0 +1,17 @@
+Paramyth uses third-party art under licence. It is not part of this
+repository and is not licensed by the LICENSE file.
+
+  Playdate Dungeon Tileset (Top-Down 20x20)
+  by schwarnhild
+  https://schwarnhild.itch.io/playdate-dungeon-tileset-top-down-20x20
+
+  Used under the pack's own terms: commercial use and editing permitted;
+  redistribution or resale prohibited, modified or not; no use in training or
+  developing machine-learning models; no AI-modified or AI-recreated versions
+  for redistribution or public sharing. Credit requested, and given here, in
+  the README, and on the title screen.
+
+  In this project the sheets are read at draw time and recoloured per stratum
+  in the browser. No file of the pack has been modified, upscaled, traced or
+  recreated, by any tool. The project's own art (assets/sheets/) was drawn or
+  generated without reference to the pack.
