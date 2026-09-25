@@ -177,5 +177,131 @@ if (spot) {
   }
 }
 
+// --- what a blast does to the things in it: plans/blast-interactions.md --------
+{
+  const { forceOn } = await import('../core/items.js');
+  const { thingsIn, containerItems } = await import('../sim/room.js');
+  const { SURVIVOR_ODDS } = await import('../sim/blast.js');
+  const { putDownRef } = await import('../sim/step.js');
+
+  ok('a chest stands; everything else breaks', forceOn('chest') === 'stands' && ['barrel', 'pot', 'urn', 'table', 'chair', 'gem', 'sword'].every((k) => forceOn(k) === 'breaks'));
+
+  // Every place a given kind stands beside reachable, EMPTY floor. You stand
+  // on the floor facing it, so the cap lands at your feet and the square
+  // covers it. Empty matters: a pot under your feet once broke in a gem's
+  // fixture and scarred the tile the gem was supposed to leave clean.
+  function besides(kind, sites = 8) {
+    const out = [];
+    for (let site = 0; site < sites; site++)
+      for (let fl = 0; fl < floorCount(SEED, site); fl++)
+        for (const room of floorPlan(SEED, site, fl).cells) {
+          const { grid, reach } = roomTiles(SEED, site, fl, room);
+          const all = contentsOf(SEED, site, fl, room);
+          const busy = new Set(all.map((c) => c.tile));
+          for (const c of all) {
+            if (c.kind !== kind) continue;
+            const x = c.tile % COLS, y = (c.tile / COLS) | 0;
+            for (const [dx, dy, facing] of [[1, 0, 3], [-1, 0, 1], [0, 1, 0], [0, -1, 2]]) {
+              const nx = x + dx, ny = y + dy;
+              if (nx < 1 || ny < 1 || nx >= COLS - 1 || ny >= ROWS - 1) continue;
+              const t = ny * COLS + nx;
+              if (grid[t] !== T.FLOOR || !reach[t] || busy.has(t)) continue;
+              out.push({ site, floor: fl, room, thing: c, stand: t, facing });
+              break;
+            }
+          }
+        }
+    return out;
+  }
+  const beside = (kind) => besides(kind)[0] || null;
+  const standAt = (spot) => {
+    const s = createState(SEED);
+    s.site = spot.site; s.floor = spot.floor; s.room = spot.room;
+    const c = centre(spot.stand); s.x = c.x; s.y = c.y; s.facing = spot.facing; s.hp = 1000;
+    enterRoom(s); s.foes = [];
+    return s;
+  };
+  const here = (s) => thingsIn(s, s.site, s.floor, s.room);
+  const blow = (s) => { press(s, VERB.TOOL); wait(s, CAP.fuse + 2); };
+
+  // A barrel breaks; a scar remains; you can walk where it stood.
+  {
+    const spot = beside('barrel');
+    ok('there is a barrel beside floor to test against', !!spot);
+    if (spot) {
+      const s = standAt(spot);
+      const key = `${spot.site}:${spot.floor}:${spot.room}:${spot.thing.slot}`;
+      ok('the barrel is there before', here(s).some((t) => t.key === key));
+      blow(s);
+      ok('a barrel in the square is gone after', !here(s).some((t) => t.key === key));
+      ok('and it is taken, not dropped: its key still has a history', s.taken.includes(key) && !s.dropped.some((d) => d.key === key));
+      ok('a blasted barrel leaves a scar on its tile', roomView(s).scars.has(spot.thing.tile), [...roomView(s).scars].join(','));
+      const d = JSON.parse(JSON.stringify(toDelta(s)));
+      const r = Object.assign(createState(SEED), d); enterRoom(r);
+      ok('the scar survives a save', roomView(r).scars.has(spot.thing.tile));
+      const toward = [VERB.UP, VERB.RIGHT, VERB.DOWN, VERB.LEFT][spot.facing];
+      for (let i = 0; i < 60 && tileAt(s) !== spot.thing.tile; i++) step(s, setVerb(0, toward, true), SYSTEMS);
+      ok('and you can walk where the barrel stood', tileAt(s) === spot.thing.tile);
+    }
+  }
+
+  // A loose thing on the floor in the square is gone.
+  {
+    const spot = beside('table');
+    ok('there is a table beside floor to test against', !!spot);
+    if (spot) {
+      const s = standAt(spot);
+      s.carried = [ref('gem', 7)];
+      ok('a gem put down lands at your feet', putDownRef(s, s.carried[0]) && s.dropped[0].tile === spot.stand);
+      s.carried = [];
+      blow(s);
+      ok('a loose gem in the square is gone', !s.dropped.some((d) => d.key === '0:0:0:7') && !here(s).some((t) => t.key === '0:0:0:7'));
+      ok('and a gem leaves no scar; furniture does', !roomView(s).scars.has(spot.stand) && roomView(s).scars.has(spot.thing.tile));
+    }
+  }
+
+  // A chest stands, contents and all.
+  {
+    const spot = beside('chest');
+    ok('there is a chest beside floor to test against', !!spot);
+    if (spot) {
+      const s = standAt(spot);
+      const key = `${spot.site}:${spot.floor}:${spot.room}:${spot.thing.slot}`;
+      const before = containerItems(s, key).map((x) => x.key).join(',');
+      blow(s);
+      ok('a chest in the square stands', here(s).some((t) => t.key === key) && !s.taken.includes(key));
+      ok('with its contents intact', containerItems(s, key).map((x) => x.key).join(',') === before, `${before.split(',').filter(Boolean).length} inside`);
+    }
+  }
+
+  // A broken container leaves one thing behind, one time in three — the same
+  // one on replay, keyed to the container and not to luck.
+  {
+    let tried = 0, spared = 0, agreed = 0, keyed = 0, wrong = 0;
+    // Across the whole world: 27 pots once read 15% by bad luck against a true 34%.
+    for (const spot of [...besides('pot', 24), ...besides('urn', 24), ...besides('barrel', 24)]) {
+      const key = `${spot.site}:${spot.floor}:${spot.room}:${spot.thing.slot}`;
+      const a = standAt(spot), b = standAt(spot);
+      const inside = containerItems(a, key);
+      if (!inside.length) continue;
+      tried++;
+      blow(a); blow(b);
+      const left = a.dropped.filter((d) => d.tile === spot.thing.tile);
+      if (left.length) {
+        spared++;
+        if (left.length === 1 && left[0].key === inside[0].key) keyed++;
+      }
+      if (JSON.stringify(a.dropped) === JSON.stringify(b.dropped) && hashState(a) === hashState(b)) agreed++;
+      if (!inside.every((x) => a.taken.includes(x.key))) wrong++;
+    }
+    ok('enough containers with something in them to measure', tried >= 40, `${tried} containers`);
+    ok('a broken container leaves one thing behind about one time in three', spared > 0 && spared / tried >= 0.22 && spared / tried <= 0.45,
+       `${spared}/${tried} spared, odds ${SURVIVOR_ODDS.join(' in ')}`);
+    ok('the survivor is its first thing, on the pot\'s tile, with its own key', keyed === spared, `${keyed}/${spared}`);
+    ok('the rest are taken, so no trove advertises them', wrong === 0);
+    ok('and the same pot gives the same answer on replay', agreed === tried, `${agreed}/${tried}`);
+  }
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all tool gates passed\n');
 process.exit(failures ? 1 : 0);

@@ -21,10 +21,17 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
-- `plans/blast-interactions.md`: what a blast does to the things in it — a
-  `blast` column on kinds (chests stand; the rest break), loose things
-  destroyed, a one-in-three survivor from a broken container, and a scar on the
-  floor. A plan, not a build.
+- **What a blast does to the things in it** (`plans/blast-interactions.md`).
+  One word per kind, `force`: a chest `stands`; everything else `breaks`.
+  Barrels, pots, urns, tables, chairs and any loose thing inside the square are
+  destroyed — taken and never dropped, so a key keeps its history. Furniture
+  and pottery leave a **scar** on the floor (`s.scars`, a decal through the
+  pack; placeholder art). A broken container rolls once, keyed to itself so
+  replay agrees, and **one time in three** leaves its first thing lying where it
+  stood with its own key; the rest go to `taken` so no trove advertises them.
+  A chest inside the square is untouched, contents and all. `thingsIn()` in
+  `room.js` answers what lies in any room, not only the one you are in, so a
+  cap set in a room you have left still knows what it is about to break.
 
 - **Polish** (`plans/polish-2026-09-25.md`). A **dithered fade** on every change
   of floor — 4×4 Bayer, all to none over 18 ticks, over the world and the light

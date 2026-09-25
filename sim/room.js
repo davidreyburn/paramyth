@@ -13,9 +13,25 @@ import { UNITS } from './state.js';
 
 const REACH = 1;                                  // tiles, Chebyshev
 
-export const keyOf = (s, slot, idx) =>
-  idx === undefined ? `${s.site}:${s.floor}:${s.room}:${slot}`
-                    : `${s.site}:${s.floor}:${s.room}:${slot}.${idx}`;
+export const keyAt = (site, floor, room, slot, idx) =>
+  idx === undefined ? `${site}:${floor}:${room}:${slot}` : `${site}:${floor}:${room}:${slot}.${idx}`;
+export const keyOf = (s, slot, idx) => keyAt(s.site, s.floor, s.room, slot, idx);
+
+// What is lying in ANY room, from the lists alone: the generator's contents
+// minus what was taken, plus what was put down there. Uncached; `roomView`
+// is the cached form for the room you are in. A cap set in a room you have
+// since left still has to know what it is about to break.
+export function thingsIn(s, site, floor, room, taken = new Set(s.taken), opened = new Set(s.opened)) {
+  const out = [];
+  for (const c of contentsOf(s.seed, site, floor, room)) {
+    const k = keyAt(site, floor, room, c.slot);
+    if (!taken.has(k)) out.push({ ...c, key: k, open: opened.has(k) });
+  }
+  for (const d of s.dropped)
+    if (d.site === site && d.floor === floor && d.room === room)
+      out.push({ slot: -1, tile: d.tile, kind: d.kind, key: d.key, dropped: true });
+  return out;
+}
 
 // ONE VIEW PER TICK. What is in this room — the things still lying here, and
 // the boxes you walk around — computed once and cached on a transient field.
@@ -26,22 +42,15 @@ export const keyOf = (s, slot, idx) =>
 // every such change alters one of three list lengths — so validity is a string
 // compare and needs no invalidation calls. plans/review-2026-09-24.md.
 export function roomView(s) {
-  const stamp = `${s.site}|${s.floor}|${s.room}|${s.taken.length}|${s.opened.length}|${s.dropped.length}|${s.broken.length}`;
+  const stamp = `${s.site}|${s.floor}|${s.room}|${s.taken.length}|${s.opened.length}|${s.dropped.length}|${s.broken.length}|${s.scars.length}`;
   const v = s._view;
   if (v && v.stamp === stamp) return v;
 
   const taken = new Set(s.taken), opened = new Set(s.opened);
-  const visible = [];
-  for (const c of contentsOf(s.seed, s.site, s.floor, s.room)) {
-    const k = keyOf(s, c.slot);
-    if (!taken.has(k)) visible.push({ ...c, key: k, open: opened.has(k) });
-  }
-  // And what you put down. A dropped thing keeps its own address, so its whole
-  // history follows it across the world — which is what `inherit` will need
-  // when a corpse starts writing provenance of its own.
-  for (const d of s.dropped)
-    if (d.site === s.site && d.floor === s.floor && d.room === s.room)
-      visible.push({ slot: -1, tile: d.tile, kind: d.kind, key: d.key, dropped: true });
+  // What is here, and what you put down. A dropped thing keeps its own
+  // address, so its whole history follows it across the world — which is
+  // what `inherit` will need when a corpse starts writing provenance.
+  const visible = thingsIn(s, s.site, s.floor, s.room, taken, opened);
 
   const bodies = [];
   for (const c of visible) {
@@ -62,7 +71,11 @@ export function roomView(s) {
     grid[Number(k.slice(here.length))] = T.FLOOR;
   }
 
-  s._view = { stamp, taken, opened, visible, bodies, grid };
+  // Where furniture was blasted, as tiles of this room. The floor, remembered.
+  const scars = new Set();
+  for (const k of s.scars) if (k.startsWith(here)) scars.add(Number(k.slice(here.length)));
+
+  s._view = { stamp, taken, opened, visible, bodies, grid, scars };
   return s._view;
 }
 

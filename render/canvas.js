@@ -160,6 +160,21 @@ export function createRenderer(canvas, pack = null) {
     }
   }
 
+  // The floor, remembered: where a cap broke furniture. An overlay through the
+  // pack, drawn after the room so the floor variant under it is already there.
+  function drawScars(s, era, lift = 1) {
+    const scars = roomView(s).scars;
+    const def = pack && pack.decals && pack.decals.scar;
+    if (!scars.size || !def) return;
+    const tone = shadeTone(TONES[era.name] || TONES['Recent'], lift);
+    for (const t of scars) {
+      const tx = t % COLS, ty = (t / COLS) | 0;
+      const [sheetName, gx, gy] = variantFor(def.cells, tx, ty);
+      const sheet = tonedSheet(pack, sheetName, shadeTone(def.tone || tone, def.shade === undefined ? 1 : def.shade));
+      if (sheet) ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile, tx*TILE, ty*TILE, TILE, TILE);
+    }
+  }
+
   function drawItems(s, tone) {
     for (const c of visible(s)) {
       const tx = c.tile % COLS, ty = (c.tile / COLS) | 0;
@@ -648,6 +663,7 @@ export function createRenderer(canvas, pack = null) {
       ctx.fillStyle = P.void; ctx.fillRect(0, 0, W, H);
       // The room view's grid, not the generator's: rubble a cap has broken is floor.
       drawRoom(roomView(state).grid, world.era, surface(state) ? SURFACE_LIFT : 1);
+      drawScars(state, world.era, surface(state) ? SURFACE_LIFT : 1);
       drawStations(state, tone);
       drawItems(state, tone);
       drawCharges(state);

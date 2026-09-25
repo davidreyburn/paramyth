@@ -137,6 +137,7 @@ export function createState(seed) {
     charges: [],       // caps set and fusing: { kind, key, site, floor, room, x, y, at }
     blasts: [],        // detonations still lingering: { x, y, r, at, ..., hit: [] }
     broken: [],        // rubble made floor, as `site:floor:room:tile` — the world changed, recorded
+    scars: [],         // where furniture was blasted, same shape: the floor, remembered
     deaths: 0,
     known: [],         // keys whose record has been read
     taken: [],         // keys of contents removed from the world
@@ -200,7 +201,7 @@ export function hashState(s) {
     mix(f.modeAt); mix(f.vx); mix(f.vy); mix(f.spin + 1); mix(f.aimX); mix(f.aimY);
     for (let i = 0; i < f.mode.length; i++) mix(f.mode.charCodeAt(i));
   }
-  roll(s.taken); roll(s.opened); roll(s.known); roll(s.slain); roll(s.broken);
+  roll(s.taken); roll(s.opened); roll(s.known); roll(s.slain); roll(s.broken); roll(s.scars);
   mix(s.charges.length);
   for (const c of s.charges) { for (let i = 0; i < c.key.length; i++) mix(c.key.charCodeAt(i)); mix(c.site); mix(c.floor); mix(c.room); mix(c.x); mix(c.y); mix(c.at); }
   mix(s.blasts.length);

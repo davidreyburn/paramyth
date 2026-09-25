@@ -9,10 +9,10 @@ export const KIND = {
   // `foot` is the collision half-extent in pixels from the tile centre, so a
   // chair is something you brush past and a table is something you go around.
   // A tile is 20px, so 10 would fill it edge to edge; nothing does.
-  chest:   { label: 'chest',   container: true, solid: true, foot: 8, bulk: 0, fragility: 0 },
-  pot:     { label: 'pot',     container: true, solid: true, foot: 6, bulk: 0, fragility: 1 },
-  barrel:  { label: 'barrel',  container: true, solid: true, foot: 6, bulk: 0, fragility: 1 },
-  urn:     { label: 'urn',     container: true, solid: true, foot: 7, bulk: 0, fragility: 3 },
+  chest:   { force: 'stands', label: 'chest',   container: true, solid: true, foot: 8, bulk: 0, fragility: 0 },
+  pot:     { force: 'breaks', label: 'pot',     container: true, solid: true, foot: 6, bulk: 0, fragility: 1 },
+  barrel:  { force: 'breaks', label: 'barrel',  container: true, solid: true, foot: 6, bulk: 0, fragility: 1 },
+  urn:     { force: 'breaks', label: 'urn',     container: true, solid: true, foot: 7, bulk: 0, fragility: 3 },
 
   // Portable. `bulk` is the whole economy: what you carry is what you cannot.
   // `value` is BASE scrap, before provenance. Once marks are legible a chain
@@ -22,24 +22,24 @@ export const KIND = {
   // chain, and an appraiser will read you the history of the thing you have been
   // killing with. There is no equip slot — you swing with the best blade you are
   // carrying, so arming yourself is paid for out of the haul, every run.
-  sword:   { label: 'sword',   bulk: 3, value: 14, fragility: 0, damage: 3, reach: 22, wide: 15, knock: 24, slot: 'weapon' },
+  sword:   { force: 'breaks', label: 'sword',   bulk: 3, value: 14, fragility: 0, damage: 3, reach: 22, wide: 15, knock: 24, slot: 'weapon' },
   // The Blasting Cap — B.Cap on the glass — the first tool. Set it and step
   // back: a short fuse, then a square of hurt that lingers, breaks rubble to
   // floor, and shoves hard enough to move what a sword cannot. Its numbers
   // live here because a tool is data; sim/blast.js is the one reader.
-  bcap:    { label: 'B.Cap',   bulk: 1, value: 2, fragility: 0, slot: 'tool',
+  bcap:    { force: 'breaks', label: 'B.Cap',   bulk: 1, value: 2, fragility: 0, slot: 'tool',
              blast: { fuse: 45, linger: 10, radius: 28, damage: 8, knock: 48, self: 4 } },
 
-  key:     { label: 'key',     bulk: 1, value:  3, fragility: 0 },
-  gem:     { label: 'gem',     bulk: 1, value: 12, fragility: 1 },
-  crystal: { label: 'crystal', bulk: 2, value:  9, fragility: 2 },
-  trinket: { label: 'trinket', bulk: 1, value:  4, fragility: 1 },
-  bones:   { label: 'bones',   bulk: 2, value:  2, fragility: 2 },
+  key:     { force: 'breaks', label: 'key',     bulk: 1, value:  3, fragility: 0 },
+  gem:     { force: 'breaks', label: 'gem',     bulk: 1, value: 12, fragility: 1 },
+  crystal: { force: 'breaks', label: 'crystal', bulk: 2, value:  9, fragility: 2 },
+  trinket: { force: 'breaks', label: 'trinket', bulk: 1, value:  4, fragility: 1 },
+  bones:   { force: 'breaks', label: 'bones',   bulk: 2, value:  2, fragility: 2 },
 
   // Fixtures. Scenery until a system gives them a verb — but furniture still
   // takes up the floor it stands on.
-  table:   { label: 'table',   fixture: true, solid: true, foot: 9 },
-  chair:   { label: 'chair',   fixture: true, solid: true, foot: 5 },
+  table:   { force: 'breaks', label: 'table',   fixture: true, solid: true, foot: 9 },
+  chair:   { force: 'breaks', label: 'chair',   fixture: true, solid: true, foot: 5 },
 };
 
 // Fists. Not an item — you cannot drop them, sell them or read their history —
@@ -69,6 +69,10 @@ export const wideOf       = (k) => (KIND[k] && KIND[k].wide) || 0;
 export const knockOf      = (k) => (KIND[k] && KIND[k].knock) || 0;
 export const blastOf      = (k) => (KIND[k] && KIND[k].blast) || null;
 export const isTool       = (k) => !!(KIND[k] && KIND[k].slot === 'tool');
+// What force does to a thing: 'stands' or 'breaks'. One word, not a boolean,
+// because the pick and the maul will want a third answer, and "what does
+// force do to this?" should be one column. A chest stands; the rest break.
+export const forceOn      = (k) => (KIND[k] && KIND[k].force) || 'breaks';
 export const fragilityOf  = (k) => (KIND[k] && KIND[k].fragility) || 0;
 export const isPortable  = (k) => !!(KIND[k] && KIND[k].bulk > 0 && !KIND[k].container);
 export const bulkOf      = (k) => (KIND[k] && KIND[k].bulk) || 0;

@@ -1,6 +1,6 @@
 # Blasts and the things in them
 
-*v0.1, 2026-09-25. A plan, not a build. DJ's brief:*
+*v0.1, 2026-09-25. Built the same day, in one commit rather than the three below; the column is `force` (the cap's own `blast` property already had the other name), and the scar is a `decals` block in the pack rather than a tile type, because a gate refuses tile types the generator cannot emit. Survivor rate across the world: 98 of 288. DJ's brief:*
 
 > A blast should destroy barrels, containers, pots, tables, and chairs, but not
 > chests. Furniture that are blasted should leave some type of mark upon the

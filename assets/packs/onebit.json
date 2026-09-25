@@ -482,5 +482,23 @@
       ]
     }
   },
-  "_sheets_note": "`paramyth` is the project's OWN sheet, built from paramyth-20.txt by tools/build-sheet.mjs. 20px cells, the pack's two-tone palette, transparent ground. 0 sword (DJ), 1 blasting cap (DJ)."
+  "_sheets_note": "`paramyth` is the project's OWN sheet, built from paramyth-20.txt by tools/build-sheet.mjs. 20px cells, the pack's two-tone palette, transparent ground. 0 sword (DJ), 1 blasting cap (DJ).",
+  "decals": {
+    "scar": {
+      "shade": 0.7,
+      "cells": [
+        [
+          "decor",
+          1,
+          3
+        ],
+        [
+          "decor",
+          3,
+          3
+        ]
+      ],
+      "_": "Where furniture was blasted. A DECAL, not a tile type: drawn over the floor from s.scars in its own pass. Placeholder: the rubble scatter, dimmer than rubble so it reads as debris and not a rock. Own art wanted."
+    }
+  }
 }
