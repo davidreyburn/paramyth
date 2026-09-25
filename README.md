@@ -6,6 +6,9 @@ whole game is deciding what that is.
 
 Top-down, 640×360, physical controls first, **zero dependencies**.
 
+**Play it:** https://davidreyburn.github.io/paramyth/ — installs as a fullscreen
+app from the browser.
+
 ```sh
 npm start              # http://localhost:3140 — the LAN URL is printed too
 ./check.sh             # every headless gate, stopping at the first failure
@@ -85,12 +88,7 @@ in `design/world-shape.md`.
 
 `assets/packs/onebit.json` is the swap point: sheets, tile size and grid
 references are all data, and a build with no pack falls back to flat colour and
-still runs.
-
-**The 1-bit reference set in `inbox/` is unlicensed placeholder art.** It is here
-to develop against and must be replaced or cleared before anything ships. The
-Dungeon Crawl Stone Soup tiles are CC0 and are *not* committed — see
-`.gitignore`.
+still runs. The project's own art is text, `assets/sheets/paramyth-20.txt`.
 
 ## Versioning
 
