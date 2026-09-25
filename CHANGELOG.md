@@ -11,6 +11,14 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **The telegraph** — step 3 of `plans/foe-behaviour.md`. Every mode has a shape
+  and a colour on the glyph: asleep dim; circle warm and upright; the **crouch**
+  squashed low and ember-bright, with a small cross on the spot it will spring
+  to — the aim is fixed the moment the crouch begins, so the mark is a promise
+  and stepping off it is the dodge; the dash stretched along its line; recover
+  flattened and dull; stagger pale and shuddering. All a function of the delta.
+  `tools/telegraph.html` shows the six side by side. Four browser gates.
+
 - **The dog learns to hunt** — step 2 of `plans/foe-behaviour.md`. Straight pursuit
   and the bite cooldown are gone; a foe runs a five-mode machine: `asleep`,
   `circle` (orbits you at two tiles, never bites), `lunge` (a 12-tick **crouch**

@@ -451,17 +451,41 @@ export function createRenderer(canvas, pack = null) {
       const def = FOE[f.kind];
       const art = pack && pack.foes && pack.foes[f.kind];
       const g = (art && art.glyph) || (def && def.glyph) || '?';
-      // A staggered foe shudders: one pixel either way by tick parity, which is
-      // delta and so draws the same for the same state. The full telegraph is
-      // step 3 of the foe plan; this is only the mode that exists today.
+      // The telegraph: step 3 of plans/foe-behaviour.md. Every mode has a
+      // shape and a colour, so the machine is readable by a person and not
+      // only by a gate. All of it is a function of the delta (mode, modeAt,
+      // tick), so two draws of one state are identical.
+      //   asleep   dim, still
+      //   circle   warm, upright
+      //   crouch   SQUASHED and bright — it is about to spring at where you are
+      //   dash     STRETCHED along its line — committed, cannot turn
+      //   recover  flat and dull — the window
+      //   stagger  shuddering, pale
+      const age = s.tick - f.modeAt;
+      const crouch = f.mode === 'lunge' && def && age < def.lungeWindup;
+      const dash = f.mode === 'lunge' && !crouch;
       const stagger = f.mode === 'stagger';
-      const x = Math.round(px(f.x)) + (stagger ? ((s.tick & 1) ? 1 : -1) : 0), y = Math.round(px(f.y));
+      let sx = 1, sy = 1, dy = 0, colour = '#c2836b';
+      if (f.mode === 'asleep') colour = '#6b6357';
+      else if (crouch) { sx = 1.3; sy = 0.65; dy = 3; colour = P.ember; }
+      else if (dash) { const alongX = Math.abs(f.aimX - f.x) >= Math.abs(f.aimY - f.y); sx = alongX ? 1.45 : 0.8; sy = alongX ? 0.8 : 1.45; colour = P.ember; }
+      else if (f.mode === 'recover') { sy = 0.85; dy = 1; colour = '#8f6a58'; }
+      else if (stagger) colour = P.parchment;
+      const x = Math.round(px(f.x)) + (stagger ? ((s.tick & 1) ? 1 : -1) : 0), y = Math.round(px(f.y)) + dy;
+      // In the crouch, the spot it will spring to. The aim is fixed the moment
+      // the crouch begins, so this mark is a promise: step off it and it misses.
+      if (crouch) {
+        const ax = Math.round(px(f.aimX)), ay = Math.round(px(f.aimY));
+        ctx.fillStyle = P.lanternDeep;
+        ctx.fillRect(ax - 3, ay, 7, 1); ctx.fillRect(ax, ay - 3, 1, 7);
+      }
+      ctx.save();
+      ctx.translate(x, y); ctx.scale(sx, sy);
       ctx.font = 'bold 15px ui-monospace, monospace';
       ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillStyle = P.void; ctx.fillText(g, x + 1, y + 1);
-      // A sleeping dog is dim. Waking it is a thing that visibly happens.
-      ctx.fillStyle = stagger ? P.parchment : f.mode !== 'asleep' ? '#c2836b' : '#6b6357';
-      ctx.fillText(g, x, y);
+      ctx.fillStyle = P.void; ctx.fillText(g, 1, 1);
+      ctx.fillStyle = colour; ctx.fillText(g, 0, 0);
+      ctx.restore();
       ctx.textAlign = 'start';
     }
   }

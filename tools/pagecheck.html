@@ -369,7 +369,7 @@ try {
   // Threat, on the glass. A dog that exists in the delta and not on the screen
   // is a dog the player walks into.
   {
-    const { foesOf } = await import('../core/foes.js');
+    const { foesOf, FOE } = await import('../core/foes.js');
     const { enterRoom } = await import('../sim/step.js');
     const { floorPlan, COLS, TILE } = await import('../core/gen.js');
     const { hitBox } = await import('../systems/combat/index.js');
@@ -396,6 +396,21 @@ try {
       s6.foes[0].x = s6.x + 24*256; s6.foes[0].y = s6.y; s6.foes[0].mode = 'circle';
       r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]);
       ok('a dog draws where it stands', before !== ctx.getImageData(0,0,W,VIEW_H).data.join(','));
+
+      // The telegraph. Each mode must LOOK different from the last, at the
+      // same spot, or the machine is legible only to gates.
+      const shot = () => { r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]); return ctx.getImageData(0,0,W,VIEW_H).data.join(','); };
+      const f6 = s6.foes[0];
+      f6.modeAt = s6.tick; f6.aimX = s6.x; f6.aimY = s6.y;
+      const circling = shot();
+      f6.mode = 'lunge'; const crouching = shot();
+      ok('a crouching dog looks different from a circling one', crouching !== circling);
+      s6.tick += FOE.dog.lungeWindup; const dashing = shot(); s6.tick -= FOE.dog.lungeWindup;
+      ok('and a dashing one from a crouching one', dashing !== crouching);
+      f6.mode = 'recover'; const recovering = shot();
+      ok('and a recovering one from a circling one', recovering !== circling);
+      ok('and the telegraph is deterministic', shot() === recovering);
+      f6.mode = 'circle';
 
       // The swing must be visible for exactly its active frames.
       s6.facing = 1;

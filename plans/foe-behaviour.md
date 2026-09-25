@@ -202,7 +202,7 @@ Tuned at the table, not here. Integer, in the units the code already uses.
 2. ✓ (2026-09-25) **The machine.** Replace pursuit-and-cooldown with the five modes. Corridor
    fallback in the same commit, because a dog that stalls against a wall is a
    regression from today.
-3. **The telegraph.** Rendering per mode. Small, but it is what makes the
+3. ✓ (2026-09-25) **The telegraph.** Rendering per mode. Small, but it is what makes the
    sidestep possible for a human rather than only for a gate.
 4. **Tuning, and the speed-tier gates rewritten** around escape rather than
    pace.
@@ -210,6 +210,17 @@ Tuned at the table, not here. Integer, in the units the code already uses.
 One MINOR release — *0.7.0, the dog learns to hunt* — in five commits. The
 `interact.js` split from the review could ride along, since this touches
 `weaponOf` and `hitBox`, but it is optional and should not gate the release.
+
+## Status after step 3 (2026-09-25)
+
+- Drawn on the glyph with a scale, an offset and a colour per mode, plus one
+  addition to the plan: a **cross at the aim point** during the crouch. It is
+  drawn under the player, so it is invisible until you step off it — which is
+  exactly when you need to see that the dash is going somewhere you are not.
+- `tools/telegraph.html` renders all six modes through the real renderer,
+  cropped, so the feel can be judged without hunting a dog.
+- Remaining: step 4, tuning and the speed-tier gates rewritten around
+  breaking contact. Then `0.7.0 — the dog learns to hunt`.
 
 ## Status after step 2 (2026-09-25)
 

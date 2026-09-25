@@ -1,0 +1,73 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><title>foe telegraph</title>
+<style>
+  body { margin: 0; background: #0d0c0a; color: #b1afa8; font: 12px/1.4 ui-monospace, monospace; padding: 12px; }
+  #row { display: flex; gap: 12px; flex-wrap: wrap; }
+  figure { margin: 0; }
+  canvas { image-rendering: pixelated; display: block; background: #000; }
+  figcaption { color: #7b776f; margin-top: 4px; }
+  p { margin: 0 0 8px; color: #7b776f; }
+  #status.bad { color: #d9673f; white-space: pre-wrap; }
+</style></head><body>
+<p>The dog in every mode, drawn by the game's own renderer and cropped around it. This is what a player has to read a sidestep from.</p>
+<div id="status">loading…</div>
+<div id="row"></div>
+<script>
+// Fail LOUDLY. The server gate refuses any tool page without an error path.
+const status = document.getElementById('status');
+const say = (m, bad) => { status.textContent = m; status.className = bad ? 'bad' : ''; };
+window.onerror = (m, src, line) => say(`Error: ${m}\n  at ${src}:${line}`, true);
+window.addEventListener('unhandledrejection', (e) => say(`Error: ${e.reason && e.reason.message || e.reason}`, true));
+if (location.protocol === 'file:') say('Opened from the file system. Run npm start and open http://localhost:3140/tools/telegraph.html', true);
+</script>
+<script type="module">
+import { createRenderer, W, VIEW_H } from '../render/canvas.js';
+import { loadPack } from '../render/tileset.js';
+import { createState, spawnIn } from '../sim/state.js';
+import { enterRoom } from '../sim/step.js';
+import { floorPlan, floorCount } from '../core/gen.js';
+import { foesOf, FOE } from '../core/foes.js';
+
+const S = Number(new URLSearchParams(location.search).get('scale')) || 4;
+const SEED = 0x1594;
+const pack = await loadPack('../assets/packs/onebit.json');
+
+let den = null;
+for (let f = 0; f < floorCount(SEED, 0) && !den; f++)
+  for (const room of floorPlan(SEED, 0, f).cells) if (foesOf(SEED, 0, f, room).length) { den = { f, room }; break; }
+if (!den) throw new Error('no room with a foe on site 0');
+
+const modes = [
+  ['asleep',  (f, s) => { f.mode = 'asleep'; }],
+  ['circle',  (f, s) => { f.mode = 'circle'; }],
+  ['crouch',  (f, s) => { f.mode = 'lunge'; f.modeAt = s.tick; f.aimX = s.x; f.aimY = s.y; }],
+  ['dash',    (f, s) => { f.mode = 'lunge'; f.modeAt = s.tick - FOE.dog.lungeWindup; f.aimX = s.x; f.aimY = s.y; }],
+  ['recover', (f, s) => { f.mode = 'recover'; f.modeAt = s.tick; }],
+  ['stagger', (f, s) => { f.mode = 'stagger'; f.modeAt = s.tick; }],
+];
+const row = document.getElementById('row');
+const CROP = 72;
+for (const [name, set] of modes) {
+  const s = createState(SEED);
+  s.floor = den.f; s.room = den.room;
+  const p = spawnIn(SEED, 0, den.f, den.room);
+  s.x = p.x; s.y = p.y; s.lamp = 900 * 256; s.tick = 100;
+  enterRoom(s);
+  const f = s.foes[0]; s.foes = [f];
+  f.x = s.x + 40 * 256; f.y = s.y; f.modeAt = s.tick;
+  set(f, s);
+  const full = document.createElement('canvas');
+  const r = createRenderer(full, pack.ok ? pack : null);
+  r.draw(s, [{ text: '' }, { text: '' }, { text: '' }, { text: '' }]);
+  const c = document.createElement('canvas');
+  c.width = CROP; c.height = CROP; c.style.width = CROP * S + 'px'; c.style.height = CROP * S + 'px';
+  const x = c.getContext('2d'); x.imageSmoothingEnabled = false;
+  const cx = Math.round((s.x + f.x) / 512), cy = Math.round(f.y / 256);
+  x.drawImage(full, cx - CROP / 2, cy - CROP / 2, CROP, CROP, 0, 0, CROP, CROP);
+  const fig = document.createElement('figure');
+  fig.appendChild(c);
+  const cap = document.createElement('figcaption'); cap.textContent = name; fig.appendChild(cap);
+  row.appendChild(fig);
+}
+say(`${modes.length} modes, dog 40px east of you`);
+window.__ready = true;
+</script></body></html>
