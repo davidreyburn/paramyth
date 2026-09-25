@@ -1,5 +1,6 @@
 <!doctype html><html><head><meta charset="utf-8"><title>paramyth pagecheck</title></head>
 <body style="background:#111;color:#ddd;font:13px ui-monospace,monospace">
+<link rel="stylesheet" href="../app/touch.css">
 <pre id="out">running…</pre>
 <script type="module">
 const out = [];
@@ -482,6 +483,67 @@ try {
       s6.tick += 7;                                   // inside the active window
       const box = hitBox(s6);
       r.draw(s6, [{text:''},{text:''},{text:''},{text:''}]);
+
+      // On-screen controls: a stick that is a stick, buttons that hold and hand
+      // over, two pointers at once, and the two layouts.
+      {
+        const { attachTouch } = await import('../app/touch.js');
+        const { VERB, hasVerb } = await import('../sim/frame.js');
+        const { createInput: mkInput } = await import('../app/input.js');
+        const input = mkInput();                       // its own, so no key held elsewhere leaks in
+        const touch = attachTouch(input, document.body, '../assets/sheets/paramyth-20.png');
+        const html = document.documentElement;
+        const pe = (type, el, id, x, y) => el.dispatchEvent(new PointerEvent(type, { pointerId: id, clientX: x, clientY: y, bubbles: true, pointerType: 'touch' }));
+        const has = (v) => hasVerb(input.sample(), v);
+        html.dataset.controls = 'landscape'; r.resize();
+        const pad = touch.el.querySelector('.pad'), pr = pad.getBoundingClientRect();
+        const cx = pr.left + pr.width / 2, cy = pr.top + pr.height / 2;
+        pe('pointerdown', pad, 1, cx + 40, cy);
+        ok('a touch east of the pad centre is RIGHT', has(VERB.RIGHT) && !has(VERB.UP) && !has(VERB.LEFT));
+        pe('pointermove', touch.el, 1, cx, cy - 40);
+        ok('sliding to north is UP, without lifting', has(VERB.UP) && !has(VERB.RIGHT));
+        pe('pointermove', touch.el, 1, cx + 30, cy - 30);
+        ok('and a diagonal is both', has(VERB.UP) && has(VERB.RIGHT));
+        pe('pointermove', touch.el, 1, cx + 3, cy + 3);
+        ok('inside the deadzone is nothing', !has(VERB.UP) && !has(VERB.RIGHT) && !has(VERB.DOWN) && !has(VERB.LEFT));
+        pe('pointermove', touch.el, 1, cx - 40, cy);
+        const x = touch.el.querySelector('.btn[data-id=x]'), xr = x.getBoundingClientRect();
+        pe('pointerdown', x, 2, xr.left + xr.width / 2, xr.top + xr.height / 2);
+        ok('a second pointer on X attacks while the first still steers', has(VERB.ATTACK) && has(VERB.LEFT));
+        const a = touch.el.querySelector('.btn[data-id=a]'), ar = a.getBoundingClientRect();
+        pe('pointermove', touch.el, 2, ar.left + ar.width / 2, ar.top + ar.height / 2);
+        ok('sliding from X onto A hands the press over', has(VERB.INTERACT) && !has(VERB.ATTACK));
+        pe('pointerup', touch.el, 2, ar.left + 5, ar.top + 5);
+        pe('pointerup', touch.el, 1, cx, cy);
+        ok('lifting both leaves the frame empty', input.sample() === 0);
+        const b = touch.el.querySelector('.btn[data-id=b]'), br = b.getBoundingClientRect();
+        pe('pointerdown', b, 3, br.left + 10, br.top + 10);
+        ok('B is dodge and cancel, as on the pad', has(VERB.DODGE) && has(VERB.CANCEL));
+        pe('pointercancel', touch.el, 3, br.left + 10, br.top + 10);
+        ok('and a cancelled pointer releases', input.sample() === 0);
+        // Layouts. Portrait: the controls lie entirely below the view. Landscape: over it.
+        const cr = () => canvas.getBoundingClientRect();
+        html.dataset.controls = 'portrait'; r.resize();
+        const tr = touch.el.getBoundingClientRect();
+        // The app puts the canvas at the top of the page; this page does not, so the
+        // promise is measured as 'the controls begin exactly one view-height down'.
+        ok('in portrait the controls begin where the view ends', Math.abs(tr.top - cr().height) <= 1 && getComputedStyle(touch.el).display !== 'none', `controls top ${tr.top.toFixed(0)}, view height ${cr().height.toFixed(0)}`);
+        ok('and the view fits the width', Math.abs(cr().width - window.innerWidth) <= 1, `${cr().width.toFixed(0)} of ${window.innerWidth}`);
+        // Every control inside the viewport, in both layouts. The R shoulder once
+        // sat 48px past the right edge: its row's padding was not counted in its width.
+        const outside = () => [...touch.el.querySelectorAll('.btn, .pad')].filter((b) => { const q = b.getBoundingClientRect(); return q.right > innerWidth + 1 || q.left < -1 || q.bottom > innerHeight + 1; }).map((b) => b.dataset.id || 'pad');
+        // Only meaningful in a portrait-shaped window: the layout is never chosen otherwise.
+        if (innerHeight > innerWidth) ok('and every control lies inside the viewport', outside().length === 0, outside().join(',') || `${innerWidth}x${innerHeight}`);
+        else ok('(portrait fit not measured: the window is landscape)', true, `${innerWidth}x${innerHeight}`);
+        html.dataset.controls = 'landscape'; r.resize();
+        const lr = pad.getBoundingClientRect();
+        ok('in landscape the pad lies over the view', lr.top < cr().top + cr().height && lr.left >= cr().left - 1);
+        ok('and every control lies inside the viewport there too', outside().length === 0, outside().join(',') || `${innerWidth}x${innerHeight}`);
+        html.dataset.controls = 'none'; r.resize();
+        ok('and with none, the controls are hidden', getComputedStyle(touch.el).display === 'none');
+        ok('every button shows a glyph from the project sheet', [...touch.el.querySelectorAll('.glyph')].every((g) => /paramyth-20\.png/.test(g.style.backgroundImage)));
+        touch.el.remove();
+      }
       const bx = Math.round(box.x0/256) + 2, by = Math.round((box.y0+box.y1)/512);
       const sw = ctx.getImageData(Math.max(0,Math.min(W-1,bx)), Math.max(0,Math.min(VIEW_H-1,by)), 1, 1).data;
       ok('the swing draws in front of the player', Math.max(sw[0],sw[1],sw[2]) > 60,

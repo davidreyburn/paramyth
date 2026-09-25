@@ -1,0 +1,45 @@
+/* On-screen controls (app/touch.js). Shared with tools/pagecheck.html so the
+   layouts can be gated. */
+/* On-screen controls. Two layouts, chosen by data-controls on <html>:
+   portrait is the Game Boy (view on top, controls below, nothing overlapping);
+   landscape is the overlay (translucent, over the view). Built by touch.js. */
+#touch { position: fixed; inset: 0; pointer-events: none; touch-action: none; user-select: none;
+         -webkit-user-select: none; font: 10px ui-monospace, monospace; color: #b1afa8; display: none; }
+#touch > * { pointer-events: auto; }
+#touch .pad { position: absolute; width: 132px; height: 132px; border-radius: 50%;
+              background: rgba(177,175,168,.10); border: 2px solid rgba(177,175,168,.35); }
+#touch .pad::before { content: ''; position: absolute; inset: 40px; border-radius: 50%; border: 1px dashed rgba(177,175,168,.25); }
+#touch .nub { position: absolute; left: 50%; top: 50%; width: 44px; height: 44px; margin: -22px 0 0 -22px;
+              border-radius: 50%; background: rgba(229,203,166,.55); pointer-events: none; }
+#touch .cluster { position: absolute; width: 168px; height: 168px; }
+#touch .btn { position: absolute; width: 60px; height: 60px; border-radius: 50%; display: flex; flex-direction: column;
+              align-items: center; justify-content: center; gap: 1px;
+              background: rgba(177,175,168,.12); border: 2px solid rgba(177,175,168,.4); }
+#touch .btn.down { background: rgba(229,203,166,.45); border-color: #e5cba6; }
+#touch .glyph { width: 40px; height: 40px; background-repeat: no-repeat; background-size: auto 40px; image-rendering: pixelated; }
+#touch .label { font-size: 9px; letter-spacing: .5px; color: #e5cba6; line-height: 1; }
+#touch .cluster .btn[data-id=x] { left: 0; top: 54px; }     /* a diamond: X left, Y top, A right, B bottom */
+#touch .cluster .btn[data-id=y] { left: 54px; top: 0; }
+#touch .cluster .btn[data-id=a] { left: 108px; top: 54px; }
+#touch .cluster .btn[data-id=b] { left: 54px; top: 108px; }
+#touch .shoulders .btn, #touch .row .btn { position: static; width: 64px; height: 36px; border-radius: 18px; flex-direction: row; gap: 6px; }
+#touch .shoulders .glyph, #touch .row .glyph { width: 20px; height: 20px; background-size: auto 20px; }
+#touch .shoulders, #touch .row { position: absolute; display: flex; gap: 12px; box-sizing: border-box; }   /* padding counts, or R falls off the right edge */
+#touch .row .btn { width: 84px; }
+
+html[data-controls=portrait] body { align-items: flex-start; }
+html[data-controls=portrait] #touch { display: block; top: var(--view-h, 50%); background: #000; }
+html[data-controls=portrait] #touch .pad { left: 24px; top: 56px; }
+html[data-controls=portrait] #touch .cluster { right: 20px; top: 38px; }
+html[data-controls=portrait] #touch .shoulders { left: 0; right: 0; top: 10px; justify-content: space-between; padding: 0 24px; }
+html[data-controls=portrait] #touch .row { left: 0; right: 0; top: 232px; justify-content: center;
+                                             padding-bottom: env(safe-area-inset-bottom); }
+
+html[data-controls=landscape] #touch { display: block; }
+html[data-controls=landscape] #touch > * { opacity: .5; }
+html[data-controls=landscape] #touch .pad { left: calc(24px + env(safe-area-inset-left)); bottom: calc(24px + env(safe-area-inset-bottom)); }
+html[data-controls=landscape] #touch .cluster { right: calc(20px + env(safe-area-inset-right)); bottom: calc(16px + env(safe-area-inset-bottom)); }
+html[data-controls=landscape] #touch .shoulders { left: 0; right: 0; top: calc(8px + env(safe-area-inset-top)); justify-content: space-between; padding: 0 24px; }
+html[data-controls=landscape] #touch .row { left: 50%; transform: translateX(-50%); bottom: calc(10px + env(safe-area-inset-bottom)); }
+#touchPref { position: fixed; top: 6px; right: 8px; z-index: 2; font: 11px ui-monospace, monospace; color: #b1afa8;
+             background: #16130f; border: 1px solid #4a443f; border-radius: 4px; padding: 4px 8px; display: none; }

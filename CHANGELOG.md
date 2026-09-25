@@ -11,6 +11,21 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **On-screen controls for a phone without a controller.** Detected by a pure
+  function (`app/controls.js`: coarse pointer + touch points, no gamepad seen,
+  no key pressed; the title-screen preference *touch: auto/on/off* wins).
+  Portrait is the Game Boy: the view scaled to the width on top, a pad and
+  buttons below on black. Landscape is the overlay, translucent over the view.
+  The d-pad is a stick — direction from the vector to its centre, eight ways
+  with a deadzone, updated as the thumb slides — and buttons hold while
+  touched and hand the press over when a thumb slides onto a neighbour; every
+  pointer tracked by id. Same mapping as the pad, glyphs from the project sheet
+  (six new cells: hand, chevrons, pack, drop, shield, speed lines) with the pad
+  letter beneath. DOM, not canvas: the view stays pure; the frame is still one
+  int. Fractional fit on phones (a 640px canvas used to hang off a 390px
+  screen); integer on desktops as before. `?controls=portrait|landscape|none`
+  forces a layout for judging on a desktop. Nine detector gates, sixteen on
+  the page.
 - **Licence and notice.** `LICENSE`: © 2026 David Reyburn, all rights reserved,
   scope stated, third-party art excluded. `NOTICE` credits the tile art —
   *Playdate Dungeon Tileset* by schwarnhild — with its terms; the credit is on

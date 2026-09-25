@@ -6,6 +6,8 @@ import combat from '../systems/combat/index.js';
 import { VERB, VERB_NAMES, hasVerb } from '../sim/frame.js';
 import { createInput } from './input.js';
 import { goFullscreen, toggleFullscreen, isFullscreen, standalone } from './fullscreen.js';
+import { controlsFor, PREFS } from './controls.js';
+import { attachTouch } from './touch.js';
 import { createRenderer } from '../render/canvas.js';
 import { loadPack } from '../render/tileset.js';
 import { roomTiles, floorPlan, floorCount } from '../core/gen.js';
@@ -30,6 +32,34 @@ try { pack = await loadPack(new URL('../assets/packs/onebit.json', import.meta.u
 const renderer = createRenderer(canvas, pack && pack.ok ? pack : null);
 const input = createInput();
 
+// On-screen controls: decided from what the device reports, every frame (the
+// checks are cheap and a pad appears mid-session); the preference on the
+// title screen wins. The layout is a data attribute the CSS switches on.
+const PREF_KEY = 'paramyth.touch';
+const touchPref = () => { try { return PREFS.includes(localStorage.getItem(PREF_KEY)) ? localStorage.getItem(PREF_KEY) : 'auto'; } catch { return 'auto'; } };
+const setTouchPref = (p) => { try { localStorage.setItem(PREF_KEY, p); } catch {} prefBtn.textContent = `touch: ${p}`; };
+const prefBtn = document.getElementById('touchPref');
+prefBtn.textContent = `touch: ${touchPref()}`;
+prefBtn.addEventListener('click', () => setTouchPref(PREFS[(PREFS.indexOf(touchPref()) + 1) % PREFS.length]));
+attachTouch(input);
+let controls = 'none';
+const FORCED = new URLSearchParams(location.search).get('controls');     // dev: ?controls=portrait|landscape|none
+function applyControls() {
+  const next = ['portrait', 'landscape', 'none'].includes(FORCED) ? FORCED : controlsFor({
+    coarse: matchMedia('(pointer: coarse)').matches, touchPoints: navigator.maxTouchPoints || 0,
+    padSeen: input.padSeen, keySeen: input.keySeen,
+    portrait: matchMedia('(orientation: portrait)').matches, pref: touchPref(),
+  });
+  // The switch shows on the title, on any touch device, whatever the verdict:
+  // a phone that hid its controls needs a way to get them back without a key.
+  prefBtn.style.display = mode === 'title' && navigator.maxTouchPoints > 0 ? 'block' : 'none';
+  if (next === controls) return;
+  controls = next;
+  document.documentElement.dataset.controls = next;
+  renderer.resize();
+}
+addEventListener('resize', applyControls);
+
 // The front door. Nothing steps until a slot is chosen.
 let mode = 'title';
 let slot = -1;
@@ -45,6 +75,7 @@ if (!standalone()) title.note = 'tap the screen or press F for fullscreen';
 addEventListener('pointerdown', () => { if (!isFullscreen()) goFullscreen().then(fullscreenNote); }, { passive: true });
 addEventListener('keydown', (e) => {
   if (e.code === 'KeyF') toggleFullscreen().then(fullscreenNote);
+  else if (e.code === 'KeyT' && mode === 'title') setTouchPref(PREFS[(PREFS.indexOf(touchPref()) + 1) % PREFS.length]);
   else if (mode === 'title' && !isFullscreen() && !standalone()) goFullscreen().then(fullscreenNote);
 });
 // Installable, where the page is a secure context (localhost, https, the APK).
@@ -138,6 +169,7 @@ function loop(now) {
   }
   if (acc > TICK_MS * MAX_STEPS_PER_FRAME) acc = 0;
 
+  applyControls();
   if (mode === 'title') { renderer.title(title); return; }
   maybeSave();
 

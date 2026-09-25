@@ -41,10 +41,11 @@ export { PADS, KEYS };
 
 export function createInput() {
   const held = new Set();
-  let padInfo = 'none';
+  const touched = new Set();                 // the on-screen controls' verbs, kept apart from the keys'
+  let padInfo = 'none', padSeen = false, keySeen = false;
 
   addEventListener('keydown', (e) => {
-    if (KEYS[e.code] !== undefined) { held.add(KEYS[e.code]); e.preventDefault(); }
+    if (KEYS[e.code] !== undefined) { held.add(KEYS[e.code]); keySeen = true; e.preventDefault(); }
   });
   addEventListener('keyup', (e) => {
     if (KEYS[e.code] !== undefined) { held.delete(KEYS[e.code]); e.preventDefault(); }
@@ -52,18 +53,26 @@ export function createInput() {
   addEventListener('blur', () => held.clear());
   addEventListener('gamepadconnected', (e) => {
     padInfo = e.gamepad.id.slice(0, 44) + ' (' + e.gamepad.buttons.length + 'b)';
+    padSeen = true;
   });
   addEventListener('gamepaddisconnected', () => { padInfo = 'none'; });
 
   return {
     get pad() { return padInfo; },
+    get padSeen() { return padSeen; },
+    get keySeen() { return keySeen; },
+    // The on-screen controls speak these two words and nothing else.
+    hold(v) { touched.add(v); },
+    free(v) { touched.delete(v); },
     sample() {
       let f = 0;
       for (const v of held) f = setVerb(f, v, true);
+      for (const v of touched) f = setVerb(f, v, true);
 
       const pads = navigator.getGamepads ? navigator.getGamepads() : [];
       for (const p of pads) {
         if (!p) continue;
+        padSeen = true;
         for (const [i, vs] of Object.entries(PADS)) {
           if (!p.buttons[i] || !p.buttons[i].pressed) continue;
           for (const v of vs) f = setVerb(f, v, true);

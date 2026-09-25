@@ -65,6 +65,7 @@ With `npm start` running:
 | `/tools/icon-preview.html` | Every item icon per stratum, drawn through the pack screen's path |
 | `/tools/telegraph.html` | A foe in every mode, plus a set cap and a blast, through the real renderer (`?kind=sentinel`); `?room=field\|camp` draws a whole surface room |
 | `tools/build-sheet.mjs` | Builds the project's own sheet from `assets/sheets/paramyth-20.txt` (`#` light, `@` dark, `.` clear) |
+| `/app/?controls=portrait\|landscape\|none` | Force an on-screen-controls layout on a desktop |
 | `tools/build-icons.mjs` | Builds the app icons (the sword) from the same text; `tools/png.mjs` is the shared writer |
 | `/tools/pagecheck.html` | The browser gates |
 

@@ -46,11 +46,21 @@ export function createRenderer(canvas, pack = null) {
   const warmBuf = mk(), darkBuf = mk();
   const wx = warmBuf.getContext('2d'), dx = darkBuf.getContext('2d');
 
+  // Integer scale on a desktop, where the window is big and every pixel can be
+  // whole. On a phone the window is smaller than the view, and the old floor of
+  // 1 meant a 640px canvas hanging off a 390px screen. With on-screen controls
+  // the fit is fractional: to the width in portrait (the view on top, the
+  // controls below), to the window in landscape. Nearest-neighbour stays on.
   let scale = 1;
   function resize() {
-    scale = Math.max(1, Math.floor(Math.min(window.innerWidth / W, window.innerHeight / H)));
+    const mode = document.documentElement.dataset.controls || 'none';
+    const w = window.innerWidth, h = window.innerHeight;
+    if (mode === 'portrait') scale = w / W;
+    else if (mode === 'landscape') scale = Math.min(w / W, h / H);
+    else scale = Math.max(1, Math.floor(Math.min(w / W, h / H)));
     canvas.style.width = W * scale + 'px';
     canvas.style.height = H * scale + 'px';
+    document.documentElement.style.setProperty('--view-h', H * scale + 'px');
   }
   window.addEventListener('resize', resize);
   resize();
@@ -655,6 +665,7 @@ export function createRenderer(canvas, pack = null) {
 
   return {
     get scale() { return scale; },
+    resize,
     get pack() { return pack; },
     // For gates: the light buffers, so band count can be measured on the light
     // and not on the composite, where tile brightness confounds it.

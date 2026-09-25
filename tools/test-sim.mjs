@@ -104,6 +104,21 @@ ok('save size is bounded by play, not by world',
      `lampDir ${a2.lampDir}`);
 }
 
+// --- on-screen controls: the verdict is a pure function --------------------------
+{
+  const { controlsFor } = await import('../app/controls.js');
+  const phone = { coarse: true, touchPoints: 5 };
+  ok('a phone in portrait gets the Game Boy', controlsFor({ ...phone, portrait: true }) === 'portrait');
+  ok('a phone in landscape gets the overlay', controlsFor({ ...phone, portrait: false }) === 'landscape');
+  ok('a desktop gets nothing', controlsFor({ coarse: false, touchPoints: 0 }) === 'none');
+  ok('a touch laptop with a fine pointer gets nothing', controlsFor({ coarse: false, touchPoints: 10 }) === 'none');
+  ok('a controller hides them', controlsFor({ ...phone, padSeen: true }) === 'none');
+  ok('so does a keyboard', controlsFor({ ...phone, keySeen: true }) === 'none');
+  ok("'off' wins over a phone", controlsFor({ ...phone, pref: 'off' }) === 'none');
+  ok("'on' wins over a controller", controlsFor({ ...phone, padSeen: true, pref: 'on', portrait: true }) === 'portrait');
+  ok("but 'on' with no touch screen is still nothing", controlsFor({ coarse: false, touchPoints: 0, pref: 'on' }) === 'none');
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all headless gates passed');
 console.log('  2 gates need a browser: start the server and open /tools/pagecheck.html\n');
 process.exit(failures ? 1 : 0);
