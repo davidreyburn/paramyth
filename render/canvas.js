@@ -14,7 +14,8 @@ import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
 import { blastOf } from '../core/items.js';
 import { liveBlasts, capsHere } from '../sim/blast.js';
-import { MAX_HP, FADE_TICKS, POP_TICKS, REMAINS_FADE, swingPhase, saying, lampVec, surface, friendly } from '../sim/state.js';
+import { MAX_HP, FADE_TICKS, POP_TICKS, REMAINS_FADE, swingPhase, dodgePhase, dodgeTable, saying, lampVec, surface, friendly } from '../sim/state.js';
+import { steer } from '../sim/space.js';
 import { isContainer, labelOf, bulkOf, KIND, SLOTS } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
@@ -656,17 +657,57 @@ export function createRenderer(canvas, pack = null) {
     }
   }
 
+  // The roll's trail: two dithered afterimages of the glyph where you were 3 and
+  // 6 ticks ago (from the table, not stored), and a few flecks hashed along the
+  // path. All a function of the delta, so it draws the same twice.
+  function drawTrail(s, g) {
+    const phase = dodgePhase(s);
+    if (!phase) return;
+    const d = s.dodge, tab = dodgeTable(d), t = s.tick - d.at;
+    const back = (n) => { let px_ = 0; for (let k = Math.max(0, t - n); k < t; k++) px_ += tab.speeds[k] || 0; return px_; };
+    const [ux, uy] = steer(d.dx * 256, d.dy * 256, 256);   // a unit, in 1/256ths
+    ctx.font = 'bold 15px ui-monospace, monospace'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    for (const [n, level] of [[6, 4], [3, 7]]) {
+      const dist = back(n);
+      if (!dist) continue;
+      const gx = Math.round(px(s.x) - (ux * dist) / 256), gy = Math.round(px(s.y) - (uy * dist) / 256);
+      sx.clearRect(0, 0, TILE, TILE);
+      sx.font = ctx.font; sx.textAlign = 'center'; sx.textBaseline = 'middle'; sx.fillStyle = P.parchment;
+      sx.fillText(g, TILE >> 1, TILE >> 1);
+      const img = sx.getImageData(0, 0, TILE, TILE), dd = img.data;
+      for (let yy = 0; yy < TILE; yy++) for (let xx = 0; xx < TILE; xx++) if (BAYER[yy & 3][xx & 3] >= level) dd[(yy * TILE + xx) * 4 + 3] = 0;
+      sx.putImageData(img, 0, 0);
+      ctx.drawImage(scratch, gx - (TILE >> 1), gy - (TILE >> 1));
+    }
+    const span = back(8);
+    ctx.fillStyle = P.parchment;
+    for (let i = 0; i < 6; i++) {
+      const along = h(s.seed, d.at, i, 0xd0d6e) % Math.max(1, span), side = (h(s.seed, d.at, i, 0xd0d6f) % 7) - 3;
+      const fx = Math.round(px(s.x) - (ux * along) / 256 + (uy * side) / 256), fy = Math.round(px(s.y) - (uy * along) / 256 - (ux * side) / 256);
+      if (((s.tick + i) & 1) === 0) ctx.fillRect(fx, fy, 1, 1);
+    }
+  }
+
   function drawPlayer(s) {
     const x = Math.round(px(s.x)), y = Math.round(px(s.y));
     const pl = pack && pack.player;
 
     if (!pl || pl.glyph) {
       const g = (pl && pl.glyph) || '@';
+      drawTrail(s, g);
+      // The lean: scaled along the roll's axis for the i-frame ticks, upright in
+      // recovery. It is the tell that says NOW you can be hit again.
+      const phase = dodgePhase(s);
+      let sxk = 1, syk = 1;
+      if (phase === 'roll') { const alongX = Math.abs(s.dodge.dx) >= Math.abs(s.dodge.dy); sxk = alongX ? 1.35 : 0.8; syk = alongX ? 0.8 : 1.35; }
+      ctx.save();
+      ctx.translate(x, y); ctx.scale(sxk, syk);
       ctx.font = 'bold 15px ui-monospace, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillStyle = P.void;      ctx.fillText(g, x + 1, y + 1);
-      ctx.fillStyle = P.parchment; ctx.fillText(g, x, y);
+      ctx.fillStyle = P.void;      ctx.fillText(g, 1, 1);
+      ctx.fillStyle = P.parchment; ctx.fillText(g, 0, 0);
+      ctx.restore();
       ctx.textAlign = 'start';
       ctx.textBaseline = 'top';
       return;

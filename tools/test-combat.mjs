@@ -1087,5 +1087,148 @@ let runFrom;
   ok('replay holds with a pop in flight', hashState(a) === hashState(b) && a.pops.length === 1);
 }
 
+// --- the dodge roll: plans/dodge-roll.md -----------------------------------------
+{
+  const { ROLL, BACKSTEP, DODGE_COOLDOWN, dodgePhase, invulnerable, HURT_INVULN: GRACE } = await import('../sim/state.js');
+  const { HALF, touching } = await import('../sim/space.js');
+  const { blastOf } = await import('../core/items.js');
+  const dog = FOE.dog;
+  // Open ground: the camp's top row again, facing east, nothing in the way.
+  const open = () => {
+    const s = createState(SEED); s.hp = 1000;
+    s.x = (8 * TILE + TILE / 2) * UNITS; s.y = (TILE + TILE / 2) * UNITS; s.facing = 1;
+    return s;
+  };
+  const hold = (verb) => setVerb(0, verb, true);
+  const both = (a, b) => setVerb(setVerb(0, a, true), b, true);
+
+  // Direction and distance.
+  {
+    const s = open(); const x0 = s.x;
+    step(s, both(VERB.RIGHT, VERB.DODGE), SYSTEMS);
+    ok('a press with a direction held begins a roll', !!s.dodge && !s.dodge.back && s.dodge.dx === 1 && dodgePhase(s) === 'roll');
+    let half = 0;
+    for (let i = 0; i < ROLL.ticks; i++) { step(s, 0, SYSTEMS); if (i === (ROLL.ticks >> 1) - 1) half = s.x - x0; }
+    const total = s.x - x0;
+    ok('it travels about a tile and three quarters, east', total / UNITS >= 32 && total / UNITS <= 38, `${(total / UNITS).toFixed(0)}px`);
+    ok('front-loaded: the first half covers more than the second', half > total - half, `${(half / UNITS).toFixed(0)}px then ${((total - half) / UNITS).toFixed(0)}px`);
+    ok('and it is over', dodgePhase(s) === null);
+    const d = open(); const dx0 = d.x, dy0 = d.y;
+    step(d, setVerb(both(VERB.DOWN, VERB.RIGHT), VERB.DODGE, true), SYSTEMS);
+    for (let i = 0; i < ROLL.ticks; i++) step(d, 0, SYSTEMS);
+    ok('a diagonal rolls diagonally, the same distance overall', d.x > dx0 && d.y > dy0 && Math.abs((d.x - dx0) - (d.y - dy0)) < 2 * UNITS && Math.abs(d.x - dx0) / UNITS > 20 && Math.abs(d.x - dx0) / UNITS < 30, `${((d.x - dx0) / UNITS).toFixed(0)},${((d.y - dy0) / UNITS).toFixed(0)}px`);
+  }
+
+  // The backstep.
+  {
+    const s = open(); const x0 = s.x;                    // facing east, nothing held
+    step(s, hold(VERB.DODGE), SYSTEMS);
+    ok('with nothing held it is a backstep, opposite facing', !!s.dodge && s.dodge.back && s.dodge.dx === -1 && s.dodge.dy === 0);
+    for (let i = 0; i < BACKSTEP.ticks; i++) step(s, 0, SYSTEMS);
+    ok('shorter, and west', (x0 - s.x) / UNITS >= 12 && (x0 - s.x) / UNITS <= 16, `${((x0 - s.x) / UNITS).toFixed(0)}px`);
+  }
+
+  // Committed: no steering, no acting, and no second roll inside the cooldown.
+  {
+    const s = open(); const y0 = s.y;
+    step(s, both(VERB.RIGHT, VERB.DODGE), SYSTEMS);
+    for (let i = 0; i < 6; i++) step(s, hold(VERB.DOWN), SYSTEMS);
+    ok('no steering during a roll', s.y === y0);
+    s.carried = [ref('bcap', 3)]; s.equipped.tool = ref('bcap', 4);
+    step(s, hold(VERB.TOOL), SYSTEMS);
+    ok('no tool during a roll', s.charges.length === 0);
+    const at0 = s.dodge.at;
+    step(s, setVerb(0, VERB.DODGE, true), SYSTEMS);
+    ok('a press during a roll is ignored, not buffered', s.dodge.at === at0);
+    for (let i = 0; i < ROLL.ticks; i++) step(s, 0, SYSTEMS);
+    const at = s.dodge.at;
+    step(s, hold(VERB.DODGE), SYSTEMS);
+    ok('a press inside the cooldown does nothing', s.dodge.at === at, `cooldown ${DODGE_COOLDOWN}`);
+    for (let i = 0; i < DODGE_COOLDOWN; i++) step(s, 0, SYSTEMS);
+    step(s, hold(VERB.DODGE), SYSTEMS);
+    ok('and after it, another', s.dodge.at !== at);
+  }
+
+  // The swing: a roll cancels recover, and only recover.
+  {
+    const den = denRoom();
+    const w = delve(den.floor, den.room); w.foes = []; w.hp = 1000;
+    step(w, hold(VERB.ATTACK), SYSTEMS);
+    step(w, hold(VERB.DODGE), SYSTEMS);
+    ok('a roll cannot cancel the windup', !w.dodge && !!w.swing);
+    for (let i = 0; i < WINDUP + ACTIVE; i++) step(w, 0, SYSTEMS);
+    ok('the swing is in recover', swingPhase(w) === 'recover');
+    step(w, hold(VERB.DODGE), SYSTEMS);
+    ok('and a roll cancels it', !!w.dodge && !w.swing);
+  }
+
+  // i-frames: the bite, and the blast.
+  {
+    const bite = (delay, ticks) => {
+      const s = open();
+      s.foes = [{ id: 'd', kind: 'dog', x: s.x + 2 * HALF, y: s.y, hp: 6, mode: 'lunge', modeAt: s.tick - dog.lungeWindup, spin: 1, aimX: s.x, aimY: s.y, vx: 0, vy: 0 }];
+      s.hurtAt = -9999;
+      // Roll INTO it (east): it stops you; the dog is flush and lunging the whole time.
+      step(s, both(VERB.RIGHT, VERB.DODGE), SYSTEMS);
+      for (let i = 0; i < delay; i++) step(s, 0, SYSTEMS);
+      // Put the dog back flush and lunging, then give it `ticks` to land.
+      s.foes[0].x = s.x + 2 * HALF; s.foes[0].y = s.y; s.foes[0].vx = 0; s.foes[0].vy = 0;
+      s.foes[0].mode = 'lunge'; s.foes[0].modeAt = s.tick - dog.lungeWindup; s.foes[0].aimX = s.x; s.foes[0].aimY = s.y;
+      const hp = s.hp;
+      for (let i = 0; i < ticks; i++) step(s, 0, SYSTEMS);
+      return s.hp < hp;
+    };
+    ok('a bite during the i-frames does not land', !bite(2, 6) && !bite(ROLL.iframes - 4, 3));
+    ok('two ticks after they end, it does', bite(ROLL.iframes + 1, 6));
+    // The blast: roll through and you are clear; roll in and stop, and it hurts.
+    const boom = (through) => {
+      const s = open();
+      const cap = blastOf('bcap');
+      const at = s.tick;
+      // A blast centred a tile east, already lit, lingering for its whole life.
+      s.blasts = [{ x: s.x + (through ? 0 : 40) * UNITS, y: s.y, r: cap.radius * UNITS, at, site: s.site, floor: s.floor, room: s.room, damage: cap.damage, knock: cap.knock, self: cap.self, linger: ROLL.ticks + 10, hit: [] }];
+      step(s, both(VERB.RIGHT, VERB.DODGE), SYSTEMS);
+      for (let i = 0; i < ROLL.ticks + 8; i++) step(s, 0, SYSTEMS);
+      return { hurt: s.hp < 1000, x: (s.x - (8 * TILE + TILE / 2) * UNITS) / UNITS, hits: s.blasts[0] ? s.blasts[0].hit.length : -1 };
+    };
+    const t = boom(true), i = boom(false);
+    ok('rolling THROUGH a blast leaves you unhurt', !t.hurt, `ended ${t.x.toFixed(0)}px east of a blast centred on you, radius 28`);
+    ok('rolling INTO one and stopping inside hurts when the frames end', i.hurt, `ended ${i.x.toFixed(0)}px east of a blast centred at 40`);
+  }
+
+  // Walls and dogs stop a roll; nothing overlaps.
+  {
+    const s = open();
+    s.x = (2 * TILE + TILE / 2) * UNITS; s.facing = 3;      // the camp's west palisade is one tile west
+    step(s, both(VERB.LEFT, VERB.DODGE), SYSTEMS);
+    let inWall = false;
+    const { gridOf } = await import('../sim/room.js');
+    for (let i = 0; i < ROLL.ticks; i++) { step(s, 0, SYSTEMS); if (solidTile(gridOf(s)[Math.floor(s.y / (TILE * UNITS)) * COLS + Math.floor((s.x - HALF) / (TILE * UNITS))])) inWall = true; }
+    ok('a roll into a wall stops at it and never overlaps it', !inWall && s.x >= TILE * UNITS + HALF, `${(s.x / UNITS).toFixed(1)}px`);
+  }
+
+  // Load: laden rolls shorter; overloaded backsteps, and says so.
+  {
+    const laden = open(); laden.carried = Array.from({ length: 9 }, (_, i) => ref('key', i));   // 4 + 9 = 13: laden
+    const lx0 = laden.x; step(laden, both(VERB.RIGHT, VERB.DODGE), SYSTEMS); for (let i = 0; i < ROLL.ticks; i++) step(laden, 0, SYSTEMS);
+    ok('laden rolls shorter: three quarters', laden.dodge.laden && (laden.x - lx0) / UNITS <= 28 && (laden.x - lx0) / UNITS >= 25, `${((laden.x - lx0) / UNITS).toFixed(0)}px`);
+    const over = open(); over.carried = Array.from({ length: 15 }, (_, i) => ref('key', i));   // 19: overloaded
+    const ox0 = over.x; step(over, both(VERB.RIGHT, VERB.DODGE), SYSTEMS);
+    ok('overloaded cannot roll: it backsteps instead', over.dodge && over.dodge.back && over.dodge.dx === -1);
+    ok('and says so', !!saying(over) && /heavy/i.test(saying(over).text), saying(over)?.text);
+    for (let i = 0; i < BACKSTEP.ticks; i++) step(over, 0, SYSTEMS);
+    ok('a backstep, west', over.x < ox0);
+  }
+
+  // Replay, with rolls in flight.
+  {
+    const a = open(), b = open();
+    const frames = []; for (let i = 0; i < 300; i++) frames.push((i % 40 === 0) ? both(VERB.RIGHT, VERB.DODGE) : (i % 40 < 20 ? hold(VERB.RIGHT) : hold(VERB.LEFT)));
+    for (const f of frames) step(a, f, SYSTEMS);
+    for (const f of frames) step(b, f, SYSTEMS);
+    ok('replay holds through rolls', hashState(a) === hashState(b) && Number.isInteger(a.x) && Number.isInteger(a.y));
+  }
+}
+
 console.log(failures ? `\n  ${failures} failed\n` : '\n  all combat gates passed\n');
 process.exit(failures ? 1 : 0);

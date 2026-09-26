@@ -47,6 +47,35 @@ export function lampStep(cur, facing) {
 export const WINDUP = 6, ACTIVE = 6, RECOVER = 10;
 export const SWING_TICKS = WINDUP + ACTIVE + RECOVER;
 export const HURT_INVULN = 30;          // ticks of grace after taking a hit
+
+// The dodge: plans/dodge-roll.md. A roll along the held direction, or a short
+// backstep with none held. Front-loaded — fast, then slowing — from an integer
+// table in px per tick, so it reads as a roll and not a slide, and no float
+// enters the sim. Invulnerable for the first `iframes`, then a recovery tail:
+// still moving, cannot act, CAN be hit. That tail is what makes it a dodge
+// and not a teleport.
+export const ROLL = { ticks: 20, iframes: 14, speeds: [5, 5, 4, 4, 3, 3, 3, 2, 2, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0] };   // 36px
+export const BACKSTEP = { ticks: 10, iframes: 7, speeds: [3, 3, 2, 2, 1, 1, 1, 1, 0, 0] };                              // 14px
+export const LADEN_ROLL = { ticks: 15, iframes: ROLL.iframes, speeds: [4, 4, 3, 3, 3, 2, 2, 2, 1, 1, 1, 1, 0, 0, 0] };   // 27px: three quarters
+export const DODGE_COOLDOWN = 10;       // ticks after one ends before the next
+// Laden rolls at three quarters: same i-frame COUNT, so a shorter roll is more
+// exposed at its end, not less. Overloaded cannot roll at all: the button
+// backsteps instead. design/combat-and-tools.md's tier table, without stamina.
+export function dodgeTable(d) {
+  if (d.back) return BACKSTEP;
+  if (!d.laden) return ROLL;
+  return LADEN_ROLL;
+}
+export const dodgePhase = (s) => {
+  if (!s.dodge) return null;
+  const t = s.tick - s.dodge.at, d = dodgeTable(s.dodge);
+  if (t < d.iframes) return 'roll';
+  if (t < d.ticks) return 'recover';
+  return null;
+};
+// Invulnerable to EVERYTHING — the bite, the blow, the blast — for the roll's
+// frames and for the grace after a hit. One predicate, read everywhere.
+export const invulnerable = (s) => dodgePhase(s) === 'roll' || s.tick - s.hurtAt < HURT_INVULN;
 // What a bite's shove is divided by. Armor will add to this; today you are a
 // dog's equal, which is the reference the dog's `knock` was tuned against.
 export const PLAYER_WEIGHT = 1;
@@ -118,6 +147,7 @@ export function createState(seed) {
     // hit taken, which is the whole invulnerability rule.
     hp: MAX_HP, hurtAt: -9999,
     swing: null,       // { at, dir, hit: [] } while a blow is in flight
+    dodge: null,       // { at, dx, dy, back, laden } — the last roll; its phase is a function of the tick
     say: null,         // { text, at } — a transient line, not a log
     arrivedAt: -FADE_TICKS,   // tick of the last change of floor; the fade is drawn from it
     pops: [],          // { x, y, at, kind } where something just died
@@ -190,6 +220,8 @@ export function hashState(s) {
   // The body and what is hunting it. Foe positions are part of the state, so
   // replay has to reproduce them tick for tick.
   mix(s.hp); mix(s.hurtAt < 0 ? 0 : s.hurtAt);
+  mix(s.dodge ? 1 : 0);
+  if (s.dodge) { mix(s.dodge.at); mix(s.dodge.dx + 1); mix(s.dodge.dy + 1); mix(s.dodge.back ? 1 : 0); mix(s.dodge.laden ? 1 : 0); }
   mix(s.swing ? 1 : 0);
   if (s.swing) { mix(s.swing.at); mix(s.swing.dir); mix(s.swing.hit.length); }
   mix(s.say ? s.say.at : 0);

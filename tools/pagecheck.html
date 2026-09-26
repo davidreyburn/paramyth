@@ -476,6 +476,16 @@ try {
       ok('and gone is gone', shot() === plain);
       s6.remains = [];
 
+      // The roll's trail and lean: drawn while rolling, the same twice, gone after.
+      const { ROLL: ROLL6 } = await import('../sim/state.js');
+      s6.dodge = { at: s6.tick - 6, dx: 1, dy: 0, back: false, laden: false };
+      const rolling = shot();
+      ok('a rolling player draws a trail and a lean', rolling !== plain);
+      ok('and draws it the same twice', shot() === rolling);
+      s6.dodge.at = s6.tick - ROLL6.ticks - 1;
+      ok('and after the roll, nothing', shot() === plain);
+      s6.dodge = null;
+
       // The Field: a field room draws, green and daylit, and differs from the camp.
       const { fieldPlan, FIELD_CAMP: CAMP0 } = await import('../core/gen.js');
       const s7 = createState(0x1594);

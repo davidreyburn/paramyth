@@ -1,6 +1,6 @@
 # The dodge roll
 
-*v0.1, 2026-09-26. A plan, not a build. DJ: "dodge in the direction of the
+*v0.1, 2026-09-26. Built the same day, steps 1 and 2; step 3 waits on DJ's hands. DJ: "dodge in the direction of the
 current input direction; if no input direction, a short backstep; i-frames
 while dodging; a subtle particle 'motion' trail."*
 

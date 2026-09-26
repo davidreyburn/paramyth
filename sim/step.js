@@ -3,14 +3,15 @@
 // same result, forever, on every device.
 
 import { VERB, hasVerb } from './frame.js';
-import { UNITS, spawnIn, MAX_HP, SWING_TICKS, POP_TICKS, REMAINS_FADE, swingPhase, lampStep, friendly } from './state.js';
+import { UNITS, spawnIn, MAX_HP, SWING_TICKS, POP_TICKS, REMAINS_FADE, DODGE_COOLDOWN, swingPhase, dodgePhase, dodgeTable, lampStep, friendly } from './state.js';
 import { plant, fuseStep } from './blast.js';
 import { roomTiles, floorPlan, floorCount, CAMP, FIELD_CAMP, groundTile, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
 import { isContainer, isPortable, isWeapon, bulkOf, SLOTS, slotOf, blastOf, KIND } from '../core/items.js';
 import { reachable, stairUnder, stationAt, visible, containerItems, dropTile, gridOf } from './room.js';
 import { carriedBulk, tier, mostFragile, bestWeapon, equippedRefs, BULK_BUDGET, STASH_SLOTS, PACK_COLS, PACK_ROWS, CONT_COLS, CONT_ROWS, STASH_COLS } from './carry.js';
 import { haulValue, assessed, APPRAISAL_FEE } from './record.js';
-import { blocked, solidBodies, solidTiles, actorBodies, PLAYER_ID, HALF, centreOf, carry } from './space.js';
+import { blocked, solidBodies, solidTiles, actorBodies, PLAYER_ID, HALF, centreOf, carry, slide, steer } from './space.js';
+import { FACE } from './carry.js';
 import { hchance } from '../core/addr.js';
 import { fragilityOf } from '../core/items.js';
 import { foesOf, FOE, spinOf } from '../core/foes.js';
@@ -164,7 +165,7 @@ function die(s) {
   for (const slot of SLOTS) s.equipped[slot] = null;
   s.hp = MAX_HP;
   s.hurtAt = -9999;
-  s.swing = null;
+  s.swing = null; s.dodge = null;
   s.vx = 0; s.vy = 0;
   s.deaths = (s.deaths || 0) + 1;
   s.site = 0; s.floor = CAMP; s.room = FIELD_CAMP;
@@ -379,8 +380,25 @@ export function step(s, frame, systems = []) {
 
   const grid = gridOf(s);
 
-  const dx = (hasVerb(frame, VERB.RIGHT) ? 1 : 0) - (hasVerb(frame, VERB.LEFT) ? 1 : 0);
-  const dy = (hasVerb(frame, VERB.DOWN) ? 1 : 0) - (hasVerb(frame, VERB.UP) ? 1 : 0);
+  const held = { dx: (hasVerb(frame, VERB.RIGHT) ? 1 : 0) - (hasVerb(frame, VERB.LEFT) ? 1 : 0),
+                 dy: (hasVerb(frame, VERB.DOWN) ? 1 : 0) - (hasVerb(frame, VERB.UP) ? 1 : 0) };
+
+  // The dodge. Begins on a press, with the held direction or a backstep; then
+  // it is COMMITTED: no steering, no acting, input ignored and not buffered. It
+  // may cancel a swing's recover phase (hit, roll out) and nothing else of it.
+  const cooling = s.dodge && s.tick - (s.dodge.at + dodgeTable(s.dodge).ticks) < DODGE_COOLDOWN;
+  const dodgePress = hasVerb(frame, VERB.DODGE) && !hasVerb(s.lastFrame, VERB.DODGE);
+  const sw = swingPhase(s);
+  if (dodgePress && !dodgePhase(s) && !cooling && sw !== 'windup' && sw !== 'active') {
+    const t = tier(carriedBulk(s));
+    let back = !held.dx && !held.dy, ddx = held.dx, ddy = held.dy;
+    if (!back && t === 'overloaded') { back = true; applyAction(s, { k: 'say', text: 'Too heavy to roll' }); }
+    if (back) { ddx = -FACE[s.facing][0]; ddy = -FACE[s.facing][1]; }
+    s.dodge = { at: s.tick, dx: ddx, dy: ddy, back, laden: t === 'laden' };
+    s.swing = null; s.vx = 0; s.vy = 0;
+  }
+  const rolling = dodgePhase(s);
+  const dx = rolling ? 0 : held.dx, dy = rolling ? 0 : held.dy;
 
   let speed = dx && dy ? SPEED_DIAG : SPEED;
   if (hasVerb(frame, VERB.SPRINT)) speed = ((speed * SPRINT_NUM) / SPRINT_DEN) | 0;
@@ -405,6 +423,14 @@ export function step(s, frame, systems = []) {
   if (dx && !blocked(grid, walls, nx, s.y, s.x, s.y)) s.x = nx;
   const ny = s.y + dy * speed;
   if (dy && !blocked(grid, walls, s.x, ny, s.x, s.y)) s.y = ny;
+  if (rolling) {
+    // The roll's own movement, from its table, through slide(): a wall or a
+    // dog stops it, and the rest of the roll is spent standing.
+    const d = s.dodge, tab = dodgeTable(d), v = (tab.speeds[s.tick - d.at] || 0) * UNITS;
+    // The direction is a unit; scaled up before steering, or the integer norm
+    // rounds a diagonal's second axis to nothing and it rolls 36px on BOTH.
+    if (v) { const [mx, my] = steer(d.dx * 256, d.dy * 256, v); const to = slide(grid, walls, s.x, s.y, mx, my); s.x = to.x; s.y = to.y; }
+  }
 
   // Shoves in flight, yours and theirs. This is world physics and not a
   // system's decision: a build with no systems still finishes a shove that is
@@ -441,7 +467,7 @@ export function step(s, frame, systems = []) {
   // One button. The stair UNDER YOUR FEET outranks anything lying beside it —
   // the reverse order let a pot next to the stairs strand you on a floor.
   // This order must match `prompt()`, and a gate holds them together.
-  const pressed = hasVerb(frame, VERB.INTERACT) && !hasVerb(s.lastFrame, VERB.INTERACT);
+  const pressed = hasVerb(frame, VERB.INTERACT) && !hasVerb(s.lastFrame, VERB.INTERACT) && !rolling;
   if (pressed) {
     // A station first, then the stair underfoot, then whatever is beside you.
     const station = stationAt(s);
@@ -480,7 +506,7 @@ export function step(s, frame, systems = []) {
   // The tool in your hand. A cap is set one tile ahead and the next one from
   // the pack takes its place, so a pocketful is a pocketful. Not in camp: the
   // Company frowns on that too, and the camp has rubble it is fond of.
-  if (hasVerb(frame, VERB.TOOL) && !hasVerb(s.lastFrame, VERB.TOOL)) {
+  if (hasVerb(frame, VERB.TOOL) && !hasVerb(s.lastFrame, VERB.TOOL) && !rolling) {
     const tool = s.equipped.tool;
     if (!tool) applyAction(s, { k: 'say', text: 'Nothing in hand to use' });
     else if (!blastOf(tool.kind)) applyAction(s, { k: 'say', text: `Nothing to do with a ${KIND[tool.kind].label} here` });

@@ -10,7 +10,7 @@
 // peaceful salvage game rather than a pile of dangling references.
 
 import { VERB, hasVerb } from '../../sim/frame.js';
-import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, PLAYER_WEIGHT, swingPhase, friendly } from '../../sim/state.js';
+import { UNITS, WINDUP, ACTIVE, RECOVER, SWING_TICKS, HURT_INVULN, PLAYER_WEIGHT, swingPhase, dodgePhase, invulnerable, friendly } from '../../sim/state.js';
 import { slide, blocked, solidBodies, actorBodies, touching, tileOf, HALF, impulse, steer, octLen } from '../../sim/space.js';
 import { TILE } from '../../core/gen.js';
 import { FOE, circleFor, orbitFor } from '../../core/foes.js';
@@ -33,7 +33,7 @@ export function combat(s, frame) {
 
   // --- the swing -----------------------------------------------------------
   const pressed = hasVerb(frame, VERB.ATTACK) && !hasVerb(s.lastFrame, VERB.ATTACK);
-  if (pressed && !phase) {
+  if (pressed && !phase && !dodgePhase(s)) {      // committed to a roll: no swing
     // Steel stays sheathed in camp. But SAY so: a button that does nothing at
     // all is indistinguishable from a button that is broken, and camp is the
     // first place a player presses this one.
@@ -61,7 +61,7 @@ export function combat(s, frame) {
   // The machine from plans/foe-behaviour.md. Read the mode, propose what happens
   // next; apply writes it. Circle, crouch, strike, back off, prepare.
   const [px, py] = tileOf(s.x, s.y);
-  const grace = s.tick - s.hurtAt < HURT_INVULN;
+  const grace = invulnerable(s);                  // i-frames, or the grace after a hit
   for (const f of s.foes) {
     const def = FOE[f.kind];
     if (!def) continue;

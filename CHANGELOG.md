@@ -11,6 +11,23 @@ entire.** See `plans/roadmap.md`.
 
 ### Added
 
+- **The dodge roll** (`plans/dodge-roll.md`). B / Space: a roll along the held
+  direction, diagonals included, about a tile and three quarters, front-loaded
+  from an integer table; with nothing held, a short backstep opposite facing.
+  Invulnerable for the first 14 of 20 ticks — to the bite, the blow, *and the
+  blast*, through one predicate — then a recovery tail: still moving, cannot
+  act, can be hit. Committed: no steering, no acting, presses ignored not
+  buffered; it may cancel a swing's recover and nothing else of it; 10 ticks
+  of cooldown. Walls and dogs stop it. Load, per the design and without a
+  stamina meter: laden rolls three quarters with the same i-frame count;
+  overloaded backsteps instead and says “Too heavy to roll”. A blast does not
+  spend its hit on an invulnerable player: roll through and you are clear;
+  roll in and stop and it hurts when the frames end. On the glass: a lean
+  during the frames, upright in recovery (the tell), two dithered afterimages
+  and a few hashed flecks, all from the delta. Twenty-six gates.
+- `steer()` on a unit vector did not normalise (the integer octagonal norm
+  rounds 0.41 to 0 for inputs of 1): callers scale first. Found by the
+  diagonal-roll gate; the machine's steers already passed scaled vectors.
 - **Your remains.** Death no longer scatters what you held across the floor: it
   leaves ONE container where you fell, holding everything, pack and row, as
   pale-lichen bones under a faint verdigris aura that breathes with the tick

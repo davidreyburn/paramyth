@@ -6,7 +6,7 @@
 // A blast is a SQUARE, like the swing's box: integer, axis-aligned, and drawn
 // exactly as tested. It lingers for `linger` ticks and hurts each body once.
 
-import { UNITS, PLAYER_WEIGHT } from './state.js';
+import { UNITS, PLAYER_WEIGHT, invulnerable } from './state.js';
 import { blastOf, forceOn, isContainer, isPortable, isWeapon } from '../core/items.js';
 import { roomView, thingsIn, keyAt } from './room.js';
 import { FACE } from './carry.js';
@@ -133,7 +133,9 @@ export function fuseStep(s, apply) {
       apply({ k: 'hurtFoe', id: f.id, n: b.damage });
       apply({ k: 'shoveFoe', id: f.id, vx, vy });
     }
-    if (!b.hit.includes(PLAYER_ID) && inBlast(b, s.x, s.y)) {
+    // Not while invulnerable, and the blast does not SPEND its hit on you: roll
+    // through and you are clear; roll in and stop, and it hurts when the frames end.
+    if (!b.hit.includes(PLAYER_ID) && inBlast(b, s.x, s.y) && !invulnerable(s)) {
       b.hit.push(PLAYER_ID);
       const [vx, vy] = steer(s.x - b.x, s.y - b.y, impulse(b.knock, PLAYER_WEIGHT));
       apply({ k: 'hurt', n: b.self, vx, vy });
