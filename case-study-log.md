@@ -1071,3 +1071,22 @@ is always the last gate that ran. And the cap's fixtures taught two smaller
 things worth keeping: a held button is one press (the helper now releases
 between presses), and a 28px square around a rubble tile usually catches a
 second one — which is the tool working, not the gate failing.
+
+---
+
+## 2026-09-26 — the loop, observed
+
+**What.** DJ, on the Retroid: *"I had an intense ordeal trying to recover the
+sword off my remains and fight off a Dog."* Died, walked back, opened his own
+bones under a dog that hunts the Field, and had to get the blade out of them
+bare-handed with the dog circling.
+
+**Why it matters.** This is the encounter `plans/slice-01.md` Phase 5 was
+waiting to observe: a haul at risk, a decision under threat, the drop-load
+and recover verbs used on purpose. Nobody authored it. It fell out of three
+rules composing — a corpse is a container, the blade goes into it, and the
+Field is not friendly — which is the "emergent" the first brief asked for.
+
+**Outcome.** No change. Recorded as the first evidence that the core loop
+produces its own stories. The next question is whether it keeps doing so at
+depth, which is the Deep.
