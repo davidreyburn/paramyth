@@ -14,7 +14,7 @@ import { campStations } from '../core/camp.js';
 import { FOE } from '../core/foes.js';
 import { blastOf } from '../core/items.js';
 import { liveBlasts, capsHere } from '../sim/blast.js';
-import { MAX_HP, FADE_TICKS, POP_TICKS, swingPhase, saying, lampVec, surface, friendly } from '../sim/state.js';
+import { MAX_HP, FADE_TICKS, POP_TICKS, REMAINS_FADE, swingPhase, saying, lampVec, surface, friendly } from '../sim/state.js';
 import { isContainer, labelOf, bulkOf, KIND, SLOTS } from '../core/items.js';
 
 export const W = 640, H = 360, VIEW_H = 320;
@@ -190,15 +190,36 @@ export function createRenderer(canvas, pack = null) {
   const BAYER = [[0, 8, 2, 10], [12, 4, 14, 6], [3, 11, 1, 9], [15, 7, 13, 5]];
   function drawAuras(s) {
     for (const r of s.remains) {
-      if (r.site !== s.site || r.floor !== s.floor || r.room !== s.room) continue;
+      if (r.gone || r.site !== s.site || r.floor !== s.floor || r.room !== s.room) continue;
       const cx = (r.tile % COLS) * TILE + (TILE >> 1), cy = ((r.tile / COLS) | 0) * TILE + (TILE >> 1);
-      const level = 3 + (((s.tick / 24) | 0) % 3);           // 3..5 of 16: faint, breathing
+      let level = 3 + (((s.tick / 24) | 0) % 3);             // 3..5 of 16: faint, breathing
+      if (r.fadeAt) level = Math.max(0, Math.round(level * (1 - (s.tick - r.fadeAt) / REMAINS_FADE)));
+      if (!level) continue;
       ctx.fillStyle = P.verdigris;
       for (let y = -14; y <= 14; y++) for (let x = -14; x <= 14; x++) {
         if (x * x + y * y > 14 * 14) continue;
         if (BAYER[(cy + y) & 3][(cx + x) & 3] < level) ctx.fillRect(cx + x, cy + y, 1, 1);
       }
     }
+  }
+
+  // A 20x20 scratch for drawing a thing through a dither: emptied remains fade
+  // by losing pixels in Bayer order, not by going translucent.
+  const scratch = document.createElement('canvas'); scratch.width = TILE; scratch.height = TILE;
+  const sx = scratch.getContext('2d', { willReadFrequently: true }); sx.imageSmoothingEnabled = false;
+  function fadeShare(s, c) {
+    if (c.kind !== 'remains') return 1;
+    const r = s.remains[c.remains];
+    return r && r.fadeAt ? Math.max(0, 1 - (s.tick - r.fadeAt) / REMAINS_FADE) : 1;
+  }
+  function drawDithered(sheet, gx, gy, x, y, share) {
+    sx.clearRect(0, 0, TILE, TILE);
+    sx.drawImage(sheet, gx * pack.tile, gy * pack.tile, pack.tile, pack.tile, 0, 0, TILE, TILE);
+    const img = sx.getImageData(0, 0, TILE, TILE), d = img.data, keep = Math.round(share * 16);
+    for (let py = 0; py < TILE; py++) for (let px_ = 0; px_ < TILE; px_++)
+      if (BAYER[py & 3][px_ & 3] >= keep) d[(py * TILE + px_) * 4 + 3] = 0;
+    sx.putImageData(img, 0, 0);
+    ctx.drawImage(scratch, x, y);
   }
 
   function drawItems(s, tone) {
@@ -213,8 +234,9 @@ export function createRenderer(canvas, pack = null) {
         const fixed = def.tone || glazeFor(pack, c.kind, c.key);
         const sheet = tonedSheet(pack, sh, shadeTone(fixed || tone, def.shade === undefined ? 1 : def.shade));
         if (sheet) {
-          ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile,
-                        tx*TILE, ty*TILE, TILE, TILE);
+          const share = fadeShare(s, c);         // 1 for everything but fading remains
+          if (share >= 1) ctx.drawImage(sheet, gx*pack.tile, gy*pack.tile, pack.tile, pack.tile, tx*TILE, ty*TILE, TILE, TILE);
+          else if (share > 0) drawDithered(sheet, gx, gy, tx*TILE, ty*TILE, share);
           continue;
         }
       }

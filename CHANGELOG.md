@@ -19,7 +19,8 @@ entire.** See `plans/roadmap.md`.
   bones stay as a marker that asks nothing more. You can stand on them. **A cap
   destroys them, contents and all** — it is not a nice place — except that one
   time in three it spares one thing, and if the bones held a weapon, that is
-  the thing. Delta-only, never generated; hashed and saved. DJ:
+  the thing. **Emptied remains fade**: once you close the screen, the bones and
+  their aura dither away over a second and are gone from the room. Delta-only, never generated; hashed and saved. DJ:
   “your corpse should be a special colored bones, maybe with a faint aura glow,
   that opens as a container.”
 

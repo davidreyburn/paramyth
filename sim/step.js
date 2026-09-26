@@ -3,7 +3,7 @@
 // same result, forever, on every device.
 
 import { VERB, hasVerb } from './frame.js';
-import { UNITS, spawnIn, MAX_HP, SWING_TICKS, POP_TICKS, swingPhase, lampStep, friendly } from './state.js';
+import { UNITS, spawnIn, MAX_HP, SWING_TICKS, POP_TICKS, REMAINS_FADE, swingPhase, lampStep, friendly } from './state.js';
 import { plant, fuseStep } from './blast.js';
 import { roomTiles, floorPlan, floorCount, CAMP, FIELD_CAMP, groundTile, COLS, ROWS, TILE, GW, T } from '../core/gen.js';
 import { isContainer, isPortable, isWeapon, bulkOf, SLOTS, slotOf, blastOf, KIND } from '../core/items.js';
@@ -416,6 +416,13 @@ export function step(s, frame, systems = []) {
     if (c) { f.x = c.x; f.y = c.y; f.vx = c.vx; f.vy = c.vy; }
   }
   fuseStep(s, (a) => applyAction(s, a));
+  // Emptied remains fade once you have left the window: physics does not run
+  // while a screen is open, so the fade starts the tick after it closes.
+  for (const r of s.remains) {
+    if (r.gone) continue;
+    if (!r.items.length && !r.fadeAt) r.fadeAt = s.tick;
+    if (r.fadeAt && s.tick - r.fadeAt >= REMAINS_FADE) r.gone = true;
+  }
 
   // Leaving the room. The border is solid except where a link opens it, so
   // crossing the bounds is only possible through a real doorway.

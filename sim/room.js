@@ -50,7 +50,7 @@ export const remainsKey = (i) => `remains:${i}`;
 export function roomView(s) {
   // Every list whose length changes what is in a room is in the stamp. Remains
   // were not, and re-entering the room you died in served the view from before.
-  const stamp = `${s.site}|${s.floor}|${s.room}|${s.taken.length}|${s.opened.length}|${s.dropped.length}|${s.broken.length}|${s.scars.length}|${s.remains.length}`;
+  const stamp = `${s.site}|${s.floor}|${s.room}|${s.taken.length}|${s.opened.length}|${s.dropped.length}|${s.broken.length}|${s.scars.length}|${s.remains.length}|${s.remains.reduce((n, r) => n + (r.gone ? 1 : 0), 0)}`;   // gone is a change too
   const v = s._view;
   if (v && v.stamp === stamp) return v;
 

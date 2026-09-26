@@ -58,6 +58,7 @@ export const SAY_TICKS = 100;
 // function of it — because the renderer may not touch the clock.
 export const FADE_TICKS = 18;           // the dithered fade after a change of floor
 export const POP_TICKS = 10;            // a slain foe's bubble, expanding and breaking
+export const REMAINS_FADE = 60;         // emptied bones dither away over a second, once the screen is closed
 export const saying = (s) => (s.say && s.tick - s.say.at < SAY_TICKS) ? s.say : null;
 
 // Above ground. The surface is DAYLIT: the Field, the camp, Grimhaven, Ashmark.
@@ -185,7 +186,7 @@ export function hashState(s) {
     mix(d.site); mix(d.floor); mix(d.room); mix(d.tile);
   }
   mix(s.remains.length);
-  for (const r of s.remains) { mix(r.site); mix(r.floor); mix(r.room); mix(r.tile); mix(r.at); mix(r.gone ? 1 : 0); rollRefs(r.items); }
+  for (const r of s.remains) { mix(r.site); mix(r.floor); mix(r.room); mix(r.tile); mix(r.at); mix(r.gone ? 1 : 0); mix(r.fadeAt || 0); rollRefs(r.items); }
   // The body and what is hunting it. Foe positions are part of the state, so
   // replay has to reproduce them tick for tick.
   mix(s.hp); mix(s.hurtAt < 0 ? 0 : s.hurtAt);

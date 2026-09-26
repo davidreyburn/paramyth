@@ -466,6 +466,14 @@ try {
       ok('and draw the same twice', shot() === withRemains);
       s6.tick += 24; const breathed = shot(); s6.tick -= 24;
       ok('and the aura breathes with the tick', breathed !== withRemains);
+      // Emptied and fading: drawn through a dither, different from whole, and gone at the end.
+      const { REMAINS_FADE } = await import('../sim/state.js');
+      s6.remains[0].items = []; s6.remains[0].fadeAt = s6.tick - (REMAINS_FADE >> 1);
+      const fading = shot();
+      ok('emptied remains fade through a dither', fading !== withRemains && fading !== plain);
+      ok('and fade the same twice', shot() === fading);
+      s6.remains[0].gone = true;
+      ok('and gone is gone', shot() === plain);
       s6.remains = [];
 
       // The Field: a field room draws, green and daylit, and differs from the camp.

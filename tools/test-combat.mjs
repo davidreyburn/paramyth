@@ -379,7 +379,16 @@ function delve(floor, room) {
     ok('and the sword came back as a thing you can wield again', s.carried.some((r) => r.kind === 'sword' && r.key === 'issue:0:0:0'));
     step(s, 0, SYSTEMS);
     step(s, setVerb(0, VERB.CANCEL, true), SYSTEMS);
-    ok('the empty bones stay as a marker but ask nothing more', thingsIn(s, s.site, s.floor, s.room).some((t) => t.kind === 'remains') && (!reachable(s) || reachable(s).kind !== 'remains'));
+    // Emptied, the bones ask nothing more; once the screen is closed they fade,
+    // and after REMAINS_FADE ticks they are gone from the room (DJ, 2026-09-26).
+    const { REMAINS_FADE } = await import('../sim/state.js');
+    ok('the empty bones are still there the tick you close the screen', thingsIn(s, s.site, s.floor, s.room).some((t) => t.kind === 'remains') && (!reachable(s) || reachable(s).kind !== 'remains'));
+    step(s, 0, SYSTEMS);
+    ok('and start to fade once you have left the window', typeof s.remains[0].fadeAt === 'number' && !s.remains[0].gone);
+    for (let i = 0; i < (REMAINS_FADE >> 1); i++) step(s, 0, SYSTEMS);
+    ok('halfway they are still in the room', thingsIn(s, s.site, s.floor, s.room).some((t) => t.kind === 'remains') && !s.remains[0].gone);
+    for (let i = 0; i < REMAINS_FADE; i++) step(s, 0, SYSTEMS);
+    ok('and then they are gone', s.remains[0].gone === true && !thingsIn(s, s.site, s.floor, s.room).some((t) => t.kind === 'remains'), `${REMAINS_FADE} ticks`);
     // A cap set on your bones destroys them, contents and all. It is not a nice place.
     ok('a cap destroys your remains', forceOn('remains') === 'breaks');
     {
