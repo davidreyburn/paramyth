@@ -7,7 +7,7 @@
 // exactly as tested. It lingers for `linger` ticks and hurts each body once.
 
 import { UNITS, PLAYER_WEIGHT } from './state.js';
-import { blastOf, forceOn, isContainer, isPortable } from '../core/items.js';
+import { blastOf, forceOn, isContainer, isPortable, isWeapon } from '../core/items.js';
 import { roomView, thingsIn, keyAt } from './room.js';
 import { FACE } from './carry.js';
 import { impulse, steer, PLAYER_ID } from './space.js';
@@ -54,9 +54,16 @@ function breakThings(s, c, r) {
 
     // Your remains, contents and all. The entry stays (its index is its key)
     // but it is gone from every room, and the floor remembers where it lay.
+    // One roll, like a pot's: one time in three the blast spares one thing,
+    // and if the bones held a weapon, that is the thing (DJ, 2026-09-26).
     if (it.remains !== undefined) {
       const r = s.remains[it.remains];
-      if (r) { r.items = []; r.gone = true; }
+      if (r) {
+        const spared = r.items.length && hchance(SURVIVOR_ODDS[0], SURVIVOR_ODDS[1], s.seed, fold(it.key), 0xb1a6)
+          ? (r.items.find((x) => isWeapon(x.kind)) || r.items[0]) : null;
+        if (spared) s.dropped.push({ kind: spared.kind, key: spared.key, site: c.site, floor: c.floor, room: c.room, tile: it.tile });
+        r.items = []; r.gone = true;
+      }
       const k = brokenKey(c.site, c.floor, c.room, it.tile);
       if (!s.scars.includes(k)) s.scars.push(k);
       continue;

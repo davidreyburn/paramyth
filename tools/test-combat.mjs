@@ -398,6 +398,25 @@ function delve(floor, room) {
       ok('and it does: the bones are gone from the room', !thingsIn(g, 0, r0.floor, r0.room).some((t) => t.kind === 'remains'));
       ok('with everything in them', g.remains[0].gone === true && g.remains[0].items.length === 0);
       ok('and a scar where they lay', g.scars.includes(`0:${r0.floor}:${r0.room}:${r0.tile}`));
+      // One time in three the blast spares one thing, and it is the weapon. Many
+      // remains, each keyed differently, so the rate can be read and the rule seen.
+      const { SURVIVOR_ODDS } = await import('../sim/blast.js');
+      let tried = 0, spared = 0, weapon = 0;
+      for (let n = 0; n < 45; n++) {
+        const q = createState(SEED); q.hp = 1000;
+        q.site = 0; q.floor = r0.floor; q.room = r0.room; q.x = cc.x; q.y = cc.y;
+        q.remains = Array.from({ length: n + 1 }, () => ({ site: 9, floor: 9, room: 9, tile: 0, at: 0, items: [], gone: true }));
+        q.remains[n] = { site: 0, floor: r0.floor, room: r0.room, tile: r0.tile, at: 0, items: [{ kind: 'gem', key: `0:0:0:${n}` }, { kind: 'sword', key: 'issue:0:0:0' }, { kind: 'bones', key: '0:0:0:77' }] };
+        enterRoom(q); q.foes = [];
+        q.equipped.tool = { kind: 'bcap', key: 'issue:0:0:1' };
+        step(q, setVerb(0, VERB.TOOL, true), SYSTEMS); step(q, 0, SYSTEMS);
+        for (let i = 0; i < blastOf('bcap').fuse + 4; i++) step(q, away ? setVerb(0, away[0], true) : 0, SYSTEMS);
+        tried++;
+        const left = q.dropped.filter((d) => d.tile === r0.tile);
+        if (left.length) { spared++; if (left.length === 1 && left[0].kind === 'sword') weapon++; }
+      }
+      ok('one time in three the blast spares one thing from your remains', spared > 0 && spared / tried >= 0.18 && spared / tried <= 0.5, `${spared}/${tried}, odds ${SURVIVOR_ODDS.join(' in ')}`);
+      ok('and it is the weapon, whatever else lay on top of it', weapon === spared, `${weapon}/${spared} swords`);
     }
     const d = JSON.parse(JSON.stringify(toDelta(s)));
     ok('remains survive a save', d.remains.length === 1 && Array.isArray(d.remains[0].items));

@@ -17,7 +17,9 @@ entire.** See `plans/roadmap.md`.
   (a Bayer-dithered disc: no gradient, no clock). It opens like a chest —
   “Open remains” — and taking from it is taking; take-all empties it and the
   bones stay as a marker that asks nothing more. You can stand on them. **A cap
-  destroys them, contents and all** — it is not a nice place. Delta-only, never generated; hashed and saved. DJ:
+  destroys them, contents and all** — it is not a nice place — except that one
+  time in three it spares one thing, and if the bones held a weapon, that is
+  the thing. Delta-only, never generated; hashed and saved. DJ:
   “your corpse should be a special colored bones, maybe with a faint aura glow,
   that opens as a container.”
 

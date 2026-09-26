@@ -156,7 +156,8 @@ export function enterRoom(s) {
 function die(s) {
   // Everything you held, pack and row, into ONE container where you fell. Not
   // scattered: a corpse is a place, and the reason for the next run.
-  const items = [...s.carried, ...SLOTS.map((k) => s.equipped[k]).filter(Boolean)];
+  // The wielded blade first: it is the thing a blast on your bones may spare.
+  const items = [...SLOTS.map((k) => s.equipped[k]).filter(Boolean), ...s.carried];
   const tile = Math.floor(s.y / (TILE * UNITS)) * COLS + Math.floor(s.x / (TILE * UNITS));
   s.remains.push({ site: s.site, floor: s.floor, room: s.room, tile, at: s.tick, items });
   s.carried = [];
